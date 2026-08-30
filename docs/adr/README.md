@@ -13,12 +13,12 @@ choice was made and preserve that reasoning as the implementation evolves.
 | ADR | Title | Status | Date | Supersedes |
 |---|---|---|---|---|
 | [000](000-template.md) | ADR template | Template | — | — |
+| [001](001-modular-monolith-and-two-container-topology.md) | Modular monolith and two-container topology | Accepted | 2026-08-30 | — |
 
 Planned records:
 
 | ADR | Working title |
 |---|---|
-| 001 | Modular monolith and two-container topology |
 | 002 | Immutable event inputs and relational projections |
 | 003 | Business-action, trace, attempt, event, and alias identifiers |
 | 004 | Privacy modes and signed-byte fingerprints |
