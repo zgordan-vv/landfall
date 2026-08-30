@@ -16,12 +16,12 @@ choice was made and preserve that reasoning as the implementation evolves.
 | [001](001-modular-monolith-and-two-container-topology.md) | Modular monolith and two-container topology | Accepted | 2026-08-30 | — |
 | [002](002-immutable-event-inputs-and-relational-projections.md) | Immutable event inputs and relational projections | Accepted | 2026-08-30 | — |
 | [003](003-business-action-trace-attempt-event-and-alias-identifiers.md) | Business-action, trace, attempt, event, and alias identifiers | Accepted | 2026-08-30 | — |
+| [004](004-privacy-modes-and-signed-byte-fingerprints.md) | Privacy modes and signed-byte fingerprints | Accepted | 2026-08-30 | — |
 
 Planned records:
 
 | ADR | Working title |
 |---|---|
-| 004 | Privacy modes and signed-byte fingerprints |
 | 005 | JSON Schema event contract and code-generation direction |
 | 006 | Solana Kit first adapter and compatibility roadmap |
 | 007 | PostgreSQL job queue instead of an external broker |
