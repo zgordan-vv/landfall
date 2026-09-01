@@ -248,6 +248,10 @@ The dashboard must show “processing” rather than an empty or incorrect termi
 
 ### 4.5 Security and privacy
 
+The [P0 implementation threat model](threat-model.md) defines the authoritative
+trust boundaries, threat register, required controls, accepted residual risks, and
+executable security release gates for this design.
+
 - No private key, seed phrase, signer secret, authorization header, cookie, or credential-bearing URL may be persisted.
 - Event attributes use allowlists and size limits.
 - Ingestion and admin tokens are high-entropy and stored only as hashes.

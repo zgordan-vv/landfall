@@ -337,7 +337,7 @@ Resolve choices that would otherwise leak ambiguity into contracts and persisten
 8. Record ADR-007: PostgreSQL job queue instead of external broker.
 9. Record ADR-008: code-first OpenAPI via Utoipa.
 10. Select report renderer and artifact storage through a tiny documented spike. Completed: [Askama and PostgreSQL `BYTEA`](spikes/report-renderer-and-artifact-storage.md).
-11. Create an implementation threat model using the assets and threats in the PRD/system design.
+11. Create an implementation threat model using the assets and threats in the PRD/system design. Completed: [P0 implementation threat model](threat-model.md).
 12. Freeze P0 support matrix: Node, PostgreSQL, Solana clusters, transaction versions, and privacy modes.
 
 ### Key decisions recommended
