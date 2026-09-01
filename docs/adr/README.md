@@ -19,12 +19,12 @@ choice was made and preserve that reasoning as the implementation evolves.
 | [004](004-privacy-modes-and-signed-byte-fingerprints.md) | Privacy modes and signed-byte fingerprints | Accepted | 2026-08-30 | — |
 | [005](005-json-schema-event-contract-and-code-generation.md) | JSON Schema event contract and code generation | Accepted | 2026-08-30 | — |
 | [006](006-solana-kit-first-adapter-and-compatibility-roadmap.md) | Solana Kit first adapter and compatibility roadmap | Accepted | 2026-08-30 | — |
+| [007](007-postgresql-job-queue-instead-of-external-broker.md) | PostgreSQL job queue instead of an external broker | Accepted | 2026-09-01 | — |
 
 Planned records:
 
 | ADR | Working title |
 |---|---|
-| 007 | PostgreSQL job queue instead of an external broker |
 | 008 | Code-first OpenAPI with Utoipa |
 
 A planned record is not a decision. It becomes authoritative only after its ADR
