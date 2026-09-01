@@ -1836,25 +1836,28 @@ This is sequencing only; implementation begins only when explicitly requested.
 
 The order deliberately establishes semantics and fixtures before networking and UI. It reduces the chance of building a polished dashboard over incorrect transaction definitions.
 
-## 15. Open engineering decisions
+## 15. Resolved and open engineering decisions
 
 The [report renderer and storage spike](spikes/report-renderer-and-artifact-storage.md)
 resolved the renderer and first artifact-storage choice: Askama 0.16 and bounded,
 gzip-compressed PostgreSQL `BYTEA`.
 
-These remain explicit until an implementation spike or customer evidence resolves them:
+Phase 0 resolved the following through ADRs and the
+[P0 support matrix](support-matrix.md): the exact Kit 8.2.0 launch lane and
+client roadmap; environment-keyed HMAC in every P0 privacy mode; PostgreSQL
+18.6 as the launch server; polling as the authoritative PostgreSQL job-queue
+wakeup with optional `LISTEN/NOTIFY` only as a hint; raw recent blockhash policy;
+and legacy plus `v0` as the transaction versions parsed in P0.
 
-1. Confirm the recommended `@solana/kit` v7+ adapter baseline and decide when to add `@solana/web3-compat` or legacy `@solana/web3.js` support.
-2. Exact UUIDv7 library and cross-language canonical format.
-3. Whether signed-byte digest is plain SHA-256 or environment-keyed HMAC in each privacy mode.
-4. Precise SDK overflow policy and optional process-shutdown flush duration.
-5. PostgreSQL version and partition-management implementation.
-6. Exact projection notification mechanism: polling queue only or PostgreSQL `LISTEN/NOTIFY` as latency optimization.
-7. Exact adaptive observer polling schedule after controlled measurement.
-8. Maximum stored bounded error/log size.
-9. Dashboard framework and generated API client tooling.
-10. Whether standard mode stores raw recent blockhash or only `lastValidBlockHeight` plus digest.
-11. The highest Solana transaction version parsed in the first observer release.
+These implementation details remain explicit until a spike or measured evidence
+resolves them:
+
+1. Exact UUIDv7 library and cross-language canonical format.
+2. Precise SDK overflow policy and optional process-shutdown flush duration.
+3. PostgreSQL partition-management implementation.
+4. Exact adaptive observer polling schedule after controlled measurement.
+5. Maximum stored bounded error/log size.
+6. Dashboard generated API client tooling.
 
 Each decision should receive a short Architecture Decision Record before its code is merged.
 

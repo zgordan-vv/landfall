@@ -696,7 +696,11 @@ Acceptance criteria:
 
 The initial SDK shall support server-side Node.js 24 LTS and explicit adapters for the selected Solana client library.
 
-The first portfolio adapter targets `@solana/kit` v7+. A later `@solana/web3-compat` or legacy `@solana/web3.js` adapter can be prioritized by customer evidence without changing the neutral event protocol.
+The first portfolio adapter targets the exact `@solana/kit` 8.2.0 lane frozen in
+the [P0 support matrix](support-matrix.md). A later `@solana/web3.js` v3 spike
+and, if customer evidence warrants it, a separate legacy v1 adapter can be
+prioritized without changing the neutral event protocol. `@solana/web3-compat`
+is not a support roadmap target.
 
 Acceptance criteria:
 
@@ -1833,9 +1837,9 @@ Targets are validated through reproducible benchmarks and adjusted from pilot vo
 ### 21.4 Compatibility
 
 - Linux amd64 and arm64 containers for self-hosted deployment;
-- current maintained PostgreSQL major versions selected during implementation;
+- PostgreSQL 18.6 for the initial P0 release, with later minors admitted only after the support-matrix gates pass;
 - Node.js 24 LTS for the initial SDK;
-- one validated Solana JavaScript client version at launch;
+- exact `@solana/kit` 8.2.0 at launch;
 - standard JSON-RPC endpoints;
 - Solana mainnet, devnet, and local validator identified explicitly per environment.
 

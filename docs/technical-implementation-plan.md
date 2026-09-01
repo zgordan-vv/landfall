@@ -4,7 +4,7 @@ Status: Draft; no implementation started
 Version: 0.1  
 Date: 2026-08-29  
 Working product name: **Landfall**  
-Related documents: [Product Requirements Document](./product-requirements-document.md), [System Design](./system-design.md), [Idea Validation Strategy](./idea-validation-strategy.md)
+Related documents: [Product Requirements Document](./product-requirements-document.md), [System Design](./system-design.md), [P0 Support Matrix](./support-matrix.md), [Idea Validation Strategy](./idea-validation-strategy.md)
 
 ## 1. Purpose
 
@@ -25,16 +25,19 @@ The implementation must achieve four outcomes simultaneously:
 
 ## 3. Technology stack
 
-Versions below are the planning baseline as of 2026-08-29. Exact patch versions will be pinned in lockfiles and container digests when implementation begins.
+Versions below began as the planning baseline on 2026-08-29. The exact P0
+runtime/client/database lane was verified and frozen on 2026-09-01 in the
+[support matrix](support-matrix.md); remaining implementation dependencies are
+pinned in lockfiles and container digests when their phase begins.
 
 ### 3.1 Runtime and database baseline
 
 | Area | Choice | Baseline | Why |
 |---|---|---:|---|
 | Backend language | Rust | 1.98.0, Edition 2024 | Memory safety, strong domain modeling, concurrency, performance, portfolio relevance |
-| JavaScript runtime | Node.js | 24 LTS | Supported production LTS; Node 20 is already EOL |
+| JavaScript runtime | Node.js | 24 LTS; 24.20.0 P0 pin | Supported production LTS; exact lane is owned by the support matrix |
 | Type system/compiler | TypeScript | 7.0 | Current stable native compiler and strong SDK/frontend contracts |
-| Database | PostgreSQL | 18, current minor | Durable relational/event storage, JSONB, transactions, partitioning, job leases |
+| Database | PostgreSQL | 18.6 P0 pin | Durable relational/event storage, JSONB, transactions, partitioning, job leases |
 | Container runtime | Docker + Compose | Compose v2 | Reproducible two-container self-hosted deployment |
 | Shell task runner | `just` | pinned stable | One discoverable command surface across Rust, Node, database, and Docker |
 | JS package manager | pnpm | current stable, pinned | Workspaces, deterministic lockfile, efficient monorepo installs |
@@ -86,10 +89,12 @@ Rust features will be kept minimal rather than using every crate's `full` featur
 | Validation | Generated types plus focused runtime guards | Prevent malformed event construction |
 | Tests | Vitest 4.1 | Unit, fake-timer, transport, and adapter tests |
 | HTTP mocking | MSW or Undici mock agent | Collector transport tests |
-| Solana adapter | `@solana/kit` v7+ first | Current recommended Solana JavaScript stack |
-| Compatibility | `@solana/web3-compat`, then legacy `@solana/web3.js` adapter if demand requires | Existing-client adoption |
+| Solana adapter | `@solana/kit` 8.2.0 first | Exact initial compatibility lane from the P0 support matrix |
+| Compatibility | Neutral manual API; then a web3.js v3 spike and legacy v1 only if evidence requires | Existing-client adoption without a false broad support claim |
 
-Solana currently recommends `@solana/kit`; legacy `@solana/web3.js` remains common but deprecated. [Official frontend guidance](https://solana.com/docs/frontend), [Kit client guide](https://solana.com/docs/frontend/client).
+Solana currently recommends `@solana/kit`. The exact P0 lane and unsupported
+fallback behavior are frozen in the [support matrix](support-matrix.md) and
+[ADR-006](adr/006-solana-kit-first-adapter-and-compatibility-roadmap.md).
 
 The neutral manual event API is implemented before any Solana-specific adapter. That makes the SDK useful for custom clients and prevents the backend protocol from depending on one library's object model.
 
@@ -321,6 +326,8 @@ Phases create vertical evidence. We do not build the entire backend before the f
 
 ## 7. Phase 0 — Design lock and engineering decisions
 
+**Status:** Completed on 2026-09-01.
+
 ### Goal
 
 Resolve choices that would otherwise leak ambiguity into contracts and persistence.
@@ -338,12 +345,12 @@ Resolve choices that would otherwise leak ambiguity into contracts and persisten
 9. Record ADR-008: code-first OpenAPI via Utoipa.
 10. Select report renderer and artifact storage through a tiny documented spike. Completed: [Askama and PostgreSQL `BYTEA`](spikes/report-renderer-and-artifact-storage.md).
 11. Create an implementation threat model using the assets and threats in the PRD/system design. Completed: [P0 implementation threat model](threat-model.md).
-12. Freeze P0 support matrix: Node, PostgreSQL, Solana clusters, transaction versions, and privacy modes.
+12. Freeze P0 support matrix: Node, PostgreSQL, Solana clusters, transaction versions, and privacy modes. Completed: [P0 support matrix](support-matrix.md).
 
 ### Key decisions recommended
 
-- fingerprint: HMAC-SHA-256 with an environment-local key in strict/full privacy-sensitive deployments; plain SHA-256 may be allowed for local standard mode after ADR review;
-- first client adapter: `@solana/kit` v7+;
+- fingerprint: `lf-hmac-sha256-v1` with an environment key in every P0 mode; plain SHA-256 is unsupported;
+- first client adapter: exact `@solana/kit` 8.2.0 on Node.js 24 LTS;
 - P0 transaction versions: legacy and v0; v1 is explicitly detected and reported unsupported until parser tests exist;
 - reports: PostgreSQL `BYTEA` capped at 10 MiB for P0;
 - queue notification: polling is authoritative; PostgreSQL `LISTEN/NOTIFY` may be a latency hint only.
@@ -805,7 +812,7 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
 
 ### Tasks
 
-1. Study Kit client/plugin interfaces and freeze supported minor versions.
+1. Implement and verify the frozen `@solana/kit` 8.2.0 lane; add any required plugin tuple to the support matrix before release.
 2. Define adapter boundary independent of Kit internals.
 3. Capture blockhash and `lastValidBlockHeight`.
 4. Capture simulation result and compute units when available.
@@ -816,7 +823,7 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
 9. Build a controlled SOL-transfer or harmless-instruction example for local validator/devnet.
 10. Demonstrate success, simulation failure, client timeout/later success, and expiration fixtures.
 11. Document the integration and every captured field.
-12. Create compatibility-adapter spike for `@solana/web3-compat`; defer full implementation based on demand.
+12. After the Kit lane is stable, run a time-boxed `@solana/web3.js` v3 compatibility spike; defer production support and a legacy v1 adapter until evidence justifies them.
 
 ### Security constraints
 

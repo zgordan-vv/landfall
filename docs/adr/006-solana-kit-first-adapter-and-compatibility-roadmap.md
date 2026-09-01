@@ -553,6 +553,7 @@ tested adapter/Kit tuple; it never requires a backend data rewrite.
 
 ## References
 
+- [P0 support matrix](../support-matrix.md)
 - [Product requirements: instrumentation SDK](../product-requirements-document.md#132-instrumentation-sdk)
 - [System design: application instrumentation](../system-design.md#32-application-instrumentation)
 - [System design: TypeScript SDK](../system-design.md#91-typescript-sdk)
