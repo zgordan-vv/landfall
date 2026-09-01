@@ -66,7 +66,7 @@ Official version references:
 | Hashing | `sha2`, `hmac`, `subtle` | pinned stable | Digests, keyed privacy mode, constant-time comparison |
 | Secrets | `secrecy`, `zeroize` where applicable | pinned stable | Reduce accidental display/copy of token material |
 | Config | `config` or explicit layered loader | decided by ADR | Env/file configuration with strict validation |
-| Templates | Askama or Minijinja | decided by report spike | Self-contained HTML report rendering |
+| Templates | Askama | 0.16 | Compile-time checked, self-contained HTML report rendering; selected by the report spike |
 | Schema validation | `jsonschema` | pinned stable | Contract validation for fixtures and ingestion defense |
 | Property tests | Proptest | pinned stable | Event-order, idempotency, and state invariants |
 | Snapshots | Insta | pinned stable | Reports, OpenAPI, diagnoses, and error contracts |
@@ -336,7 +336,7 @@ Resolve choices that would otherwise leak ambiguity into contracts and persisten
 7. Record ADR-006: Solana Kit first adapter and compatibility roadmap.
 8. Record ADR-007: PostgreSQL job queue instead of external broker.
 9. Record ADR-008: code-first OpenAPI via Utoipa.
-10. Select report renderer and artifact storage through a tiny documented spike.
+10. Select report renderer and artifact storage through a tiny documented spike. Completed: [Askama and PostgreSQL `BYTEA`](spikes/report-renderer-and-artifact-storage.md).
 11. Create an implementation threat model using the assets and threats in the PRD/system design.
 12. Freeze P0 support matrix: Node, PostgreSQL, Solana clusters, transaction versions, and privacy modes.
 

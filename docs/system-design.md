@@ -1264,7 +1264,12 @@ Unique active dedupe keys prevent a burst of events from creating hundreds of si
 
 #### `reporting.report_artifacts`
 
-P0 may store bounded compressed `BYTEA`, content type, byte size, and SHA-256 checksum. Maximum artifact size is configurable, initially 10 MiB. Object storage replaces this table only when report size or hosted scale justifies it.
+P0 stores application-gzip-compressed `BYTEA`, content type, content encoding,
+uncompressed and stored byte sizes, and a SHA-256 checksum of the canonical
+uncompressed bytes. Both byte sizes are bounded by a configurable limit, initially
+10 MiB. The [report renderer and storage spike](spikes/report-renderer-and-artifact-storage.md)
+selected this design over a mounted directory. Object storage replaces this table
+only when report size or hosted scale justifies it.
 
 ### 8.12 Metrics
 
@@ -1829,6 +1834,10 @@ The order deliberately establishes semantics and fixtures before networking and 
 
 ## 15. Open engineering decisions
 
+The [report renderer and storage spike](spikes/report-renderer-and-artifact-storage.md)
+resolved the renderer and first artifact-storage choice: Askama 0.16 and bounded,
+gzip-compressed PostgreSQL `BYTEA`.
+
 These remain explicit until an implementation spike or customer evidence resolves them:
 
 1. Confirm the recommended `@solana/kit` v7+ adapter baseline and decide when to add `@solana/web3-compat` or legacy `@solana/web3.js` support.
@@ -1839,10 +1848,9 @@ These remain explicit until an implementation spike or customer evidence resolve
 6. Exact projection notification mechanism: polling queue only or PostgreSQL `LISTEN/NOTIFY` as latency optimization.
 7. Exact adaptive observer polling schedule after controlled measurement.
 8. Maximum stored bounded error/log size.
-9. Whether report artifacts use PostgreSQL `BYTEA` or a mounted local artifact directory in the first implementation.
-10. Dashboard framework and generated API client tooling.
-11. Whether standard mode stores raw recent blockhash or only `lastValidBlockHeight` plus digest.
-12. The highest Solana transaction version parsed in the first observer release.
+9. Dashboard framework and generated API client tooling.
+10. Whether standard mode stores raw recent blockhash or only `lastValidBlockHeight` plus digest.
+11. The highest Solana transaction version parsed in the first observer release.
 
 Each decision should receive a short Architecture Decision Record before its code is merged.
 

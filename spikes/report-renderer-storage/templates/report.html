@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>{{ report.title }}</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 2rem auto; max-width: 76rem; padding: 0 1rem; color: #182230; }
+    h1, h2 { color: #102a43; }
+    .meta, .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .75rem; }
+    .card { border: 1px solid #bcccdc; border-radius: .5rem; padding: .75rem; background: #f7fafc; }
+    table { border-collapse: collapse; width: 100%; margin: .75rem 0 1.5rem; }
+    th, td { border: 1px solid #d9e2ec; padding: .45rem; text-align: left; vertical-align: top; }
+    th { background: #eaf0f6; }
+    code { overflow-wrap: anywhere; }
+    .confirmed { color: #176b3a; }
+    .failed { color: #a61b1b; }
+    .unknown { color: #7c4a03; }
+    .limitation { border-left: .25rem solid #d69e2e; padding-left: .75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>{{ report.title }}</h1>
+    <div class="meta">
+      <div class="card"><strong>Environment</strong><br>{{ report.environment_name }}</div>
+      <div class="card"><strong>Data as of</strong><br>{{ report.data_as_of }}</div>
+      <div class="card"><strong>Privacy profile</strong><br>{{ report.privacy_profile }}</div>
+      <div class="card"><strong>Versions</strong><br>Landfall {{ report.landfall_version }} / rules {{ report.rule_set_version }}</div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Cohorts</h2>
+      <div class="cards">
+      {% for cohort in report.cohorts %}
+        <div class="card"><strong>{{ cohort.label }}</strong><br>{{ cohort.size }} traces<br>{{ cohort.filter }}</div>
+      {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <h2>Metric definitions</h2>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th><th>Definition</th></tr></thead>
+        <tbody>
+        {% for metric in report.metrics %}
+          <tr><td>{{ metric.name }}</td><td>{{ metric.value }}</td><td>{{ metric.definition }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Lifecycle distribution</h2>
+      <table>
+        <thead><tr><th>State</th><th>Count</th><th>Percent</th></tr></thead>
+        <tbody>
+        {% for bucket in report.lifecycle_distribution %}
+          <tr><td class="{{ bucket.css_class }}">{{ bucket.state }}</td><td>{{ bucket.count }}</td><td>{{ bucket.percent }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Recommendations</h2>
+      <table>
+        <thead><tr><th>Recommendation</th><th>Disposition</th><th>Evidence</th></tr></thead>
+        <tbody>
+        {% for recommendation in report.recommendations %}
+          <tr><td>{{ recommendation.title }}</td><td>{{ recommendation.disposition }}</td><td>{{ recommendation.evidence }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Selected trace timelines</h2>
+      <p>{{ report.selected_trace_count }} selected from {{ report.total_trace_count }} traces.</p>
+      <table>
+        <thead><tr><th>Trace</th><th>Signature label</th><th>State</th><th>Duration</th><th>Diagnosis and evidence</th></tr></thead>
+        <tbody>
+        {% for trace in report.selected_traces %}
+          <tr class="trace-row">
+            <td><code>{{ trace.trace_id }}</code></td>
+            <td><code>{{ trace.signature_label }}</code></td>
+            <td class="{{ trace.css_class }}">{{ trace.state }}</td>
+            <td>{{ trace.duration_ms }} ms</td>
+            <td>{{ trace.diagnosis }} — {{ trace.evidence }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Data limitations</h2>
+      {% for limitation in report.limitations %}
+        <p class="limitation">{{ limitation }}</p>
+      {% endfor %}
+    </section>
+  </main>
+</body>
+</html>

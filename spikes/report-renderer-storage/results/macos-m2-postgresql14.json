@@ -1,0 +1,103 @@
+{
+  "environment": {
+    "os": "macos",
+    "architecture": "aarch64",
+    "rustc": "rustc 1.89.0 (29483883e 2025-08-04)",
+    "renderer_versions": {
+      "askama": "0.16.0",
+      "minijinja": "2.24.0"
+    },
+    "artifact_cap_bytes": 10485760
+  },
+  "input": {
+    "trace_count": 100000,
+    "selected_trace_count": 10000,
+    "iterations": 5
+  },
+  "selected_pipeline": {
+    "total_ms": 71.470417,
+    "model_ms": 9.970958,
+    "html_ms": 3.085959,
+    "json_ms": 2.9343749999999997,
+    "packaging_ms": 51.348083,
+    "meets_ten_second_target": true
+  },
+  "renderer_comparison": {
+    "askama_median_ms": 4.0980419999999995,
+    "askama_samples_ms": [
+      6.559417,
+      3.2526669999999998,
+      4.0980419999999995,
+      4.453458,
+      2.9954579999999997
+    ],
+    "askama_output_bytes": 4258237,
+    "minijinja_parse_ms": 0.377,
+    "minijinja_median_ms": 9.581584000000001,
+    "minijinja_samples_ms": [
+      9.652083000000001,
+      9.673375,
+      9.581584000000001,
+      9.434834,
+      9.549958
+    ],
+    "minijinja_output_bytes": 4258240,
+    "both_escape_untrusted_html": true,
+    "both_are_self_contained": true
+  },
+  "artifacts": [
+    {
+      "format": "html",
+      "content_type": "text/html; charset=utf-8",
+      "content_encoding": "gzip",
+      "raw_bytes": 4258237,
+      "stored_bytes": 168496,
+      "gzip_ratio": 0.03956942744145053,
+      "sha256": "c9bbe20db03bc9ea13ed9d2aea2ffbca82f3efd57a513d195fd866fd95b7c09f",
+      "within_raw_cap": true,
+      "within_stored_cap": true
+    },
+    {
+      "format": "json",
+      "content_type": "application/json",
+      "content_encoding": "gzip",
+      "raw_bytes": 3875957,
+      "stored_bytes": 163903,
+      "gzip_ratio": 0.04228710483630237,
+      "sha256": "c0dcdb9b07416da342e97ab555a4d6cc93fec2c6289eba1b621e2da99e513191",
+      "within_raw_cap": true,
+      "within_stored_cap": true
+    }
+  ],
+  "postgres_bytea": {
+    "server_version": "14.17 (Homebrew)",
+    "transaction_median_ms": 4.167458,
+    "transaction_samples_ms": [
+      5.417375000000001,
+      4.19,
+      4.167458,
+      4.107125,
+      4.09775
+    ],
+    "readback_ms": 8.428459,
+    "table_total_bytes_after_iterations": 1982464,
+    "byte_roundtrip_verified": true,
+    "rollback_atomicity_verified": true,
+    "database_cap_rejection_verified": true
+  },
+  "mounted_directory": {
+    "publish_median_ms": 10.21275,
+    "publish_samples_ms": [
+      37.162667000000006,
+      22.080333,
+      9.834417,
+      8.999417,
+      10.21275
+    ],
+    "readback_ms": 6.090708,
+    "logical_bytes_after_iterations": 1661995,
+    "byte_roundtrip_verified": true,
+    "per_file_atomic_rename_verified": true,
+    "metadata_and_file_share_one_transaction": false
+  }
+}
