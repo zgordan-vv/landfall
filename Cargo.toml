@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/landfall-cli",
+    "crates/landfall-core",
+    "crates/landfall-observer",
+    "crates/landfall-protocol",
+    "crates/landfall-report",
+    "crates/landfall-server",
+    "crates/landfall-storage",
+]
+exclude = ["spikes/report-renderer-storage"]
+resolver = "3"

@@ -1,0 +1,12 @@
+[package]
+name = "landfall-server"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+landfall-core = { path = "../landfall-core" }
+landfall-observer = { path = "../landfall-observer" }
+landfall-protocol = { path = "../landfall-protocol" }
+landfall-report = { path = "../landfall-report" }
+landfall-storage = { path = "../landfall-storage" }
