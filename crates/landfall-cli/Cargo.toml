@@ -1,8 +1,15 @@
 [package]
 name = "landfall-cli"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+rust-version.workspace = true
 publish = false
 
+[features]
+default = []
+
 [dependencies]
-landfall-server = { path = "../landfall-server" }
+landfall-server.workspace = true
+
+[lints]
+workspace = true

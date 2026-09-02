@@ -1,9 +1,16 @@
 [package]
 name = "landfall-observer"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+rust-version.workspace = true
 publish = false
 
+[features]
+default = []
+
 [dependencies]
-landfall-core = { path = "../landfall-core" }
-landfall-protocol = { path = "../landfall-protocol" }
+landfall-core.workspace = true
+landfall-protocol.workspace = true
+
+[lints]
+workspace = true

@@ -1,12 +1,19 @@
 [package]
 name = "landfall-server"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+rust-version.workspace = true
 publish = false
 
+[features]
+default = []
+
 [dependencies]
-landfall-core = { path = "../landfall-core" }
-landfall-observer = { path = "../landfall-observer" }
-landfall-protocol = { path = "../landfall-protocol" }
-landfall-report = { path = "../landfall-report" }
-landfall-storage = { path = "../landfall-storage" }
+landfall-core.workspace = true
+landfall-observer.workspace = true
+landfall-protocol.workspace = true
+landfall-report.workspace = true
+landfall-storage.workspace = true
+
+[lints]
+workspace = true

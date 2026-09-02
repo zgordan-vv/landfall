@@ -10,3 +10,46 @@ members = [
 ]
 exclude = ["spikes/report-renderer-storage"]
 resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.98.0"
+
+[workspace.dependencies]
+landfall-core = { path = "crates/landfall-core", default-features = false }
+landfall-observer = { path = "crates/landfall-observer", default-features = false }
+landfall-protocol = { path = "crates/landfall-protocol", default-features = false }
+landfall-report = { path = "crates/landfall-report", default-features = false }
+landfall-server = { path = "crates/landfall-server", default-features = false }
+landfall-storage = { path = "crates/landfall-storage", default-features = false }
+
+[workspace.lints.rust]
+future_incompatible = { level = "warn", priority = -1 }
+missing_docs = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+expect_used = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = 3
+overflow-checks = true
+panic = "abort"
+strip = "debuginfo"

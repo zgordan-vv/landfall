@@ -58,3 +58,32 @@ forbidden infrastructure packages. Cargo itself rejects dependency cycles.
 When a new crate or architectural exception is needed, update the architecture
 decision first, then change the expected graph in
 `scripts/check-rust-dependency-direction.sh` in the same reviewed commit.
+
+## Shared workspace policy
+
+The root `Cargo.toml` is authoritative for:
+
+- Rust Edition 2024 and minimum supported Rust `1.98.0`;
+- internal crate paths with default features disabled;
+- Rust, Clippy, and rustdoc lints inherited by every crate;
+- the production release profile.
+
+Every crate declares an empty `default` feature set. New functionality must
+remain unconditional or be placed behind a specifically named opt-in feature;
+depending on another workspace crate never activates its future defaults
+implicitly.
+
+The workspace forbids unsafe Rust and ignored `must_use` results. Clippy warns
+on its `all` and `pedantic` groups and rejects debugging macros, `unwrap`,
+`expect`, explicit `panic!`, `todo!`, and `unimplemented!` branches. Missing
+public documentation and broken rustdoc links are caught
+before release. A narrow lint exception is allowed only next to the relevant
+code with a reason.
+
+The release profile uses thin link-time optimization and one code-generation
+unit for optimized binaries. Integer overflow checks stay enabled because
+Landfall evaluates balances, fees, block heights, timestamps, and counters.
+Panics abort the process instead of attempting to continue from an unexpected
+invariant violation; durable state and job recovery belong to PostgreSQL, not
+process memory. Debug information is stripped while ordinary symbols remain
+available for operational diagnosis.
