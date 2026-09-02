@@ -379,7 +379,7 @@ Create a reproducible empty workspace where one command verifies all languages a
 ### Tasks
 
 1. Initialize Cargo workspace and seven crates with dependency direction enforced. Completed: [Rust crate boundaries](../crates/README.md).
-2. Pin Rust 1.98 and required components in `rust-toolchain.toml`.
+2. Pin Rust 1.98 and required components in `rust-toolchain.toml`. Completed: [Rust toolchain pin](../rust-toolchain.toml).
 3. Configure workspace lints, Rust Edition 2024, release profile, and minimal features.
 4. Initialize pnpm workspace, Node 24 pin, TypeScript base config, and package boundaries.
 5. Create dashboard and package skeletons without product logic.
