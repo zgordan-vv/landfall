@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/protocol-ts"
+    },
+    {
+      "path": "packages/sdk-ts"
+    },
+    {
+      "path": "packages/api-client"
+    },
+    {
+      "path": "apps/dashboard"
+    }
+  ]
+}

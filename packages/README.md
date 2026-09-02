@@ -38,9 +38,17 @@ Rules:
 - TypeScript `paths` aliases must not be used to bypass package manifests or
   public exports.
 
-Task 5 creates the actual package manifests and project references following
-this graph. A later repository check validates their dependency fields before
-CI treats the boundary as enforced.
+Each workspace now has its own manifest, TypeScript configuration, public entry
+point, and project references following this graph. All three libraries are
+temporarily marked `private` at version `0.0.0` so an empty skeleton cannot be
+published accidentally. A later repository check validates their dependency
+fields before CI treats the boundary as enforced.
+
+The dashboard skeleton contains only the React/Vite composition root and a
+placeholder landmark. Product routes, styling, server-state libraries, API
+calls, and business UI belong to Phase 12. Likewise, the three libraries expose
+empty entry points until their canonical contracts are implemented in their
+own phases.
 
 ## Runtime and package-manager contract
 
