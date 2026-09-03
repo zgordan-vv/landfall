@@ -37,6 +37,23 @@ test-integration: bootstrap
     cargo test --workspace --tests --all-features --locked
     pnpm run test:integration
 
+# Guard contract paths until deterministic schema/OpenAPI generation is introduced.
+check-contracts:
+    bash scripts/check-contract-drift.sh
+
+# Enforce the reviewed Node.js dependency license allowlist.
+check-node-licenses: bootstrap
+    node scripts/check-node-licenses.mjs
+
+# Scan the complete Git history with the digest-pinned Gitleaks container.
+check-secrets:
+    bash scripts/check-secrets.sh
+
+# Build and inspect the production server container locally.
+container-build:
+    docker build --tag landfall-server:local .
+    bash scripts/check-server-image.sh landfall-server:local
+
 # Build all Rust targets, TypeScript libraries, and the dashboard.
 build: bootstrap
     cargo build --workspace --all-targets --all-features --locked

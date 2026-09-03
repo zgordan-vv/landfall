@@ -14,3 +14,10 @@ coverage
 playwright-report
 test-results
 .landfall
+apps
+docs
+packages
+spikes
+pnpm-lock.yaml
+pnpm-workspace.yaml
+tsconfig*.json

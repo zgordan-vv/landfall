@@ -32,6 +32,29 @@ just check
 Run `just` without arguments to list focused formatting, linting, type-check,
 test, build, development, and database recipes.
 
+## Continuous integration
+
+GitHub Actions runs independent jobs for Rust, TypeScript, PostgreSQL,
+generated-contract drift, dependency/license/secret checks, and the production
+server container. Third-party Actions are pinned to immutable commit hashes and
+the workflow has read-only repository permissions.
+
+Run the focused local equivalents with:
+
+```sh
+just check
+just db-up
+just check-contracts
+just check-node-licenses
+just check-secrets
+just container-build
+```
+
+The contract check is deliberately an absence guard during Phase 1. Adding a
+schema, OpenAPI snapshot, or generated contract directory makes it fail until
+the corresponding deterministic generator and byte-for-byte drift comparison
+are registered.
+
 ## Local PostgreSQL
 
 Start the pinned PostgreSQL 18.6 service and wait for its health check with:

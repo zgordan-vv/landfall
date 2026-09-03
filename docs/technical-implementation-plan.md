@@ -386,7 +386,7 @@ Create a reproducible empty workspace where one command verifies all languages a
 6. Add `.editorconfig`, ignore files, license placeholder/decision, security policy, and contribution basics. Completed: [contribution guide](../CONTRIBUTING.md), [security policy](../SECURITY.md), and [licensing decision](licensing.md).
 7. Create `just` commands: `bootstrap`, `fmt`, `lint`, `typecheck`, `test`, `test-integration`, `build`, `check`, `dev`, `db-up`, `db-reset`. Completed: [justfile](../justfile) and [contribution guide](../CONTRIBUTING.md).
 8. Add Docker Compose with PostgreSQL health check; server may be a placeholder health binary only when implementation begins. Completed: [Docker Compose configuration](../docker-compose.yml) and [local database workflow](../CONTRIBUTING.md#local-postgresql).
-9. Create GitHub Actions jobs:
+9. Create GitHub Actions jobs. Completed: [CI workflow](../.github/workflows/ci.yml):
    - Rust format/lint/test;
    - TypeScript lint/typecheck/test/build;
    - PostgreSQL integration tests;
