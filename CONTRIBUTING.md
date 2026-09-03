@@ -55,6 +55,12 @@ schema, OpenAPI snapshot, or generated contract directory makes it fail until
 the corresponding deterministic generator and byte-for-byte drift comparison
 are registered.
 
+CI caches Cargo downloads/build outputs, the pnpm content-addressed store, and
+Docker BuildKit layers. Cache misses are normal: locked dependency installation
+and every verification/build command still run. `node_modules`, generated
+contracts, credentials, and advisory databases are not cached or treated as
+trusted inputs.
+
 ## Local PostgreSQL
 
 Start the pinned PostgreSQL 18.6 service and wait for its health check with:

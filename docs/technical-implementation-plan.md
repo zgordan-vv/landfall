@@ -393,7 +393,9 @@ Create a reproducible empty workspace where one command verifies all languages a
    - schema/OpenAPI drift;
    - dependency/license/secret scan;
    - container build.
-10. Enable caching without making CI depend on cached artifacts.
+10. Enable caching without making CI depend on cached artifacts. Completed:
+    [cache-backed CI jobs](../.github/workflows/ci.yml) still run locked installs
+    and complete verification on cache misses.
 11. Add a repository architecture README with links to PRD, design, and plan.
 
 ### Expected files
