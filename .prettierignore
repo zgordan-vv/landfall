@@ -1,0 +1,13 @@
+.git/
+.landfall/
+coverage/
+dist/
+docs/
+node_modules/
+playwright-report/
+target/
+test-results/
+Cargo.lock
+LICENSE
+pnpm-lock.yaml
+spikes/

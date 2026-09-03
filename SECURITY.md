@@ -10,10 +10,10 @@ exploit payloads in a public issue.
 Landfall is pre-release software and does not yet make production-readiness
 claims.
 
-| Version | Security support |
-|---|---|
-| Current `main` branch | Best effort |
-| Older commits or forks | Not supported |
+| Version                | Security support |
+| ---------------------- | ---------------- |
+| Current `main` branch  | Best effort      |
+| Older commits or forks | Not supported    |
 
 A versioned support policy will replace this table before the first production
 release.

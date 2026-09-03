@@ -10,24 +10,29 @@ implementation.
 - Rust `1.98.0` with the components pinned by `rust-toolchain.toml`;
 - Node.js `24.20.0` from `.node-version`;
 - pnpm `11.25.0` from the root `package.json`;
+- just `1.58.0` from `.just-version`;
 - PostgreSQL and Docker will become required when the corresponding Phase 1
   tasks are implemented.
 
-Install TypeScript dependencies with:
+If your tool manager does not read `.just-version`, install the pinned command
+runner with `cargo install just --version 1.58.0 --locked`.
+
+Verify the pinned tools and fetch locked dependencies with:
 
 ```sh
-pnpm install --frozen-lockfile
+just bootstrap
 ```
 
-The unified `just` workflow is introduced in the next foundation task. Until
-then, the existing skeleton can be checked with:
+Run the complete local verification gate with:
 
 ```sh
-cargo fmt --all --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-targets --all-features
-pnpm --recursive build
+just check
 ```
+
+Run `just` without arguments to list focused formatting, linting, type-check,
+test, build, development, and database recipes. Database recipes become
+operational when Docker Compose is added in Phase 1 Task 8. `db-reset` is
+destructive and requires the explicit `LANDFALL_CONFIRM_DB_RESET=YES` guard.
 
 ## Repository boundaries
 

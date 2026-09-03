@@ -20,7 +20,18 @@
     }
   },
   "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "pnpm --recursive build",
+    "dev:dashboard": "pnpm --filter @landfall/dashboard dev",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
+    "lint": "node scripts/check-typescript-dependency-direction.mjs && tsc -b --pretty false",
+    "test": "pnpm --recursive --if-present test",
+    "test:integration": "pnpm --recursive --if-present test:integration",
+    "typecheck": "tsc -b --pretty false"
+  },
   "devDependencies": {
+    "prettier": "3.9.6",
     "typescript": "7.0.2"
   }
 }

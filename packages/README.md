@@ -42,7 +42,8 @@ Each workspace now has its own manifest, TypeScript configuration, public entry
 point, and project references following this graph. All three libraries are
 temporarily marked `private` at version `0.0.0` so an empty skeleton cannot be
 published accidentally. A later repository check validates their dependency
-fields before CI treats the boundary as enforced.
+fields and TypeScript project references; `just lint` runs that architecture
+check before CI treats the boundary as enforced.
 
 The dashboard skeleton contains only the React/Vite composition root and a
 placeholder landmark. Product routes, styling, server-state libraries, API
@@ -76,6 +77,11 @@ require every control-flow path to return, reject unused or fall-through code,
 and require isolated declarations. These constraints matter for generated
 event/API contracts because a type that compiles differently in two packages
 is a protocol defect.
+
+During the TypeScript 7 foundation, `just lint` combines these compiler-enforced
+checks with the package-boundary architecture check. The planned ESLint React
+rules will be added before application hooks and components are implemented;
+an unsupported TypeScript parser is not forced past pnpm's strict peer checks.
 
 Package-specific configs own `rootDir`, `outDir`, project references, and emit
 mode. The browser dashboard additionally opts into DOM libraries and bundler
