@@ -2,6 +2,7 @@
   "name": "landfall-workspace",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=24.11.0 <25.0.0",
     "pnpm": "11.25.0"

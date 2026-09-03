@@ -1,2 +1,40 @@
+# Operating-system files
 .DS_Store
+Thumbs.db
+
+# Editors and local tools
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs and temporary files
+*.log
+*.tmp
+.cache/
+
+# Rust
 target/
+
+# Node.js and TypeScript
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.eslintcache
+.vite/
+
+# Browser tests
+playwright-report/
+test-results/
+
+# Local Landfall runtime state
+.landfall/

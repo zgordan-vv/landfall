@@ -2289,10 +2289,9 @@ These questions must be resolved through validation or implementation spikes, no
 
 ### Commercial and legal
 
-21. Which open-source license best supports adoption and a sustainable paid offering?
-22. What warranty and financial-risk disclaimers are required?
-23. What data-processing terms will payment and trading teams require?
-24. Should initial pricing be per audit, per project, per event, or support-based?
+21. What warranty and financial-risk disclaimers are required?
+22. What data-processing terms will payment and trading teams require?
+23. Should initial pricing be per audit, per project, per event, or support-based?
 
 ## 32. Decisions already made
 
@@ -2301,6 +2300,7 @@ These questions must be resolved through validation or implementation spikes, no
 | Vendor-neutral observability, not a new sender | Existing infrastructure already specializes in delivery; correlation remains the proposed gap |
 | Service-first commercial wedge | Produces revenue and evidence before a complete SaaS |
 | Self-hosted open-source R1 | Reduces security objections and demonstrates technical capability |
+| Apache License 2.0 for the open-source repository | Permissive commercial adoption plus an explicit patent grant; paid audits, deployment, support, integrations, and hosted operation remain available ([decision](licensing.md)) |
 | Rust lifecycle/collector core | Fits performance, reliability, and portfolio goals without forcing all client integrations into Rust |
 | TypeScript first application SDK | Likely integration surface for Solana applications; final library chosen from pilot evidence |
 | No raw transaction storage by default | Minimizes sensitive data and unnecessary liability |

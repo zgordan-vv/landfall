@@ -383,7 +383,7 @@ Create a reproducible empty workspace where one command verifies all languages a
 3. Configure workspace lints, Rust Edition 2024, release profile, and minimal features. Completed: [shared Rust workspace policy](../crates/README.md#shared-workspace-policy).
 4. Initialize pnpm workspace, Node 24 pin, TypeScript base config, and package boundaries. Completed: [TypeScript workspace boundaries](../packages/README.md).
 5. Create dashboard and package skeletons without product logic. Completed: [TypeScript workspace boundaries](../packages/README.md).
-6. Add `.editorconfig`, ignore files, license placeholder/decision, security policy, and contribution basics.
+6. Add `.editorconfig`, ignore files, license placeholder/decision, security policy, and contribution basics. Completed: [contribution guide](../CONTRIBUTING.md), [security policy](../SECURITY.md), and [licensing decision](licensing.md).
 7. Create `just` commands: `bootstrap`, `fmt`, `lint`, `typecheck`, `test`, `test-integration`, `build`, `check`, `dev`, `db-up`, `db-reset`.
 8. Add Docker Compose with PostgreSQL health check; server may be a placeholder health binary only when implementation begins.
 9. Create GitHub Actions jobs:
