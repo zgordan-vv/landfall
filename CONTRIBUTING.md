@@ -11,8 +11,8 @@ implementation.
 - Node.js `24.20.0` from `.node-version`;
 - pnpm `11.25.0` from the root `package.json`;
 - just `1.58.0` from `.just-version`;
-- PostgreSQL and Docker will become required when the corresponding Phase 1
-  tasks are implemented.
+- Docker with Compose v2 for PostgreSQL-backed development and integration
+  tests.
 
 If your tool manager does not read `.just-version`, install the pinned command
 runner with `cargo install just --version 1.58.0 --locked`.
@@ -30,9 +30,29 @@ just check
 ```
 
 Run `just` without arguments to list focused formatting, linting, type-check,
-test, build, development, and database recipes. Database recipes become
-operational when Docker Compose is added in Phase 1 Task 8. `db-reset` is
-destructive and requires the explicit `LANDFALL_CONFIRM_DB_RESET=YES` guard.
+test, build, development, and database recipes.
+
+## Local PostgreSQL
+
+Start the pinned PostgreSQL 18.6 service and wait for its health check with:
+
+```sh
+just db-up
+```
+
+The default values in `.env.example` are public local-development credentials.
+Create an ignored `.env` with a different password when other host users are in
+the trust boundary, or set `LANDFALL_ENV_FILE` to another environment file.
+PostgreSQL has no published host port; application containers reach it through
+the private Compose network, while maintenance commands use the
+`docker compose exec` command.
+
+To destroy the named database volume and start a new empty database, use the
+explicit destructive guard:
+
+```sh
+LANDFALL_CONFIRM_DB_RESET=YES just db-reset
+```
 
 ## Repository boundaries
 

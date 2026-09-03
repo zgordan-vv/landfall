@@ -50,17 +50,17 @@ dev: bootstrap
     @echo "The Rust server is still an empty skeleton; starting the dashboard only."
     pnpm run dev:dashboard
 
-# Start the PostgreSQL service once docker-compose.yml exists in Task 8.
+# Start PostgreSQL, wait for health, and verify version/storage/network invariants.
 db-up:
-    @test -f docker-compose.yml || { echo "docker-compose.yml is added in Phase 1 Task 8." >&2; exit 2; }
-    docker compose --project-name landfall -f docker-compose.yml up --detach --wait postgres
+    bash scripts/compose.sh up --detach --wait postgres
+    bash scripts/check-postgres-compose.sh
 
 # Destroy and recreate Landfall's PostgreSQL volume (requires LANDFALL_CONFIRM_DB_RESET=YES).
 db-reset:
     @test "${LANDFALL_CONFIRM_DB_RESET:-}" = "YES" || { echo "Refusing destructive reset. Run: LANDFALL_CONFIRM_DB_RESET=YES just db-reset" >&2; exit 2; }
-    @test -f docker-compose.yml || { echo "docker-compose.yml is added in Phase 1 Task 8." >&2; exit 2; }
-    docker compose --project-name landfall -f docker-compose.yml down --volumes --remove-orphans
-    docker compose --project-name landfall -f docker-compose.yml up --detach --wait postgres
+    bash scripts/compose.sh down --volumes --remove-orphans
+    bash scripts/compose.sh up --detach --wait postgres
+    bash scripts/check-postgres-compose.sh
 
 [private]
 _fmt-check:
