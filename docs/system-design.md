@@ -572,11 +572,16 @@ Request:
       "trace_id": "0198f0a0-...",
       "business_action_id": "0198f090-...",
       "source": {
-        "sdk": "landfall-js",
-        "sdk_version": "0.1.0",
+        "kind": "sdk",
+        "name": "landfall-js",
+        "version": "0.1.0",
+        "instance_id": "0198ef10-...",
         "service": "swap-worker",
         "app_version": "git:abc123"
       },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
       "attributes": {
         "attempt_id": "0198f0b0-...",
         "route_id": "0198ef10-...",
@@ -1053,10 +1058,14 @@ Time-partitioned by `received_date`, normally one partition per day:
 - `occurred_at TIMESTAMPTZ NOT NULL`;
 - `monotonic_ns BIGINT`, nullable when the source cannot provide a monotonic value;
 - `received_at TIMESTAMPTZ NOT NULL`;
-- `source_sdk TEXT`;
-- `source_sdk_version TEXT`;
+- `source_kind TEXT NOT NULL`;
+- `source_name TEXT NOT NULL`;
+- `source_version TEXT NOT NULL`;
+- `source_instance_id UUID`;
 - `source_service TEXT`;
 - `app_version TEXT`;
+- `privacy_mode TEXT NOT NULL`;
+- `privacy_policy_version TEXT NOT NULL`;
 - `attributes JSONB NOT NULL`;
 - `redaction_version TEXT NOT NULL`;
 - `payload_bytes INTEGER NOT NULL`;

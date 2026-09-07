@@ -187,8 +187,9 @@ named as events in the PRD, are not accepted producer-evidence event types in
 v1.0. They are versioned derived records with evidence references under ADR-002;
 feeding projector output back into its own raw input would create unnecessary
 cycles and replay ambiguity. Their API/storage contracts remain typed and
-versioned separately. The PRD event list will be reconciled during the Phase 0
-design-document consistency update.
+versioned separately. Phase 2 Task 1 reconciled the PRD list and recorded the
+authoritative pre-schema vocabulary in the [Event Protocol
+Catalog](../event-protocol.md).
 
 `manifest.json` records supported wire versions, root schema IDs, all local
 resources, generator name/version/config checksum, and fixture expectations. It

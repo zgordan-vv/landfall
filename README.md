@@ -189,11 +189,13 @@ For a structured review, read the documents in this order:
    requirements, capacity, APIs, database, and detailed component design.
 4. [Technical Implementation Plan](docs/technical-implementation-plan.md) —
    phased, task-level build sequence and technology choices.
-5. [ADRs](docs/adr/README.md) — why consequential architecture choices were
+5. [Event Protocol Catalog](docs/event-protocol.md) — the P0 immutable event
+   vocabulary, common envelope, and scope rules.
+6. [ADRs](docs/adr/README.md) — why consequential architecture choices were
    made.
-6. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
+7. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
    and mitigations.
-7. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
+8. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
    database, Solana client, clusters, transaction versions, and privacy modes.
 
 ## Security and privacy

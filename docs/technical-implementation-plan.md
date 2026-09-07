@@ -431,7 +431,8 @@ Define the immutable language that connects customer applications, Rust services
 
 ### Tasks
 
-1. Enumerate P0 event types and common envelope.
+1. Enumerate P0 event types and common envelope. Completed: [Event Protocol
+   Catalog](event-protocol.md).
 2. Define JSON Schema for:
    - trace created;
    - blockhash acquired;
@@ -442,7 +443,8 @@ Define the immutable language that connects customer applications, Rust services
    - confirmation wait started/completed;
    - status observed;
    - execution enriched;
-   - business outcome observed.
+   - business outcome observed;
+   - data quality detected.
 3. Define decimal-string rules for values beyond JavaScript safe integer range.
 4. Define enums for privacy mode, commitment, transport result, RPC result, and normalized errors.
 5. Implement Rust wire types in `landfall-protocol`.

@@ -1513,25 +1513,30 @@ Illustrative shape:
 ```json
 {
   "schema_version": "1.0",
-  "event_id": "0198...",
+  "event_id": "0198f0c1-1234-7abc-8def-1234567890ab",
   "event_type": "solana.submission.completed",
   "occurred_at": "2026-08-29T12:00:00.123Z",
-  "monotonic_ns": 28400123,
-  "project_id": "project_local",
-  "environment": "staging",
-  "trace_id": "0198...",
-  "business_action_id": "optional-pseudonymous-id",
+  "monotonic_ns": "28400123",
+  "project_id": "0198ef00-0000-7000-8000-000000000001",
+  "environment_id": "0198ef01-0000-7000-8000-000000000001",
+  "trace_id": "0198f0a0-0000-7000-8000-000000000001",
+  "business_action_id": "0198f090-0000-7000-8000-000000000001",
   "source": {
-    "sdk": "landfall-js",
+    "kind": "sdk",
+    "name": "landfall-js",
     "version": "0.1.0",
+    "instance_id": "0198ef10-0000-7000-8000-000000000001",
     "service": "swap-worker",
-    "app_version": "git-sha"
+    "app_version": "git:abc123"
   },
+  "privacy_mode": "standard",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
   "attributes": {}
 }
 ```
 
-### 17.2 P0 event types
+### 17.2 P0 immutable evidence event types
 
 - `solana.trace.created`;
 - `solana.blockhash.acquired`;
@@ -1547,9 +1552,12 @@ Illustrative shape:
 - `solana.status.observed`;
 - `solana.execution.enriched`;
 - `solana.business_outcome.observed`;
-- `landfall.data_quality.detected`;
-- `landfall.diagnosis.generated`;
-- `landfall.recommendation.generated`.
+- `landfall.data_quality.detected`.
+
+`landfall.diagnosis.generated` and `landfall.recommendation.generated` are
+versioned derived records with evidence references, not accepted raw event
+types. The authoritative pre-schema vocabulary and scope rules are defined in
+the [Event Protocol Catalog](event-protocol.md).
 
 ### 17.3 Schema rules
 
