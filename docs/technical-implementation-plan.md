@@ -397,6 +397,7 @@ Create a reproducible empty workspace where one command verifies all languages a
     [cache-backed CI jobs](../.github/workflows/ci.yml) still run locked installs
     and complete verification on cache misses.
 11. Add a repository architecture README with links to PRD, design, and plan.
+    Completed: [repository overview and architecture guide](../README.md).
 
 ### Expected files
 
