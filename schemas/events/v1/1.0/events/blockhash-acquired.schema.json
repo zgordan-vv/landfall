@@ -19,16 +19,16 @@
             },
             "result": { "$ref": "../common/values.schema.json#/$defs/token" },
             "duration_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "recent_blockhash": {
               "$ref": "../common/values.schema.json#/$defs/solana_blockhash"
             },
             "last_valid_block_height": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/block_height_decimal"
             },
             "context_slot": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/slot_decimal"
             },
             "error": { "$ref": "../common/errors.schema.json" }
           },

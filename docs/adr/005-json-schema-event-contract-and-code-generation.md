@@ -227,7 +227,9 @@ storage.
   assertion across validators.
 - Durations and chain/application integers that can exceed JavaScript safe range
   use canonical unsigned/signed decimal strings with no exponent, leading plus,
-  whitespace, or unnecessary leading zeros.
+  whitespace, or unnecessary leading zeros. Exact lexical, range, runtime, and
+  storage rules are defined by the [Decimal-String
+  Contract](../decimal-string-rules.md).
 - Monetary/fee fields include the unit in the field name or an explicit closed
   unit enum; no floating-point SOL values enter the event contract.
 - HMAC fingerprint values follow ADR-004's algorithm/key envelope and 64-character

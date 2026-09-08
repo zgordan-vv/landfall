@@ -21,7 +21,7 @@
               "$ref": "../common/values.schema.json#/$defs/token"
             },
             "duration_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "signature": {
               "$ref": "../common/values.schema.json#/$defs/solana_signature"
@@ -30,13 +30,13 @@
               "$ref": "../common/values.schema.json#/$defs/token"
             },
             "slot": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/slot_decimal"
             },
             "confirmations": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/confirmation_count_decimal"
             },
             "block_height": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/block_height_decimal"
             },
             "error": { "$ref": "../common/errors.schema.json" }
           },

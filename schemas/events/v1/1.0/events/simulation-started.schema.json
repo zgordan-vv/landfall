@@ -26,7 +26,7 @@
             "replace_recent_blockhash": { "type": "boolean" },
             "sig_verify": { "type": "boolean" },
             "min_context_slot": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/slot_decimal"
             }
           },
           "required": [

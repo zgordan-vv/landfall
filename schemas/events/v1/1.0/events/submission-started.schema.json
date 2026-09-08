@@ -31,10 +31,12 @@
               "$ref": "../common/values.schema.json#/$defs/token"
             },
             "max_retries": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
             },
             "min_context_slot": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/slot_decimal"
             }
           },
           "required": ["attempt_id", "route_id", "attempt_sequence", "encoding", "skip_preflight"],

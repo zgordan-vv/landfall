@@ -15,7 +15,7 @@
       "$ref": "common/values.schema.json#/$defs/rfc3339_utc"
     },
     "monotonic_ns": {
-      "$ref": "common/values.schema.json#/$defs/unsigned_decimal"
+      "$ref": "common/values.schema.json#/$defs/duration_ns_decimal"
     },
     "project_id": {
       "$ref": "common/identifiers.schema.json#/$defs/project_id"

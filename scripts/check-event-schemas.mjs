@@ -88,6 +88,105 @@ for (const [schemaId, schema] of schemasById) {
   }
 }
 
+function parseCanonicalDecimal(value, minimum, maximum, signed) {
+  if (typeof value !== "string") return undefined;
+  const lexicalPattern = signed ? /^(0|-?[1-9][0-9]*)$/ : /^(0|[1-9][0-9]*)$/;
+  if (!lexicalPattern.test(value)) return undefined;
+
+  const parsed = BigInt(value);
+  if (parsed < minimum || parsed > maximum) return undefined;
+  if (parsed.toString(10) !== value) return undefined;
+  return parsed;
+}
+
+const valuesSchemaId = `${schemaIdBase}1.0/common/values.schema.json`;
+const validateUint64Lexical = validator.getSchema(`${valuesSchemaId}#/$defs/uint64_decimal`);
+const validateInt64Lexical = validator.getSchema(`${valuesSchemaId}#/$defs/int64_decimal`);
+const uint64Minimum = 0n;
+const uint64Maximum = 18446744073709551615n;
+const int64Minimum = -9223372036854775808n;
+const int64Maximum = 9223372036854775807n;
+
+for (const value of ["0", "1", "9007199254740991", "9007199254740992", "18446744073709551615"]) {
+  if (!validateUint64Lexical(value)) fail(`uint64 schema rejects canonical value ${value}`);
+  if (parseCanonicalDecimal(value, uint64Minimum, uint64Maximum, false) === undefined) {
+    fail(`uint64 semantic parser rejects in-range value ${value}`);
+  }
+}
+for (const value of [0, "", "00", "+1", "-0", "-1", "1.0", "1e3", " 1", "1 "]) {
+  if (validateUint64Lexical(value)) fail(`uint64 schema accepts non-canonical value ${value}`);
+  if (parseCanonicalDecimal(value, uint64Minimum, uint64Maximum, false) !== undefined) {
+    fail(`uint64 semantic parser accepts non-canonical value ${value}`);
+  }
+}
+for (const value of ["18446744073709551616", "99999999999999999999"]) {
+  if (parseCanonicalDecimal(value, uint64Minimum, uint64Maximum, false) !== undefined) {
+    fail(`uint64 semantic parser accepts overflow value ${value}`);
+  }
+}
+
+for (const value of ["-9223372036854775808", "-1", "0", "1", "9223372036854775807"]) {
+  if (!validateInt64Lexical(value)) fail(`int64 schema rejects canonical value ${value}`);
+  if (parseCanonicalDecimal(value, int64Minimum, int64Maximum, true) === undefined) {
+    fail(`int64 semantic parser rejects in-range value ${value}`);
+  }
+}
+for (const value of ["-9223372036854775809", "9223372036854775808"]) {
+  if (parseCanonicalDecimal(value, int64Minimum, int64Maximum, true) !== undefined) {
+    fail(`int64 semantic parser accepts overflow value ${value}`);
+  }
+}
+
+const uint64Manifest = manifest.numeric_domains?.uint64_decimal;
+const int64Manifest = manifest.numeric_domains?.int64_decimal;
+if (
+  uint64Manifest?.minimum !== uint64Minimum.toString(10) ||
+  uint64Manifest?.maximum !== uint64Maximum.toString(10) ||
+  int64Manifest?.minimum !== int64Minimum.toString(10) ||
+  int64Manifest?.maximum !== int64Maximum.toString(10)
+) {
+  fail("manifest numeric-domain bounds differ from executable boundary checks");
+}
+
+const largeIntegerFields = new Map([
+  ["monotonic_ns", "duration_ns_decimal"],
+  ["duration_ns", "duration_ns_decimal"],
+  ["delay_ns", "duration_ns_decimal"],
+  ["timeout_ns", "duration_ns_decimal"],
+  ["slot", "slot_decimal"],
+  ["context_slot", "slot_decimal"],
+  ["min_context_slot", "slot_decimal"],
+  ["block_height", "block_height_decimal"],
+  ["last_valid_block_height", "block_height_decimal"],
+  ["fee_lamports", "lamports_decimal"],
+  ["units_consumed", "compute_units_decimal"],
+  ["compute_units_consumed", "compute_units_decimal"],
+  ["confirmations", "confirmation_count_decimal"],
+]);
+for (const [schemaId, schema] of schemasById) {
+  walk(schema, (node) => {
+    if (node === null || typeof node !== "object" || !node.properties) return;
+    for (const [propertyName, propertySchema] of Object.entries(node.properties)) {
+      const expectedDefinition = largeIntegerFields.get(propertyName);
+      if (expectedDefinition) {
+        const expectedSuffix = `values.schema.json#/$defs/${expectedDefinition}`;
+        if (!propertySchema.$ref?.endsWith(expectedSuffix)) {
+          fail(`${schemaId} does not map ${propertyName} to ${expectedDefinition}`);
+        }
+      }
+      if (propertySchema.type === "integer") {
+        if (
+          !Number.isSafeInteger(propertySchema.minimum) ||
+          !Number.isSafeInteger(propertySchema.maximum) ||
+          propertySchema.minimum > propertySchema.maximum
+        ) {
+          fail(`${schemaId} has an unbounded or unsafe JSON integer ${propertyName}`);
+        }
+      }
+    }
+  });
+}
+
 for (const [sourceId, schema] of schemasById) {
   walk(schema, (node) => {
     if (node === null || typeof node !== "object" || typeof node.$ref !== "string") return;
@@ -290,5 +389,5 @@ for (const [sourceId, schema] of schemasById) {
 }
 
 console.log(
-  `Validated ${schemaFiles.length} Draft 2020-12 resources, ${eventEntries.length} closed event types, and protocol smoke cases.`,
+  `Validated ${schemaFiles.length} Draft 2020-12 resources, ${eventEntries.length} closed event types, numeric boundaries, and protocol smoke cases.`,
 );

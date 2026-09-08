@@ -1,8 +1,8 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–2 implementation baseline
+- **Status:** Phase 2 Tasks 1–3 implementation baseline
 - **Wire version:** `1.0`
-- **Date:** 2026-09-07
+- **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
 
 ## 1. Purpose and authority
@@ -218,11 +218,13 @@ raw signed transactions or treating a derived diagnosis as source evidence.
 
 The remaining protocol tasks define and strengthen:
 
-1. canonical decimal-string lexical rules and numeric domains;
-2. closed enums for privacy, commitment, transport/RPC results, business
+1. closed enums for privacy, commitment, transport/RPC results, business
    outcomes, source results, and normalized errors;
-3. Rust wire types, generated/verified TypeScript types, compatibility rules,
+2. Rust wire types, generated/verified TypeScript types, compatibility rules,
    privacy classifications, and shared valid/invalid fixtures.
+
+Canonical large-integer representation and bounds are defined in the
+[Decimal-String Contract](decimal-string-rules.md).
 
 Those tasks may refine attribute names and composition, but they may not change
 the evidence meaning, identity boundaries, or raw-versus-derived distinction

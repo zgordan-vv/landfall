@@ -21,7 +21,7 @@
               "$ref": "../common/values.schema.json#/$defs/token"
             },
             "timeout_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "search_transaction_history": { "type": "boolean" }
           },

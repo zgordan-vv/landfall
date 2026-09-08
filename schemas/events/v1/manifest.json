@@ -8,6 +8,24 @@
       "envelope_schema": "1.0/envelope.schema.json"
     }
   ],
+  "numeric_domains": {
+    "uint64_decimal": {
+      "schema_ref": "1.0/common/values.schema.json#/$defs/uint64_decimal",
+      "minimum": "0",
+      "maximum": "18446744073709551615",
+      "typescript_runtime": "bigint",
+      "rust_runtime": "u64",
+      "postgresql": "NUMERIC(20,0)"
+    },
+    "int64_decimal": {
+      "schema_ref": "1.0/common/values.schema.json#/$defs/int64_decimal",
+      "minimum": "-9223372036854775808",
+      "maximum": "9223372036854775807",
+      "typescript_runtime": "bigint",
+      "rust_runtime": "i64",
+      "postgresql": "BIGINT"
+    }
+  },
   "resources": [
     "1.0/batch.schema.json",
     "1.0/envelope.schema.json",

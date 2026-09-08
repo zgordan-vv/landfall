@@ -23,7 +23,7 @@
               "maximum": 10000
             },
             "delay_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "reason": { "$ref": "../common/values.schema.json#/$defs/token" },
             "next_route_id": {

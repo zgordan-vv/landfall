@@ -1565,7 +1565,9 @@ the [Event Protocol Catalog](event-protocol.md).
 - Unknown fields are rejected or stored only inside a versioned extension namespace.
 - Custom attributes use an explicit allowlist and cardinality limit.
 - Monetary and fee values use integers in base units with a named unit.
-- Large integers are serialized as decimal strings where JSON number precision is unsafe.
+- Large integers are serialized according to the canonical
+  [Decimal-String Contract](decimal-string-rules.md) where JSON number precision
+  is unsafe.
 - Timestamps use UTC RFC 3339 plus monotonic fields where possible.
 - Error payloads use normalized category plus a bounded, redacted original code/message.
 - Signature and address fields obey the environment's privacy mode.

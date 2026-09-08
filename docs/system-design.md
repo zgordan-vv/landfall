@@ -486,7 +486,8 @@ Possible later changes include separating server roles, adding a durable broker,
 - Base path: `/api/v1`.
 - JSON request and response bodies.
 - RFC 3339 UTC timestamps.
-- Integers that can exceed safe JavaScript range are decimal strings.
+- Integers that can exceed safe JavaScript range follow the canonical
+  [Decimal-String Contract](decimal-string-rules.md).
 - UUIDv7 identifiers where time-sortable identifiers are useful.
 - Opaque cursor pagination, never page-number pagination on event/trace collections.
 - `202 Accepted` for durable ingestion or queued report work.
@@ -1056,7 +1057,7 @@ Time-partitioned by `received_date`, normally one partition per day:
 - `trace_id UUID`;
 - `business_action_id UUID`;
 - `occurred_at TIMESTAMPTZ NOT NULL`;
-- `monotonic_ns BIGINT`, nullable when the source cannot provide a monotonic value;
+- `monotonic_ns NUMERIC(20,0)`, nullable when the source cannot provide a monotonic value;
 - `received_at TIMESTAMPTZ NOT NULL`;
 - `source_kind TEXT NOT NULL`;
 - `source_name TEXT NOT NULL`;
@@ -1070,6 +1071,11 @@ Time-partitioned by `received_date`, normally one partition per day:
 - `redaction_version TEXT NOT NULL`;
 - `payload_bytes INTEGER NOT NULL`;
 - primary key `(received_date, event_id)`.
+
+All unsigned-domain `NUMERIC(20,0)` columns have checks for
+`0..18446744073709551615`. Conversion from the raw decimal string occurs only
+after canonical lexical and typed range validation; PostgreSQL never receives a
+floating-point intermediate.
 
 Indexes on each partition:
 
@@ -1093,7 +1099,7 @@ Important columns:
 - `signed_bytes_digest BYTEA`;
 - `message_version SMALLINT` with a legacy sentinel or typed text;
 - `recent_blockhash TEXT` or approved digest;
-- `last_valid_block_height BIGINT`;
+- `last_valid_block_height NUMERIC(20,0)`;
 - `flow TEXT`;
 - `app_version TEXT`;
 - `fee_policy TEXT`, `compute_policy TEXT`, `retry_policy TEXT`;
@@ -1103,9 +1109,9 @@ Important columns:
 - `highest_commitment TEXT`;
 - `data_quality_grade CHAR(1)`;
 - `first_event_at`, `last_event_at`, `first_submission_at`, `landed_at`, `confirmed_at`, `finalized_at`;
-- `requested_compute_units BIGINT`;
-- `priority_fee_lamports BIGINT` or version-appropriate normalized value;
-- `observable_total_fee_lamports BIGINT`;
+- `requested_compute_units NUMERIC(20,0)`;
+- `priority_fee_lamports NUMERIC(20,0)` or version-appropriate normalized value;
+- `observable_total_fee_lamports NUMERIC(20,0)`;
 - `projection_version BIGINT NOT NULL`;
 - `projection_rule_version TEXT NOT NULL`;
 - `projected_through_received_at TIMESTAMPTZ`;

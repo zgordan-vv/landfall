@@ -18,7 +18,7 @@
               "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
             },
             "duration_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "result": { "$ref": "../common/values.schema.json#/$defs/token" },
             "signature": {

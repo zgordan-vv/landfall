@@ -192,11 +192,13 @@ For a structured review, read the documents in this order:
    phased, task-level build sequence and technology choices.
 5. [Event Protocol Catalog](docs/event-protocol.md) — the P0 immutable event
    vocabulary, common envelope, and scope rules.
-6. [ADRs](docs/adr/README.md) — why consequential architecture choices were
+6. [Decimal-String Contract](docs/decimal-string-rules.md) — exact large-integer
+   wire, runtime, and storage rules.
+7. [ADRs](docs/adr/README.md) — why consequential architecture choices were
    made.
-7. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
+8. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
    and mitigations.
-8. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
+9. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
    database, Solana client, clusters, transaction versions, and privacy modes.
 
 ## Security and privacy

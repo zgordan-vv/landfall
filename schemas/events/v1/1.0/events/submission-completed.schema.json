@@ -21,7 +21,7 @@
               "$ref": "../common/identifiers.schema.json#/$defs/route_id"
             },
             "duration_ns": {
-              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+              "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "transport_result": {
               "$ref": "../common/values.schema.json#/$defs/token"
