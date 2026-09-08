@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/common/source.schema.json",
+  "title": "Landfall event source",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "enum": ["sdk", "application", "observer", "collector", "cli"]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "instance_id": {
+      "$ref": "identifiers.schema.json#/$defs/uuid_v7"
+    },
+    "service": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "app_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    }
+  },
+  "required": ["kind", "name", "version"],
+  "additionalProperties": false
+}

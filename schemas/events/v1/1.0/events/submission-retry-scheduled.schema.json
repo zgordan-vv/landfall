@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/submission-retry-scheduled.schema.json",
+  "title": "solana.submission.retry_scheduled event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.submission.retry_scheduled" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "previous_attempt_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/attempt_id"
+            },
+            "retry_sequence": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "delay_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "reason": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "next_route_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/route_id"
+            }
+          },
+          "required": ["previous_attempt_id", "retry_sequence", "delay_ns", "reason"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

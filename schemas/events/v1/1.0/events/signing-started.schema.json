@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/signing-started.schema.json",
+  "title": "solana.signing.started event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.signing.started" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "signing_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
+            },
+            "transaction_version": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "required_signatures": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64
+            }
+          },
+          "required": ["signing_id", "transaction_version"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

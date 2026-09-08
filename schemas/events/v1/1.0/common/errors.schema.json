@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/common/errors.schema.json",
+  "title": "Landfall bounded normalized error",
+  "type": "object",
+  "properties": {
+    "category": {
+      "$ref": "values.schema.json#/$defs/token"
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "message": {
+      "$ref": "values.schema.json#/$defs/bounded_text"
+    },
+    "instruction_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "custom_code": {
+      "$ref": "values.schema.json#/$defs/unsigned_decimal"
+    }
+  },
+  "required": ["category"],
+  "additionalProperties": false
+}

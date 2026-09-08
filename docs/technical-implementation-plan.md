@@ -433,7 +433,8 @@ Define the immutable language that connects customer applications, Rust services
 
 1. Enumerate P0 event types and common envelope. Completed: [Event Protocol
    Catalog](event-protocol.md).
-2. Define JSON Schema for:
+2. Define JSON Schema for: Completed under
+   [`schemas/events/v1`](../schemas/events/v1/).
    - trace created;
    - blockhash acquired;
    - simulation started/completed;

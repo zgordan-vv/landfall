@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/trace-created.schema.json",
+  "title": "solana.trace.created event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.trace.created" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "flow": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "transaction_version": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "uses_durable_nonce": { "type": "boolean" }
+          },
+          "required": ["flow", "transaction_version"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

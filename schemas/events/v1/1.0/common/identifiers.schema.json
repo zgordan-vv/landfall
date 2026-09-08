@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/common/identifiers.schema.json",
+  "title": "Landfall protocol identifiers",
+  "$defs": {
+    "uuid_v7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "event_id": { "$ref": "#/$defs/uuid_v7" },
+    "project_id": { "$ref": "#/$defs/uuid_v7" },
+    "environment_id": { "$ref": "#/$defs/uuid_v7" },
+    "trace_id": { "$ref": "#/$defs/uuid_v7" },
+    "business_action_id": { "$ref": "#/$defs/uuid_v7" },
+    "attempt_id": { "$ref": "#/$defs/uuid_v7" },
+    "operation_id": { "$ref": "#/$defs/uuid_v7" },
+    "route_id": { "$ref": "#/$defs/uuid_v7" },
+    "observer_source_id": { "$ref": "#/$defs/uuid_v7" },
+    "batch_id": { "$ref": "#/$defs/uuid_v7" }
+  }
+}

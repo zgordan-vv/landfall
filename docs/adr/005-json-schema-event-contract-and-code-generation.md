@@ -155,7 +155,8 @@ schemas/events/v1/
 │   │   ├── identifiers.schema.json
 │   │   ├── source.schema.json
 │   │   ├── fingerprint.schema.json
-│   │   └── errors.schema.json
+│   │   ├── errors.schema.json
+│   │   └── values.schema.json
 │   └── events/
 │       ├── trace-created.schema.json
 │       ├── blockhash-acquired.schema.json

@@ -91,6 +91,7 @@ ClickHouse, Kubernetes, or premature microservices for the expected P0 load.
 apps/dashboard/          React dashboard source
 crates/                  Rust modular-monolith crates
 packages/                TypeScript protocol, SDK, and API client packages
+schemas/events/v1/       Canonical versioned JSON Schema event contract
 docs/                    Product, architecture, security, and delivery design
 scripts/                 Reproducible local and CI checks
 .github/workflows/       GitHub Actions pipeline

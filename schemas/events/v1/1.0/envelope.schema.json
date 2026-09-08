@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/envelope.schema.json",
+  "title": "Landfall event envelope",
+  "type": "object",
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "event_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/event_id"
+    },
+    "event_type": {
+      "$ref": "common/values.schema.json#/$defs/token"
+    },
+    "occurred_at": {
+      "$ref": "common/values.schema.json#/$defs/rfc3339_utc"
+    },
+    "monotonic_ns": {
+      "$ref": "common/values.schema.json#/$defs/unsigned_decimal"
+    },
+    "project_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/project_id"
+    },
+    "environment_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/environment_id"
+    },
+    "trace_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/trace_id"
+    },
+    "business_action_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/business_action_id"
+    },
+    "source": {
+      "$ref": "common/source.schema.json"
+    },
+    "privacy_mode": {
+      "$ref": "common/values.schema.json#/$defs/token"
+    },
+    "privacy_policy_version": {
+      "$ref": "common/values.schema.json#/$defs/version"
+    },
+    "redaction_version": {
+      "$ref": "common/values.schema.json#/$defs/version"
+    },
+    "attributes": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "project_id",
+    "environment_id",
+    "source",
+    "privacy_mode",
+    "privacy_policy_version",
+    "redaction_version",
+    "attributes"
+  ],
+  "dependentSchemas": {
+    "monotonic_ns": {
+      "properties": {
+        "source": {
+          "type": "object",
+          "properties": {
+            "instance_id": {
+              "$ref": "common/identifiers.schema.json#/$defs/uuid_v7"
+            }
+          },
+          "required": ["instance_id"]
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/signing-completed.schema.json",
+  "title": "solana.signing.completed event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.signing.completed" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "signing_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
+            },
+            "duration_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "result": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "signature": {
+              "$ref": "../common/values.schema.json#/$defs/solana_signature"
+            },
+            "signed_bytes_fingerprint": {
+              "$ref": "../common/fingerprint.schema.json"
+            },
+            "error": { "$ref": "../common/errors.schema.json" }
+          },
+          "required": ["signing_id", "duration_ns", "result"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

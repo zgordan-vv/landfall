@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/confirmation-wait-started.schema.json",
+  "title": "solana.confirmation_wait.started event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.confirmation_wait.started" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "wait_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
+            },
+            "commitment": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "timeout_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "search_transaction_history": { "type": "boolean" }
+          },
+          "required": ["wait_id", "commitment", "timeout_ns", "search_transaction_history"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

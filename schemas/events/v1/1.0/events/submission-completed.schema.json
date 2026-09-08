@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/submission-completed.schema.json",
+  "title": "solana.submission.completed event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.submission.completed" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/attempt_id"
+            },
+            "route_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/route_id"
+            },
+            "duration_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "transport_result": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "rpc_result": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "signature": {
+              "$ref": "../common/values.schema.json#/$defs/solana_signature"
+            },
+            "route_receipt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "error": { "$ref": "../common/errors.schema.json" }
+          },
+          "required": ["attempt_id", "route_id", "duration_ns", "transport_result", "rpc_result"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

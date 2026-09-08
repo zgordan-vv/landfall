@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/business-outcome-observed.schema.json",
+  "title": "solana.business_outcome.observed event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.business_outcome.observed" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "business_action_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/business_action_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "outcome": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "reason": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "detail": {
+              "$ref": "../common/values.schema.json#/$defs/bounded_text"
+            }
+          },
+          "required": ["outcome"],
+          "additionalProperties": false
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "trace_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+            }
+          },
+          "required": ["trace_id"]
+        },
+        {
+          "properties": {
+            "business_action_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/business_action_id"
+            }
+          },
+          "required": ["business_action_id"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/data-quality-detected.schema.json",
+  "title": "landfall.data_quality.detected event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "landfall.data_quality.detected" },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "category": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "severity": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "impact": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "detail": {
+              "$ref": "../common/values.schema.json#/$defs/bounded_text"
+            },
+            "attempt_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/attempt_id"
+            },
+            "batch_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/batch_id"
+            },
+            "source_event_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/event_id"
+            },
+            "field": {
+              "$ref": "../common/values.schema.json#/$defs/json_pointer"
+            }
+          },
+          "required": ["category", "severity", "impact"],
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/simulation-started.schema.json",
+  "title": "solana.simulation.started event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.simulation.started" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "simulation_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
+            },
+            "route_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/route_id"
+            },
+            "commitment": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "replace_recent_blockhash": { "type": "boolean" },
+            "sig_verify": { "type": "boolean" },
+            "min_context_slot": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            }
+          },
+          "required": [
+            "simulation_id",
+            "route_id",
+            "commitment",
+            "replace_recent_blockhash",
+            "sig_verify"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

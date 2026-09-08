@@ -1,21 +1,22 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Task 1 implementation baseline
+- **Status:** Phase 2 Tasks 1–2 implementation baseline
 - **Wire version:** `1.0`
 - **Date:** 2026-09-07
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
 
 ## 1. Purpose and authority
 
-This document fixes the P0 event vocabulary and common envelope before the
-individual JSON Schema resources are implemented. It defines which immutable
-facts may enter the Landfall event stream, their producer and scope, and which
-fields every event shares.
+This document fixed the P0 event vocabulary and common envelope before the
+individual JSON Schema resources were implemented, and remains their
+human-readable companion. It defines which immutable facts may enter the
+Landfall event stream, their producer and scope, and which fields every event
+shares.
 
-The versioned JSON Schema resources created in the next tasks become the
-canonical machine-readable wire contract. They must implement this catalog
-without silently adding, removing, or reinterpreting an event. A semantic
-change to this catalog requires an explicit compatibility decision.
+The checked-in [versioned JSON Schema resources](../schemas/events/v1/) are the
+canonical machine-readable wire contract. They implement this catalog without
+silently adding, removing, or reinterpreting an event. A semantic change to
+this catalog requires an explicit compatibility decision.
 
 ## 2. Protocol boundary
 
@@ -215,15 +216,12 @@ raw signed transactions or treating a derived diagnosis as source evidence.
 
 ## 8. Deferred to the next protocol tasks
 
-This task deliberately does not freeze every event-specific attribute. The next
-tasks define:
+The remaining protocol tasks define and strengthen:
 
-1. closed Draft 2020-12 schemas and bounds for the batch, envelope, common
-   resources, and all 15 events;
-2. canonical decimal-string lexical rules and numeric domains;
-3. closed enums for privacy, commitment, transport/RPC results, business
+1. canonical decimal-string lexical rules and numeric domains;
+2. closed enums for privacy, commitment, transport/RPC results, business
    outcomes, source results, and normalized errors;
-4. Rust wire types, generated/verified TypeScript types, compatibility rules,
+3. Rust wire types, generated/verified TypeScript types, compatibility rules,
    privacy classifications, and shared valid/invalid fixtures.
 
 Those tasks may refine attribute names and composition, but they may not change

@@ -1,0 +1,52 @@
+{
+  "protocol": "landfall-event-protocol",
+  "json_schema_draft": "https://json-schema.org/draft/2020-12/schema",
+  "supported_versions": [
+    {
+      "version": "1.0",
+      "batch_schema": "1.0/batch.schema.json",
+      "envelope_schema": "1.0/envelope.schema.json"
+    }
+  ],
+  "resources": [
+    "1.0/batch.schema.json",
+    "1.0/envelope.schema.json",
+    "1.0/common/errors.schema.json",
+    "1.0/common/fingerprint.schema.json",
+    "1.0/common/identifiers.schema.json",
+    "1.0/common/source.schema.json",
+    "1.0/common/values.schema.json",
+    "1.0/events/blockhash-acquired.schema.json",
+    "1.0/events/business-outcome-observed.schema.json",
+    "1.0/events/confirmation-wait-completed.schema.json",
+    "1.0/events/confirmation-wait-started.schema.json",
+    "1.0/events/data-quality-detected.schema.json",
+    "1.0/events/execution-enriched.schema.json",
+    "1.0/events/signing-completed.schema.json",
+    "1.0/events/signing-started.schema.json",
+    "1.0/events/simulation-completed.schema.json",
+    "1.0/events/simulation-started.schema.json",
+    "1.0/events/status-observed.schema.json",
+    "1.0/events/submission-completed.schema.json",
+    "1.0/events/submission-retry-scheduled.schema.json",
+    "1.0/events/submission-started.schema.json",
+    "1.0/events/trace-created.schema.json"
+  ],
+  "event_types": {
+    "landfall.data_quality.detected": "1.0/events/data-quality-detected.schema.json",
+    "solana.blockhash.acquired": "1.0/events/blockhash-acquired.schema.json",
+    "solana.business_outcome.observed": "1.0/events/business-outcome-observed.schema.json",
+    "solana.confirmation_wait.completed": "1.0/events/confirmation-wait-completed.schema.json",
+    "solana.confirmation_wait.started": "1.0/events/confirmation-wait-started.schema.json",
+    "solana.execution.enriched": "1.0/events/execution-enriched.schema.json",
+    "solana.signing.completed": "1.0/events/signing-completed.schema.json",
+    "solana.signing.started": "1.0/events/signing-started.schema.json",
+    "solana.simulation.completed": "1.0/events/simulation-completed.schema.json",
+    "solana.simulation.started": "1.0/events/simulation-started.schema.json",
+    "solana.status.observed": "1.0/events/status-observed.schema.json",
+    "solana.submission.completed": "1.0/events/submission-completed.schema.json",
+    "solana.submission.retry_scheduled": "1.0/events/submission-retry-scheduled.schema.json",
+    "solana.submission.started": "1.0/events/submission-started.schema.json",
+    "solana.trace.created": "1.0/events/trace-created.schema.json"
+  }
+}

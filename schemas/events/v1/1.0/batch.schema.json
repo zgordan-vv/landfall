@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/batch.schema.json",
+  "title": "Landfall event ingestion batch",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "$ref": "common/identifiers.schema.json#/$defs/batch_id"
+    },
+    "sent_at": {
+      "$ref": "common/values.schema.json#/$defs/rfc3339_utc"
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "oneOf": [
+          { "$ref": "events/trace-created.schema.json" },
+          { "$ref": "events/blockhash-acquired.schema.json" },
+          { "$ref": "events/simulation-started.schema.json" },
+          { "$ref": "events/simulation-completed.schema.json" },
+          { "$ref": "events/signing-started.schema.json" },
+          { "$ref": "events/signing-completed.schema.json" },
+          { "$ref": "events/submission-started.schema.json" },
+          { "$ref": "events/submission-completed.schema.json" },
+          { "$ref": "events/submission-retry-scheduled.schema.json" },
+          { "$ref": "events/confirmation-wait-started.schema.json" },
+          { "$ref": "events/confirmation-wait-completed.schema.json" },
+          { "$ref": "events/status-observed.schema.json" },
+          { "$ref": "events/execution-enriched.schema.json" },
+          { "$ref": "events/business-outcome-observed.schema.json" },
+          { "$ref": "events/data-quality-detected.schema.json" }
+        ]
+      }
+    }
+  },
+  "required": ["batch_id", "sent_at", "events"],
+  "additionalProperties": false
+}

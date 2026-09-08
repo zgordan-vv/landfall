@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/confirmation-wait-completed.schema.json",
+  "title": "solana.confirmation_wait.completed event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.confirmation_wait.completed" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "wait_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
+            },
+            "duration_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "result": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "observed_commitment": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "error": { "$ref": "../common/errors.schema.json" }
+          },
+          "required": ["wait_id", "duration_ns", "result"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

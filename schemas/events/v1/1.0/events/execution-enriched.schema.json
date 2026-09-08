@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/execution-enriched.schema.json",
+  "title": "solana.execution.enriched event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.execution.enriched" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "observer_source_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/observer_source_id"
+            },
+            "signature": {
+              "$ref": "../common/values.schema.json#/$defs/solana_signature"
+            },
+            "slot": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "commitment": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "execution_result": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "block_time": {
+              "$ref": "../common/values.schema.json#/$defs/rfc3339_utc"
+            },
+            "fee_lamports": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "compute_units_consumed": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "logs_present": { "type": "boolean" },
+            "error": { "$ref": "../common/errors.schema.json" }
+          },
+          "required": [
+            "observer_source_id",
+            "slot",
+            "commitment",
+            "execution_result",
+            "logs_present"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}

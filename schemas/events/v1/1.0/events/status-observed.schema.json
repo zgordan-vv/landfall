@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/events/status-observed.schema.json",
+  "title": "solana.status.observed event",
+  "type": "object",
+  "allOf": [
+    { "$ref": "../envelope.schema.json" },
+    {
+      "properties": {
+        "event_type": { "const": "solana.status.observed" },
+        "trace_id": {
+          "$ref": "../common/identifiers.schema.json#/$defs/trace_id"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "observer_source_id": {
+              "$ref": "../common/identifiers.schema.json#/$defs/observer_source_id"
+            },
+            "source_result": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "duration_ns": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "signature": {
+              "$ref": "../common/values.schema.json#/$defs/solana_signature"
+            },
+            "commitment": {
+              "$ref": "../common/values.schema.json#/$defs/token"
+            },
+            "slot": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "confirmations": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "block_height": {
+              "$ref": "../common/values.schema.json#/$defs/unsigned_decimal"
+            },
+            "error": { "$ref": "../common/errors.schema.json" }
+          },
+          "required": ["observer_source_id", "source_result", "duration_ns"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["trace_id"]
+    }
+  ]
+}
