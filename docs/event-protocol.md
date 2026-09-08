@@ -1,6 +1,6 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–3 implementation baseline
+- **Status:** Phase 2 Tasks 1–4 implementation baseline
 - **Wire version:** `1.0`
 - **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
@@ -87,7 +87,7 @@ contents of `attributes`.
 | `trace_id` | Scope-dependent | Canonical UUIDv7 for one transaction trace. Required by transaction-scoped events and absent only where the scope rules permit it. |
 | `business_action_id` | Optional | Canonical UUIDv7 grouping explicit replacement traces for one customer intention. It is never inferred from timing, accounts, amounts, or instruction similarity. |
 | `source` | Required | Closed producer identity object described below. It identifies where the fact was observed, not a submission or RPC route. |
-| `privacy_mode` | Required | Privacy mode applied before serialization. The closed values are defined in Phase 2 Task 4. |
+| `privacy_mode` | Required | Privacy mode applied before serialization. Values and P0 support boundaries are defined by the [Event Enum Contract](event-enum-contract.md). |
 | `privacy_policy_version` | Required | Version of the environment privacy policy applied to the event. The collector verifies it against server-side configuration. |
 | `redaction_version` | Required | Version of the deterministic field-selection/redaction pipeline that produced the event. |
 | `attributes` | Required | Closed, event-specific object. P0 has no arbitrary metadata or unregistered extension bag. |
@@ -218,13 +218,13 @@ raw signed transactions or treating a derived diagnosis as source evidence.
 
 The remaining protocol tasks define and strengthen:
 
-1. closed enums for privacy, commitment, transport/RPC results, business
-   outcomes, source results, and normalized errors;
-2. Rust wire types, generated/verified TypeScript types, compatibility rules,
+1. Rust wire types, generated/verified TypeScript types, compatibility rules,
    privacy classifications, and shared valid/invalid fixtures.
 
 Canonical large-integer representation and bounds are defined in the
-[Decimal-String Contract](decimal-string-rules.md).
+[Decimal-String Contract](decimal-string-rules.md). Closed protocol-controlled
+vocabularies and their meanings are defined in the
+[Event Enum Contract](event-enum-contract.md).
 
 Those tasks may refine attribute names and composition, but they may not change
 the evidence meaning, identity boundaries, or raw-versus-derived distinction

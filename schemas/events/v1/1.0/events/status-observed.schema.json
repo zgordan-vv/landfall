@@ -18,7 +18,7 @@
               "$ref": "../common/identifiers.schema.json#/$defs/observer_source_id"
             },
             "source_result": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/status_source_result"
             },
             "duration_ns": {
               "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
@@ -27,7 +27,7 @@
               "$ref": "../common/values.schema.json#/$defs/solana_signature"
             },
             "commitment": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/commitment"
             },
             "slot": {
               "$ref": "../common/values.schema.json#/$defs/slot_decimal"

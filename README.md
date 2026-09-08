@@ -194,12 +194,14 @@ For a structured review, read the documents in this order:
    vocabulary, common envelope, and scope rules.
 6. [Decimal-String Contract](docs/decimal-string-rules.md) — exact large-integer
    wire, runtime, and storage rules.
-7. [ADRs](docs/adr/README.md) — why consequential architecture choices were
+7. [Event Enum Contract](docs/event-enum-contract.md) — closed protocol
+   vocabularies, meanings, and result-dimension boundaries.
+8. [ADRs](docs/adr/README.md) — why consequential architecture choices were
    made.
-8. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
+9. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
    and mitigations.
-9. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
-   database, Solana client, clusters, transaction versions, and privacy modes.
+10. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
+    database, Solana client, clusters, transaction versions, and privacy modes.
 
 ## Security and privacy
 

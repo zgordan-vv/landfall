@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "kind": {
-      "enum": ["sdk", "application", "observer", "collector", "cli"]
+      "$ref": "enums.schema.json#/$defs/source_kind"
     },
     "name": {
       "type": "string",

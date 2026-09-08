@@ -33,7 +33,7 @@
       "$ref": "common/source.schema.json"
     },
     "privacy_mode": {
-      "$ref": "common/values.schema.json#/$defs/token"
+      "$ref": "common/enums.schema.json#/$defs/privacy_mode"
     },
     "privacy_policy_version": {
       "$ref": "common/values.schema.json#/$defs/version"

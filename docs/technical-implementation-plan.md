@@ -448,7 +448,8 @@ Define the immutable language that connects customer applications, Rust services
    - data quality detected.
 3. Define decimal-string rules for values beyond JavaScript safe integer range.
    Completed: [Decimal-String Contract](decimal-string-rules.md).
-4. Define enums for privacy mode, commitment, transport result, RPC result, and normalized errors.
+4. Define enums for privacy mode, commitment, transport result, RPC result, and
+   normalized errors. Completed: [Event Enum Contract](event-enum-contract.md).
 5. Implement Rust wire types in `landfall-protocol`.
 6. Generate or verify `protocol-ts` types.
 7. Create valid and invalid fixture corpus.

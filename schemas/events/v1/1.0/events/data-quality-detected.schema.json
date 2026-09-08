@@ -11,9 +11,15 @@
         "attributes": {
           "type": "object",
           "properties": {
-            "category": { "$ref": "../common/values.schema.json#/$defs/token" },
-            "severity": { "$ref": "../common/values.schema.json#/$defs/token" },
-            "impact": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "category": {
+              "$ref": "../common/enums.schema.json#/$defs/data_quality_category"
+            },
+            "severity": {
+              "$ref": "../common/enums.schema.json#/$defs/data_quality_severity"
+            },
+            "impact": {
+              "$ref": "../common/enums.schema.json#/$defs/data_quality_impact"
+            },
             "detail": {
               "$ref": "../common/values.schema.json#/$defs/bounded_text"
             },

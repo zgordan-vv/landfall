@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.landfall.dev/events/v1/1.0/common/enums.schema.json",
+  "title": "Landfall closed protocol enumerations",
+  "$defs": {
+    "source_kind": {
+      "enum": ["sdk", "application", "observer", "collector", "cli"]
+    },
+    "privacy_mode": {
+      "enum": ["standard", "full", "strict"]
+    },
+    "commitment": {
+      "enum": ["processed", "confirmed", "finalized"]
+    },
+    "transaction_version": {
+      "enum": ["legacy", "v0", "unsupported"]
+    },
+    "submission_encoding": {
+      "enum": ["base64", "base58"]
+    },
+    "transport_result": {
+      "enum": ["response_received", "timeout", "connection_failed", "cancelled"]
+    },
+    "blockhash_result": {
+      "enum": ["acquired", "not_found", "rpc_error", "transport_error", "malformed_response"]
+    },
+    "simulation_rpc_result": {
+      "enum": [
+        "succeeded",
+        "execution_error",
+        "blockhash_not_found",
+        "node_error",
+        "malformed_response",
+        "not_observed"
+      ]
+    },
+    "signing_result": {
+      "enum": ["completed", "rejected", "timeout", "failed", "cancelled"]
+    },
+    "submission_rpc_result": {
+      "enum": [
+        "accepted",
+        "rejected",
+        "blockhash_rejected",
+        "duplicate_signature",
+        "already_processed",
+        "rate_limited",
+        "unauthorized",
+        "malformed_response",
+        "not_observed",
+        "outcome_ambiguous"
+      ]
+    },
+    "confirmation_wait_result": {
+      "enum": ["commitment_reached", "timeout", "cancelled", "failed"]
+    },
+    "status_source_result": {
+      "enum": ["found", "not_found", "unavailable", "malformed_response"]
+    },
+    "execution_result": {
+      "enum": ["success", "failure"]
+    },
+    "business_outcome": {
+      "enum": ["success", "failure", "timeout", "cancelled", "unknown"]
+    },
+    "data_quality_category": {
+      "enum": [
+        "telemetry_dropped",
+        "unsupported_transaction_version",
+        "unsupported_durable_nonce",
+        "fingerprint_unavailable",
+        "clock_issue",
+        "observer_gap",
+        "observer_disagreement",
+        "block_height_missing",
+        "business_action_conflict",
+        "privacy_field_omitted",
+        "source_incomplete"
+      ]
+    },
+    "data_quality_severity": {
+      "enum": ["info", "warning", "error"]
+    },
+    "data_quality_impact": {
+      "enum": [
+        "none",
+        "reduced_completeness",
+        "reduced_certainty",
+        "correlation_unavailable",
+        "expiration_analysis_unavailable",
+        "observation_incomplete"
+      ]
+    },
+    "normalized_error_category": {
+      "enum": [
+        "unknown",
+        "invalid_transaction",
+        "missing_signature",
+        "transaction_too_large",
+        "unsupported_transaction_version",
+        "unsupported_durable_nonce",
+        "blockhash_not_found",
+        "blockhash_expired",
+        "instruction_error",
+        "compute_budget_exceeded",
+        "insufficient_funds",
+        "account_in_use",
+        "slippage_exceeded",
+        "custom_program_error",
+        "signer_rejected",
+        "signer_timeout",
+        "signer_error",
+        "rpc_rejected",
+        "rate_limited",
+        "unauthorized",
+        "duplicate_signature",
+        "already_processed",
+        "transport_timeout",
+        "dns_error",
+        "tls_error",
+        "connection_error",
+        "malformed_response",
+        "cancelled",
+        "observer_unavailable"
+      ]
+    }
+  }
+}

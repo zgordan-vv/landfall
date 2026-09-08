@@ -16,7 +16,7 @@
           "properties": {
             "flow": { "$ref": "../common/values.schema.json#/$defs/token" },
             "transaction_version": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/transaction_version"
             },
             "uses_durable_nonce": { "type": "boolean" }
           },

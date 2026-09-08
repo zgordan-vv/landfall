@@ -17,7 +17,7 @@
         "attributes": {
           "type": "object",
           "properties": {
-            "outcome": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "outcome": { "$ref": "../common/enums.schema.json#/$defs/business_outcome" },
             "reason": { "$ref": "../common/values.schema.json#/$defs/token" },
             "detail": {
               "$ref": "../common/values.schema.json#/$defs/bounded_text"

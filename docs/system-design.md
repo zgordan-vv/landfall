@@ -488,6 +488,10 @@ Possible later changes include separating server roles, adding a durable broker,
 - RFC 3339 UTC timestamps.
 - Integers that can exceed safe JavaScript range follow the canonical
   [Decimal-String Contract](decimal-string-rules.md).
+- Protocol-controlled strings follow the closed
+  [Event Enum Contract](event-enum-contract.md). PostgreSQL persists them as
+  bounded text rather than native database enums so wire-version evolution
+  remains explicit.
 - UUIDv7 identifiers where time-sortable identifiers are useful.
 - Opaque cursor pagination, never page-number pagination on event/trace collections.
 - `202 Accepted` for durable ingestion or queued report work.

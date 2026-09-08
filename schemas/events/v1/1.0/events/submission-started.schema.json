@@ -25,10 +25,12 @@
               "minimum": 1,
               "maximum": 10000
             },
-            "encoding": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "encoding": {
+              "$ref": "../common/enums.schema.json#/$defs/submission_encoding"
+            },
             "skip_preflight": { "type": "boolean" },
             "preflight_commitment": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/commitment"
             },
             "max_retries": {
               "type": "integer",

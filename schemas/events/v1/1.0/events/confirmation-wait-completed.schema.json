@@ -20,9 +20,11 @@
             "duration_ns": {
               "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
-            "result": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "result": {
+              "$ref": "../common/enums.schema.json#/$defs/confirmation_wait_result"
+            },
             "observed_commitment": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/commitment"
             },
             "error": { "$ref": "../common/errors.schema.json" }
           },

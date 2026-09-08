@@ -1568,6 +1568,9 @@ the [Event Protocol Catalog](event-protocol.md).
 - Large integers are serialized according to the canonical
   [Decimal-String Contract](decimal-string-rules.md) where JSON number precision
   is unsafe.
+- Protocol-controlled vocabularies are closed, versioned, and interpreted
+  according to the [Event Enum Contract](event-enum-contract.md); unknown enum
+  strings are rejected rather than coerced.
 - Timestamps use UTC RFC 3339 plus monotonic fields where possible.
 - Error payloads use normalized category plus a bounded, redacted original code/message.
 - Signature and address fields obey the environment's privacy mode.

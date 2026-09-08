@@ -20,7 +20,7 @@
             "duration_ns": {
               "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
-            "result": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "result": { "$ref": "../common/enums.schema.json#/$defs/signing_result" },
             "signature": {
               "$ref": "../common/values.schema.json#/$defs/solana_signature"
             },

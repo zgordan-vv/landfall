@@ -148,6 +148,76 @@ if (
   fail("manifest numeric-domain bounds differ from executable boundary checks");
 }
 
+const enumsPath = "1.0/common/enums.schema.json";
+const enumsSchema = schemasByPath.get(enumsPath);
+if (manifest.supported_versions?.[0]?.enum_schema !== enumsPath) {
+  fail("manifest supported version does not declare the canonical enum schema");
+}
+const enumNames = Object.keys(enumsSchema.$defs);
+for (const [enumName, enumSchema] of Object.entries(enumsSchema.$defs)) {
+  if (!Array.isArray(enumSchema.enum) || enumSchema.enum.length === 0) {
+    fail(`${enumName} is not a non-empty closed enum`);
+  }
+  if (new Set(enumSchema.enum).size !== enumSchema.enum.length) {
+    fail(`${enumName} contains duplicate values`);
+  }
+  if (
+    !enumSchema.enum.every((value) => typeof value === "string" && /^[a-z][a-z0-9_]*$/.test(value))
+  ) {
+    fail(`${enumName} contains a non-canonical enum value`);
+  }
+
+  const validateEnum = validator.getSchema(`${enumsSchema.$id}#/$defs/${enumName}`);
+  for (const value of enumSchema.enum) {
+    if (!validateEnum(value)) fail(`${enumName} rejects its declared value ${value}`);
+  }
+  if (validateEnum("unregistered_value")) fail(`${enumName} accepts an unknown value`);
+}
+
+const enumBindings = [
+  ["1.0/envelope.schema.json", "privacy_mode", "privacy_mode", false],
+  ["1.0/common/source.schema.json", "kind", "source_kind", false],
+  ["1.0/common/errors.schema.json", "category", "normalized_error_category", false],
+  ["1.0/events/trace-created.schema.json", "transaction_version", "transaction_version", true],
+  ["1.0/events/blockhash-acquired.schema.json", "result", "blockhash_result", true],
+  ["1.0/events/simulation-started.schema.json", "commitment", "commitment", true],
+  ["1.0/events/simulation-completed.schema.json", "transport_result", "transport_result", true],
+  ["1.0/events/simulation-completed.schema.json", "rpc_result", "simulation_rpc_result", true],
+  ["1.0/events/signing-started.schema.json", "transaction_version", "transaction_version", true],
+  ["1.0/events/signing-completed.schema.json", "result", "signing_result", true],
+  ["1.0/events/submission-started.schema.json", "encoding", "submission_encoding", true],
+  ["1.0/events/submission-started.schema.json", "preflight_commitment", "commitment", true],
+  ["1.0/events/submission-completed.schema.json", "transport_result", "transport_result", true],
+  ["1.0/events/submission-completed.schema.json", "rpc_result", "submission_rpc_result", true],
+  ["1.0/events/confirmation-wait-started.schema.json", "commitment", "commitment", true],
+  [
+    "1.0/events/confirmation-wait-completed.schema.json",
+    "result",
+    "confirmation_wait_result",
+    true,
+  ],
+  ["1.0/events/confirmation-wait-completed.schema.json", "observed_commitment", "commitment", true],
+  ["1.0/events/status-observed.schema.json", "source_result", "status_source_result", true],
+  ["1.0/events/status-observed.schema.json", "commitment", "commitment", true],
+  ["1.0/events/execution-enriched.schema.json", "commitment", "commitment", true],
+  ["1.0/events/execution-enriched.schema.json", "execution_result", "execution_result", true],
+  ["1.0/events/business-outcome-observed.schema.json", "outcome", "business_outcome", true],
+  ["1.0/events/data-quality-detected.schema.json", "category", "data_quality_category", true],
+  ["1.0/events/data-quality-detected.schema.json", "severity", "data_quality_severity", true],
+  ["1.0/events/data-quality-detected.schema.json", "impact", "data_quality_impact", true],
+];
+for (const [relativePath, propertyName, enumName, isEventAttribute] of enumBindings) {
+  if (!enumNames.includes(enumName)) fail(`enum binding references unknown definition ${enumName}`);
+  const schema = schemasByPath.get(relativePath);
+  const properties = isEventAttribute
+    ? schema.allOf[1].properties.attributes.properties
+    : schema.properties;
+  const expectedSuffix = `enums.schema.json#/$defs/${enumName}`;
+  if (!properties[propertyName]?.$ref?.endsWith(expectedSuffix)) {
+    fail(`${relativePath} does not map ${propertyName} to ${enumName}`);
+  }
+}
+
 const largeIntegerFields = new Map([
   ["monotonic_ns", "duration_ns_decimal"],
   ["duration_ns", "duration_ns_decimal"],
@@ -242,7 +312,7 @@ const sampleUuid = "0198ef00-0000-7000-8000-000000000001";
 const sampleValues = {
   attempt_id: sampleUuid,
   attempt_sequence: 1,
-  category: "capture_gap",
+  category: "observer_gap",
   commitment: "processed",
   delay_ns: "1",
   duration_ns: "1",
@@ -255,7 +325,6 @@ const sampleValues = {
   outcome: "success",
   previous_attempt_id: sampleUuid,
   reason: "transport_timeout",
-  result: "success",
   retry_sequence: 1,
   route_id: sampleUuid,
   search_transaction_history: false,
@@ -274,14 +343,22 @@ const sampleValues = {
   wait_id: sampleUuid,
 };
 
+const eventSampleOverrides = {
+  "solana.blockhash.acquired": { result: "acquired" },
+  "solana.confirmation_wait.completed": { result: "commitment_reached" },
+  "solana.signing.completed": { result: "completed" },
+  "solana.simulation.completed": { rpc_result: "succeeded" },
+};
+
 const sampleEvents = eventEntries.map(([eventType, relativePath]) => {
   const schema = schemasByPath.get(relativePath);
   const eventDefinition = schema.allOf[1];
   const attributeSchema = eventDefinition.properties.attributes;
   const attributes = Object.fromEntries(
     attributeSchema.required.map((name) => {
-      if (!(name in sampleValues)) fail(`no smoke-test value is registered for ${name}`);
-      return [name, sampleValues[name]];
+      const sampleValue = eventSampleOverrides[eventType]?.[name] ?? sampleValues[name];
+      if (sampleValue === undefined) fail(`no smoke-test value is registered for ${name}`);
+      return [name, sampleValue];
     }),
   );
   const event = {
@@ -389,5 +466,5 @@ for (const [sourceId, schema] of schemasById) {
 }
 
 console.log(
-  `Validated ${schemaFiles.length} Draft 2020-12 resources, ${eventEntries.length} closed event types, numeric boundaries, and protocol smoke cases.`,
+  `Validated ${schemaFiles.length} Draft 2020-12 resources, ${eventEntries.length} closed event types, ${enumNames.length} enums, numeric boundaries, and protocol smoke cases.`,
 );

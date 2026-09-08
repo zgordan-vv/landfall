@@ -24,10 +24,10 @@
               "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },
             "transport_result": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/transport_result"
             },
             "rpc_result": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/submission_rpc_result"
             },
             "signature": {
               "$ref": "../common/values.schema.json#/$defs/solana_signature"

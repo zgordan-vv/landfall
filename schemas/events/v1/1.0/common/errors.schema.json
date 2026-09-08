@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "category": {
-      "$ref": "values.schema.json#/$defs/token"
+      "$ref": "enums.schema.json#/$defs/normalized_error_category"
     },
     "code": {
       "type": "string",

@@ -21,7 +21,7 @@
               "$ref": "../common/identifiers.schema.json#/$defs/route_id"
             },
             "commitment": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/commitment"
             },
             "replace_recent_blockhash": { "type": "boolean" },
             "sig_verify": { "type": "boolean" },

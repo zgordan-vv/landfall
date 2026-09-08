@@ -18,7 +18,7 @@
               "$ref": "../common/identifiers.schema.json#/$defs/operation_id"
             },
             "transaction_version": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/transaction_version"
             },
             "required_signatures": {
               "type": "integer",

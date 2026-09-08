@@ -155,6 +155,7 @@ schemas/events/v1/
 │   │   ├── identifiers.schema.json
 │   │   ├── source.schema.json
 │   │   ├── fingerprint.schema.json
+│   │   ├── enums.schema.json
 │   │   ├── errors.schema.json
 │   │   └── values.schema.json
 │   └── events/
@@ -242,6 +243,12 @@ storage.
 Custom `format` checks are never the sole security constraint. Critical lexical
 rules use portable patterns and are repeated by typed/semantic parsing where
 necessary.
+
+Protocol-controlled strings use shared closed enum definitions. Their meanings,
+result-dimension boundaries, and evolution rules are recorded in the
+[Event Enum Contract](../event-enum-contract.md). Persistence uses bounded text,
+not PostgreSQL native enum types, so database representation does not become a
+second protocol authority.
 
 ### Three validation layers
 

@@ -17,7 +17,7 @@
             "route_id": {
               "$ref": "../common/identifiers.schema.json#/$defs/route_id"
             },
-            "result": { "$ref": "../common/values.schema.json#/$defs/token" },
+            "result": { "$ref": "../common/enums.schema.json#/$defs/blockhash_result" },
             "duration_ns": {
               "$ref": "../common/values.schema.json#/$defs/duration_ns_decimal"
             },

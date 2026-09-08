@@ -24,10 +24,10 @@
               "$ref": "../common/values.schema.json#/$defs/slot_decimal"
             },
             "commitment": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/commitment"
             },
             "execution_result": {
-              "$ref": "../common/values.schema.json#/$defs/token"
+              "$ref": "../common/enums.schema.json#/$defs/execution_result"
             },
             "block_time": {
               "$ref": "../common/values.schema.json#/$defs/rfc3339_utc"
