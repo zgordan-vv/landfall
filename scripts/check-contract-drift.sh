@@ -5,16 +5,14 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repository_root"
 
-# Canonical event schemas now exist. Their registry, local references, closed
-# event union, and security-sensitive property allowlist are checked without
-# network resolution. Generated artifacts remain forbidden until their
-# deterministic generators are registered in later tasks.
+# Verify canonical schemas and deterministically regenerate the committed
+# TypeScript representation without network resolution.
 node scripts/check-event-schemas.mjs
+node scripts/generate-protocol-ts.mjs --check
 
 unregistered_generated_paths=(
     openapi
     packages/api-client/src/generated
-    packages/protocol-ts/src/generated
 )
 
 for contract_path in "${unregistered_generated_paths[@]}"; do
@@ -25,4 +23,4 @@ for contract_path in "${unregistered_generated_paths[@]}"; do
     fi
 done
 
-printf 'Canonical event schemas are registered; no unregistered generated contracts exist.\n'
+printf 'Canonical event schemas and generated TypeScript wire types are current.\n'

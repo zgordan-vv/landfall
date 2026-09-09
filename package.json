@@ -22,10 +22,12 @@
   "packageManager": "pnpm@11.25.0",
   "scripts": {
     "build": "pnpm --recursive build",
+    "check:protocol-generated": "node scripts/generate-protocol-ts.mjs --check",
     "dev:dashboard": "pnpm --filter @landfall/dashboard dev",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
     "lint": "node scripts/check-typescript-dependency-direction.mjs && tsc -b --pretty false",
+    "generate:protocol": "node scripts/generate-protocol-ts.mjs",
     "test": "pnpm --recursive --if-present test",
     "test:integration": "pnpm --recursive --if-present test:integration",
     "typecheck": "tsc -b --pretty false"
@@ -33,6 +35,7 @@
   "devDependencies": {
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "json-schema-to-typescript": "16.0.0",
     "prettier": "3.9.6",
     "typescript": "7.0.2"
   }

@@ -1,2 +1,1 @@
-// Protocol types will be generated from the canonical JSON Schema in Phase 2.
-export {};
+export type * from "./generated/v1.js";

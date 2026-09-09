@@ -7,6 +7,8 @@ const allowedLicenses = new Set([
   "ISC",
   "MIT",
   "MPL-2.0",
+  // Build-only argparse dependency used by the pinned schema generator.
+  "Python-2.0",
   "Unicode-3.0",
   "Zlib",
 ]);

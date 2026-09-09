@@ -452,7 +452,9 @@ Define the immutable language that connects customer applications, Rust services
    normalized errors. Completed: [Event Enum Contract](event-enum-contract.md).
 5. Implement Rust wire types in `landfall-protocol`. Completed in
    [`crates/landfall-protocol`](../crates/landfall-protocol/).
-6. Generate or verify `protocol-ts` types.
+6. Generate or verify `protocol-ts` types. Completed with the committed
+   [`v1.ts`](../packages/protocol-ts/src/generated/v1.ts) artifact and
+   deterministic generator drift check.
 7. Create valid and invalid fixture corpus.
 8. Add schema version compatibility rules.
 9. Add redaction fixtures with keys, bearer tokens, RPC URLs, cookies, and oversized metadata.

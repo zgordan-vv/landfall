@@ -41,6 +41,10 @@ test-integration: bootstrap
 check-contracts:
     bash scripts/check-contract-drift.sh
 
+# Regenerate committed TypeScript wire DTOs from canonical event schemas.
+generate-protocol: bootstrap
+    pnpm run generate:protocol
+
 # Enforce the reviewed Node.js dependency license allowlist.
 check-node-licenses: bootstrap
     node scripts/check-node-licenses.mjs

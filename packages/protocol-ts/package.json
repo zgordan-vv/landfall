@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b --pretty false"
+    "typecheck": "tsc -b --pretty false",
+    "test": "tsc -p tests/tsconfig.json --pretty false && node --test tests/*.test.mjs"
   }
 }

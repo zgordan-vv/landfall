@@ -1,6 +1,6 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–5 implementation baseline
+- **Status:** Phase 2 Tasks 1–6 implementation baseline
 - **Wire version:** `1.0`
 - **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
@@ -218,8 +218,8 @@ raw signed transactions or treating a derived diagnosis as source evidence.
 
 The remaining protocol tasks define and strengthen:
 
-1. generated/verified TypeScript types, compatibility rules, privacy
-   classifications, and shared valid/invalid fixtures.
+1. compatibility rules, privacy classifications, and shared valid/invalid
+   fixtures.
 
 Canonical large-integer representation and bounds are defined in the
 [Decimal-String Contract](decimal-string-rules.md). Closed protocol-controlled

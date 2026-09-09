@@ -9,6 +9,12 @@
       "enum_schema": "1.0/common/enums.schema.json"
     }
   ],
+  "typescript_generation": {
+    "generator": "json-schema-to-typescript",
+    "version": "16.0.0",
+    "config_sha256": "b49e84b8de66ce8008462ea62b212e1103e769b8d2cea897d7ff95c8d8eb5218",
+    "output": "packages/protocol-ts/src/generated/v1.ts"
+  },
   "numeric_domains": {
     "uint64_decimal": {
       "schema_ref": "1.0/common/values.schema.json#/$defs/uint64_decimal",
