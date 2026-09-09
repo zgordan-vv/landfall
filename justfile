@@ -45,6 +45,10 @@ check-contracts:
 generate-protocol: bootstrap
     pnpm run generate:protocol
 
+# Validate the shared valid/invalid protocol corpus with Node/Ajv.
+check-protocol-fixtures: bootstrap
+    node scripts/check-protocol-fixtures.mjs
+
 # Enforce the reviewed Node.js dependency license allowlist.
 check-node-licenses: bootstrap
     node scripts/check-node-licenses.mjs

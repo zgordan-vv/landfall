@@ -9,6 +9,7 @@ cd "$repository_root"
 # TypeScript representation without network resolution.
 node scripts/check-event-schemas.mjs
 node scripts/generate-protocol-ts.mjs --check
+node scripts/check-protocol-fixtures.mjs
 
 unregistered_generated_paths=(
     openapi
@@ -23,4 +24,4 @@ for contract_path in "${unregistered_generated_paths[@]}"; do
     fi
 done
 
-printf 'Canonical event schemas and generated TypeScript wire types are current.\n'
+printf 'Canonical event schemas, generated TypeScript types, and shared fixtures are current.\n'

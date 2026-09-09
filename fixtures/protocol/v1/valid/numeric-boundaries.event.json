@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0198ef00-0000-7000-8000-000000000020",
+  "event_type": "solana.execution.enriched",
+  "occurred_at": "2026-08-29T12:00:00.123456789Z",
+  "project_id": "0198ef00-0000-7000-8000-000000000100",
+  "environment_id": "0198ef00-0000-7000-8000-000000000200",
+  "trace_id": "0198ef00-0000-7000-8000-000000000300",
+  "source": { "kind": "observer", "name": "landfall-observer", "version": "0.1.0" },
+  "privacy_mode": "full",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
+  "attributes": {
+    "observer_source_id": "0198ef00-0000-7000-8000-000000000900",
+    "slot": "18446744073709551615",
+    "commitment": "finalized",
+    "execution_result": "success",
+    "block_time": "2026-08-29T12:00:00.123456789Z",
+    "fee_lamports": "18446744073709551615",
+    "compute_units_consumed": "18446744073709551615",
+    "logs_present": true
+  }
+}

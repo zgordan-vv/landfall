@@ -1,0 +1,34 @@
+{
+  "batch_id": "0198ef10-0002-7000-8000-000000000001",
+  "sent_at": "2026-08-29T12:00:01Z",
+  "events": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0002-7000-8000-000000000011",
+      "event_type": "solana.simulation.completed",
+      "occurred_at": "2026-08-29T12:00:00.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0002-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "simulation_id": "0198ef10-0002-7000-8000-000000000300",
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "duration_ns": "2000000",
+        "transport_result": "response_received",
+        "rpc_result": "execution_error",
+        "units_consumed": "180000",
+        "logs_present": true,
+        "error": {
+          "category": "custom_program_error",
+          "code": "Custom",
+          "instruction_index": 2,
+          "custom_code": 6001
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "batch_id": "0198ef10-000a-7000-8000-000000000001",
+  "sent_at": "2026-08-29T12:00:02Z",
+  "events": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-000a-7000-8000-000000000011",
+      "event_type": "solana.status.observed",
+      "occurred_at": "2026-08-29T12:00:00.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-000a-7000-8000-000000000100",
+      "source": { "kind": "observer", "name": "landfall-observer", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "observer_source_id": "0198ef10-000a-7000-8000-000000000301",
+        "source_result": "found",
+        "duration_ns": "9000000",
+        "commitment": "confirmed",
+        "slot": "300"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-000a-7000-8000-000000000012",
+      "event_type": "solana.status.observed",
+      "occurred_at": "2026-08-29T12:00:00.2Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-000a-7000-8000-000000000100",
+      "source": { "kind": "observer", "name": "landfall-observer", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "observer_source_id": "0198ef10-000a-7000-8000-000000000302",
+        "source_result": "not_found",
+        "duration_ns": "10000000"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-000a-7000-8000-000000000013",
+      "event_type": "landfall.data_quality.detected",
+      "occurred_at": "2026-08-29T12:00:01.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-000a-7000-8000-000000000100",
+      "source": { "kind": "collector", "name": "landfall-server", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "category": "observer_disagreement",
+        "severity": "warning",
+        "impact": "reduced_certainty"
+      }
+    }
+  ]
+}

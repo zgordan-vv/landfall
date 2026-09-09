@@ -455,7 +455,9 @@ Define the immutable language that connects customer applications, Rust services
 6. Generate or verify `protocol-ts` types. Completed with the committed
    [`v1.ts`](../packages/protocol-ts/src/generated/v1.ts) artifact and
    deterministic generator drift check.
-7. Create valid and invalid fixture corpus.
+7. Create valid and invalid fixture corpus. Completed under
+   [`fixtures/protocol/v1`](../fixtures/protocol/v1/) with shared JSON Schema,
+   Rust Serde, and TypeScript/Node verification.
 8. Add schema version compatibility rules.
 9. Add redaction fixtures with keys, bearer tokens, RPC URLs, cookies, and oversized metadata.
 10. Document examples and field-level privacy classification.

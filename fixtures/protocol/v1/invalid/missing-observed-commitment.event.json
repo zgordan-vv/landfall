@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0198ef00-0000-7000-8000-000000000112",
+  "event_type": "solana.confirmation_wait.completed",
+  "occurred_at": "2026-08-29T12:00:00Z",
+  "project_id": "0198ef00-0000-7000-8000-000000000100",
+  "environment_id": "0198ef00-0000-7000-8000-000000000200",
+  "trace_id": "0198ef00-0000-7000-8000-000000000300",
+  "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+  "privacy_mode": "standard",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
+  "attributes": {
+    "wait_id": "0198ef00-0000-7000-8000-000000000800",
+    "duration_ns": "100",
+    "result": "commitment_reached"
+  }
+}

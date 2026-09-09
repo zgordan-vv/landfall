@@ -1,0 +1,176 @@
+{
+  "protocol": "landfall-event-protocol",
+  "schema_version": "1.0",
+  "valid": [
+    {
+      "id": "all-event-types",
+      "path": "valid/all-event-types.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "One minimal event for every registered v1.0 discriminator."
+    },
+    {
+      "id": "numeric-boundaries",
+      "path": "valid/numeric-boundaries.event.json",
+      "schema": "1.0/events/execution-enriched.schema.json",
+      "description": "Exact uint64 maxima remain decimal strings through every implementation."
+    },
+    {
+      "id": "incident-success",
+      "path": "valid/incidents/success.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "On-chain execution and the application outcome both succeed."
+    },
+    {
+      "id": "incident-simulation-error",
+      "path": "valid/incidents/simulation-error.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Simulation returns a normalized custom program error."
+    },
+    {
+      "id": "incident-submission-rejection",
+      "path": "valid/incidents/submission-rejection.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "The RPC endpoint responds but rejects the transaction."
+    },
+    {
+      "id": "incident-timeout-later-success",
+      "path": "valid/incidents/timeout-later-success.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "The client times out before independent observation proves success."
+    },
+    {
+      "id": "incident-expiry-without-inclusion",
+      "path": "valid/incidents/expiry-without-inclusion.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Current block height passes lastValidBlockHeight without inclusion."
+    },
+    {
+      "id": "incident-compute-budget-error",
+      "path": "valid/incidents/compute-budget-error.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "An included transaction fails on chain because compute budget is exhausted."
+    },
+    {
+      "id": "incident-identical-retry",
+      "path": "valid/incidents/identical-retry.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Two real attempts share one exact signed-byte fingerprint and trace."
+    },
+    {
+      "id": "incident-replacement-transaction",
+      "path": "valid/incidents/replacement-transaction.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "One business action owns two traces with different signed-byte fingerprints."
+    },
+    {
+      "id": "incident-two-successful-replacements",
+      "path": "valid/incidents/two-successful-replacements.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Two replacement traces for one business action both execute successfully."
+    },
+    {
+      "id": "incident-observer-disagreement",
+      "path": "valid/incidents/observer-disagreement.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Two observer routes disagree and an explicit data-quality event records it."
+    },
+    {
+      "id": "incident-missing-block-height",
+      "path": "valid/incidents/missing-block-height.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Expiration analysis is unavailable because block height evidence is missing."
+    },
+    {
+      "id": "incident-unsupported-transaction-features",
+      "path": "valid/incidents/unsupported-transaction-features.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "description": "Unsupported transaction version and durable nonce are represented without guessing outcomes."
+    }
+  ],
+  "invalid": [
+    {
+      "id": "missing-trace-id",
+      "path": "invalid/missing-trace-id.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "missing_required_field"
+    },
+    {
+      "id": "unknown-envelope-field",
+      "path": "invalid/unknown-envelope-field.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "unknown_field"
+    },
+    {
+      "id": "unknown-attribute",
+      "path": "invalid/unknown-attribute.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "unknown_field"
+    },
+    {
+      "id": "wrong-event-type",
+      "path": "invalid/wrong-event-type.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "wrong_event_type"
+    },
+    {
+      "id": "invalid-uuid-version",
+      "path": "invalid/invalid-uuid-version.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "invalid_format"
+    },
+    {
+      "id": "unknown-enum-value",
+      "path": "invalid/unknown-enum-value.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "unsupported_enum_value"
+    },
+    {
+      "id": "numeric-json-number",
+      "path": "invalid/numeric-json-number.event.json",
+      "schema": "1.0/events/execution-enriched.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "type_mismatch"
+    },
+    {
+      "id": "non-utc-timestamp",
+      "path": "invalid/non-utc-timestamp.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "invalid_format"
+    },
+    {
+      "id": "empty-batch",
+      "path": "invalid/empty.batch.json",
+      "schema": "1.0/batch.schema.json",
+      "expected_stage": "schema",
+      "expected_category": "collection_out_of_range"
+    },
+    {
+      "id": "uint64-overflow",
+      "path": "invalid/uint64-overflow.event.json",
+      "schema": "1.0/events/execution-enriched.schema.json",
+      "expected_stage": "semantic",
+      "expected_category": "numeric_out_of_range"
+    },
+    {
+      "id": "contradictory-simulation-result",
+      "path": "invalid/contradictory-simulation-result.event.json",
+      "schema": "1.0/events/simulation-completed.schema.json",
+      "expected_stage": "semantic",
+      "expected_category": "contradictory_evidence"
+    },
+    {
+      "id": "missing-observed-commitment",
+      "path": "invalid/missing-observed-commitment.event.json",
+      "schema": "1.0/events/confirmation-wait-completed.schema.json",
+      "expected_stage": "semantic",
+      "expected_category": "missing_required_evidence"
+    }
+  ]
+}

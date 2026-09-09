@@ -1,0 +1,110 @@
+{
+  "batch_id": "0198ef10-0007-7000-8000-000000000001",
+  "sent_at": "2026-08-29T12:00:03Z",
+  "events": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0007-7000-8000-000000000011",
+      "event_type": "solana.signing.completed",
+      "occurred_at": "2026-08-29T12:00:00.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0007-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "signing_id": "0198ef10-0007-7000-8000-000000000200",
+        "duration_ns": "7000000",
+        "result": "completed",
+        "signed_bytes_fingerprint": {
+          "algorithm": "lf-hmac-sha256-v1",
+          "key_id": "0198ef10-0007-7000-8000-000000000300",
+          "value_hex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0007-7000-8000-000000000012",
+      "event_type": "solana.submission.started",
+      "occurred_at": "2026-08-29T12:00:01.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0007-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "attempt_id": "0198ef10-0007-7000-8000-000000000401",
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "attempt_sequence": 1,
+        "encoding": "base64",
+        "skip_preflight": false
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0007-7000-8000-000000000013",
+      "event_type": "solana.submission.completed",
+      "occurred_at": "2026-08-29T12:00:01.2Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0007-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "attempt_id": "0198ef10-0007-7000-8000-000000000401",
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "duration_ns": "30000000000",
+        "transport_result": "timeout",
+        "rpc_result": "not_observed",
+        "error": { "category": "transport_timeout" }
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0007-7000-8000-000000000014",
+      "event_type": "solana.submission.started",
+      "occurred_at": "2026-08-29T12:00:02.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0007-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "attempt_id": "0198ef10-0007-7000-8000-000000000402",
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "attempt_sequence": 2,
+        "encoding": "base64",
+        "skip_preflight": false
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0007-7000-8000-000000000015",
+      "event_type": "solana.submission.completed",
+      "occurred_at": "2026-08-29T12:00:02.2Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0007-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "attempt_id": "0198ef10-0007-7000-8000-000000000402",
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "duration_ns": "3000000",
+        "transport_result": "response_received",
+        "rpc_result": "accepted"
+      }
+    }
+  ]
+}

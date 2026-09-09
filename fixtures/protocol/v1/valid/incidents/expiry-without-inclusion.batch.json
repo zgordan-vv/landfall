@@ -1,0 +1,46 @@
+{
+  "batch_id": "0198ef10-0005-7000-8000-000000000001",
+  "sent_at": "2026-08-29T12:00:02Z",
+  "events": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0005-7000-8000-000000000011",
+      "event_type": "solana.blockhash.acquired",
+      "occurred_at": "2026-08-29T12:00:00.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0005-7000-8000-000000000100",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "route_id": "0198ef00-0000-7000-8000-000000000400",
+        "result": "acquired",
+        "duration_ns": "1000000",
+        "recent_blockhash": "11111111111111111111111111111111",
+        "last_valid_block_height": "100",
+        "context_slot": "90"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0005-7000-8000-000000000012",
+      "event_type": "solana.status.observed",
+      "occurred_at": "2026-08-29T12:00:01.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0005-7000-8000-000000000100",
+      "source": { "kind": "observer", "name": "landfall-observer", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "observer_source_id": "0198ef00-0000-7000-8000-000000000900",
+        "source_result": "not_found",
+        "duration_ns": "9000000",
+        "block_height": "101"
+      }
+    }
+  ]
+}

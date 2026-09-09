@@ -1,0 +1,84 @@
+{
+  "batch_id": "0198ef10-0008-7000-8000-000000000001",
+  "sent_at": "2026-08-29T12:00:02Z",
+  "events": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0008-7000-8000-000000000011",
+      "event_type": "solana.trace.created",
+      "occurred_at": "2026-08-29T12:00:00.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0008-7000-8000-000000000101",
+      "business_action_id": "0198ef10-0008-7000-8000-000000000200",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": { "flow": "swap", "transaction_version": "v0" }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0008-7000-8000-000000000012",
+      "event_type": "solana.signing.completed",
+      "occurred_at": "2026-08-29T12:00:00.2Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0008-7000-8000-000000000101",
+      "business_action_id": "0198ef10-0008-7000-8000-000000000200",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "signing_id": "0198ef10-0008-7000-8000-000000000301",
+        "duration_ns": "7",
+        "result": "completed",
+        "signed_bytes_fingerprint": {
+          "algorithm": "lf-hmac-sha256-v1",
+          "key_id": "0198ef10-0008-7000-8000-000000000400",
+          "value_hex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0008-7000-8000-000000000013",
+      "event_type": "solana.trace.created",
+      "occurred_at": "2026-08-29T12:00:01.1Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0008-7000-8000-000000000102",
+      "business_action_id": "0198ef10-0008-7000-8000-000000000200",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": { "flow": "swap", "transaction_version": "v0" }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "0198ef10-0008-7000-8000-000000000014",
+      "event_type": "solana.signing.completed",
+      "occurred_at": "2026-08-29T12:00:01.2Z",
+      "project_id": "0198ef00-0000-7000-8000-000000000100",
+      "environment_id": "0198ef00-0000-7000-8000-000000000200",
+      "trace_id": "0198ef10-0008-7000-8000-000000000102",
+      "business_action_id": "0198ef10-0008-7000-8000-000000000200",
+      "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+      "privacy_mode": "standard",
+      "privacy_policy_version": "1.0",
+      "redaction_version": "1.0",
+      "attributes": {
+        "signing_id": "0198ef10-0008-7000-8000-000000000302",
+        "duration_ns": "7",
+        "result": "completed",
+        "signed_bytes_fingerprint": {
+          "algorithm": "lf-hmac-sha256-v1",
+          "key_id": "0198ef10-0008-7000-8000-000000000400",
+          "value_hex": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      }
+    }
+  ]
+}
