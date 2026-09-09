@@ -49,6 +49,10 @@ generate-protocol: bootstrap
 check-protocol-fixtures: bootstrap
     node scripts/check-protocol-fixtures.mjs
 
+# Verify exact-version capabilities in the manifest, Rust, and TypeScript.
+check-protocol-compatibility: bootstrap
+    node scripts/check-protocol-compatibility.mjs
+
 # Enforce the reviewed Node.js dependency license allowlist.
 check-node-licenses: bootstrap
     node scripts/check-node-licenses.mjs

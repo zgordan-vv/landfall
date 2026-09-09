@@ -1,0 +1,64 @@
+{
+  "cases": [
+    {
+      "id": "registered-version-and-event",
+      "schema_version": "1.0",
+      "event_type": "solana.trace.created",
+      "expected": { "supported": true }
+    },
+    {
+      "id": "unknown-minor-is-not-implied-by-major",
+      "schema_version": "1.1",
+      "event_type": "solana.trace.created",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_SCHEMA_VERSION"
+      }
+    },
+    {
+      "id": "unknown-major",
+      "schema_version": "2.0",
+      "event_type": "solana.trace.created",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_SCHEMA_VERSION"
+      }
+    },
+    {
+      "id": "older-unregistered-version",
+      "schema_version": "0.9",
+      "event_type": "solana.trace.created",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_SCHEMA_VERSION"
+      }
+    },
+    {
+      "id": "malformed-version-is-unsupported",
+      "schema_version": "1",
+      "event_type": "solana.trace.created",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_SCHEMA_VERSION"
+      }
+    },
+    {
+      "id": "unknown-event-in-supported-version",
+      "schema_version": "1.0",
+      "event_type": "solana.future.event",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_EVENT_TYPE"
+      }
+    },
+    {
+      "id": "version-error-has-precedence",
+      "schema_version": "2.0",
+      "event_type": "solana.future.event",
+      "expected": {
+        "supported": false,
+        "code": "LF_UNSUPPORTED_SCHEMA_VERSION"
+      }
+    }
+  ]
+}

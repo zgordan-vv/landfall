@@ -6,9 +6,35 @@
       "version": "1.0",
       "batch_schema": "1.0/batch.schema.json",
       "envelope_schema": "1.0/envelope.schema.json",
-      "enum_schema": "1.0/common/enums.schema.json"
+      "enum_schema": "1.0/common/enums.schema.json",
+      "event_types": [
+        "landfall.data_quality.detected",
+        "solana.blockhash.acquired",
+        "solana.business_outcome.observed",
+        "solana.confirmation_wait.completed",
+        "solana.confirmation_wait.started",
+        "solana.execution.enriched",
+        "solana.signing.completed",
+        "solana.signing.started",
+        "solana.simulation.completed",
+        "solana.simulation.started",
+        "solana.status.observed",
+        "solana.submission.completed",
+        "solana.submission.retry_scheduled",
+        "solana.submission.started",
+        "solana.trace.created"
+      ]
     }
   ],
+  "compatibility": {
+    "selection": "exact_registered_version",
+    "same_major_implies_support": false,
+    "unknown_schema_version_code": "LF_UNSUPPORTED_SCHEMA_VERSION",
+    "unknown_event_type_code": "LF_UNSUPPORTED_EVENT_TYPE",
+    "rollout_order": ["collector", "cli", "sdk"],
+    "raw_event_version_mutable": false,
+    "implicit_upcasting": false
+  },
   "typescript_generation": {
     "generator": "json-schema-to-typescript",
     "version": "16.0.0",

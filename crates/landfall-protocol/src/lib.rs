@@ -5,12 +5,17 @@
 //! scalar and cross-field invariants when values cross a Serde boundary.
 
 pub mod common;
+pub mod compatibility;
 pub mod enums;
 pub mod error;
 pub mod events;
 pub mod values;
 
 pub use common::{EventSource, FingerprintAlgorithm, NormalizedError, SignedBytesFingerprint};
+pub use compatibility::{
+    CompatibilityError, CompatibilityErrorCode, SUPPORTED_EVENT_TYPES, SUPPORTED_SCHEMA_VERSIONS,
+    check_event_compatibility,
+};
 pub use enums::*;
 pub use error::{WireValueError, WireValueErrorKind};
 pub use events::*;
@@ -20,6 +25,10 @@ pub use values::*;
 pub mod v1 {
     pub use crate::common::{
         EventSource, FingerprintAlgorithm, NormalizedError, SignedBytesFingerprint,
+    };
+    pub use crate::compatibility::{
+        CompatibilityError, CompatibilityErrorCode, SUPPORTED_EVENT_TYPES,
+        SUPPORTED_SCHEMA_VERSIONS, check_event_compatibility,
     };
     pub use crate::enums::*;
     pub use crate::error::{WireValueError, WireValueErrorKind};

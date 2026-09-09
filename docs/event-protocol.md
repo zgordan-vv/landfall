@@ -1,6 +1,6 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–7 implementation baseline
+- **Status:** Phase 2 Tasks 1–8 implementation baseline
 - **Wire version:** `1.0`
 - **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
@@ -17,6 +17,9 @@ The checked-in [versioned JSON Schema resources](../schemas/events/v1/) are the
 canonical machine-readable wire contract. They implement this catalog without
 silently adding, removing, or reinterpreting an event. A semantic change to
 this catalog requires an explicit compatibility decision.
+
+Exact schema selection and rollout behavior are defined in the
+[schema-version compatibility policy](schema-version-compatibility.md).
 
 ## 2. Protocol boundary
 

@@ -10,6 +10,7 @@ cd "$repository_root"
 node scripts/check-event-schemas.mjs
 node scripts/generate-protocol-ts.mjs --check
 node scripts/check-protocol-fixtures.mjs
+node scripts/check-protocol-compatibility.mjs
 
 unregistered_generated_paths=(
     openapi
@@ -24,4 +25,4 @@ for contract_path in "${unregistered_generated_paths[@]}"; do
     fi
 done
 
-printf 'Canonical event schemas, generated TypeScript types, and shared fixtures are current.\n'
+printf 'Canonical event schemas, generated types, fixtures, and compatibility rules are current.\n'

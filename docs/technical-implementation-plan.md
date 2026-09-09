@@ -458,7 +458,9 @@ Define the immutable language that connects customer applications, Rust services
 7. Create valid and invalid fixture corpus. Completed under
    [`fixtures/protocol/v1`](../fixtures/protocol/v1/) with shared JSON Schema,
    Rust Serde, and TypeScript/Node verification.
-8. Add schema version compatibility rules.
+8. Add schema version compatibility rules. Completed with the
+   [exact-version capability policy](schema-version-compatibility.md), shared
+   compatibility fixtures, and matching Rust/TypeScript checks.
 9. Add redaction fixtures with keys, bearer tokens, RPC URLs, cookies, and oversized metadata.
 10. Document examples and field-level privacy classification.
 
