@@ -53,6 +53,10 @@ check-protocol-fixtures: bootstrap
 check-protocol-compatibility: bootstrap
     node scripts/check-protocol-compatibility.mjs
 
+# Verify prohibited-field rejection and canonical privacy redaction pairs.
+check-protocol-privacy: bootstrap
+    node scripts/check-protocol-privacy-fixtures.mjs
+
 # Enforce the reviewed Node.js dependency license allowlist.
 check-node-licenses: bootstrap
     node scripts/check-node-licenses.mjs

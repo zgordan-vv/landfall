@@ -453,6 +453,11 @@ const prohibitedPropertyNames = new Set([
   "raw_transaction",
   "authorization",
   "cookie",
+  "set_cookie",
+  "headers",
+  "metadata",
+  "endpoint_url",
+  "rpc_url",
 ]);
 for (const [sourceId, schema] of schemasById) {
   walk(schema, (node) => {

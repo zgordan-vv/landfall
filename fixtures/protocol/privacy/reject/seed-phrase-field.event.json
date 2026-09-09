@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0198ef20-0002-7000-8000-000000000001",
+  "event_type": "solana.trace.created",
+  "occurred_at": "2026-08-29T12:00:00Z",
+  "project_id": "0198ef00-0000-7000-8000-000000000100",
+  "environment_id": "0198ef00-0000-7000-8000-000000000200",
+  "trace_id": "0198ef20-0002-7000-8000-000000000100",
+  "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+  "privacy_mode": "standard",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
+  "attributes": {
+    "flow": "swap",
+    "transaction_version": "v0",
+    "seed_phrase": "alpha beta gamma synthetic fixture only"
+  }
+}

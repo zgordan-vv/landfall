@@ -1,6 +1,6 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–8 implementation baseline
+- **Status:** Phase 2 Tasks 1–9 implementation baseline
 - **Wire version:** `1.0`
 - **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)

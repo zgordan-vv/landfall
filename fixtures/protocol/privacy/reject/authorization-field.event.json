@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0198ef20-0003-7000-8000-000000000001",
+  "event_type": "solana.submission.started",
+  "occurred_at": "2026-08-29T12:00:00Z",
+  "project_id": "0198ef00-0000-7000-8000-000000000100",
+  "environment_id": "0198ef00-0000-7000-8000-000000000200",
+  "trace_id": "0198ef20-0003-7000-8000-000000000100",
+  "source": { "kind": "sdk", "name": "landfall-js", "version": "0.1.0" },
+  "privacy_mode": "standard",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
+  "attributes": {
+    "attempt_id": "0198ef20-0003-7000-8000-000000000200",
+    "route_id": "0198ef00-0000-7000-8000-000000000400",
+    "attempt_sequence": 1,
+    "encoding": "base64",
+    "skip_preflight": false,
+    "authorization": "Bearer LF_CANARY_BEARER_TOKEN_DO_NOT_USE"
+  }
+}

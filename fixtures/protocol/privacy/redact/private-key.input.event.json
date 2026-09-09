@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "event_id": "0198ef21-0004-7000-8000-000000000001",
+  "event_type": "landfall.data_quality.detected",
+  "occurred_at": "2026-08-29T12:00:00Z",
+  "project_id": "0198ef00-0000-7000-8000-000000000100",
+  "environment_id": "0198ef00-0000-7000-8000-000000000200",
+  "source": { "kind": "collector", "name": "landfall-server", "version": "0.1.0" },
+  "privacy_mode": "standard",
+  "privacy_policy_version": "1.0",
+  "redaction_version": "1.0",
+  "attributes": {
+    "category": "privacy_field_omitted",
+    "severity": "warning",
+    "impact": "reduced_completeness",
+    "detail": "private_key=LF_CANARY_PRIVATE_KEY_DO_NOT_USE"
+  }
+}

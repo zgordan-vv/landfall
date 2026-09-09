@@ -462,6 +462,9 @@ Define the immutable language that connects customer applications, Rust services
    [exact-version capability policy](schema-version-compatibility.md), shared
    compatibility fixtures, and matching Rust/TypeScript checks.
 9. Add redaction fixtures with keys, bearer tokens, RPC URLs, cookies, and oversized metadata.
+   Completed under [`fixtures/protocol/privacy`](../fixtures/protocol/privacy/)
+   with structural-rejection and canonical-redaction cases shared by Rust and
+   TypeScript/Node checks.
 10. Document examples and field-level privacy classification.
 
 ### Golden incident fixture set

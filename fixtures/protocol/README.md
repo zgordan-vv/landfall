@@ -13,6 +13,21 @@ can later be sent unchanged through the CLI and ingestion API.
   whether structural JSON Schema validation or typed semantic validation owns
   the rejection, plus the stable error category expected by callers.
 
-Task 2.9 adds hostile redaction/security payloads separately. Keeping them out
-of this initial corpus makes each current invalid fixture diagnose one protocol
-contract violation rather than a mixture of validation and privacy failures.
+Privacy and security payloads live in a separate corpus so each v1 invalid
+fixture diagnoses one protocol violation rather than mixing validation and
+privacy failures.
+
+## Privacy corpus
+
+`privacy/manifest.json` separates two different controls:
+
+- `reject` inputs contain a prohibited field or violate a hard schema bound and
+  must never reach typed persistence;
+- `redact` inputs are structurally valid because secrets were smuggled inside an
+  allowlisted bounded text field. Their paired expected documents replace the
+  complete affected field with `[REDACTED]` and change nothing else.
+
+The fixture checker proves these expectations now. SDK and collector privacy
+implementations must later transform every `redact` input into its paired output
+before persistence; the corpus does not pretend that JSON Schema alone scans
+the contents of allowed strings.

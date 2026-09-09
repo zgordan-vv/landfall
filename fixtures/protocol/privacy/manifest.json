@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0",
+  "redaction_version": "1.0",
+  "replacement": "[REDACTED]",
+  "reject": [
+    {
+      "id": "private-key-field",
+      "input": "reject/private-key-field.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "private_key"
+    },
+    {
+      "id": "seed-phrase-field",
+      "input": "reject/seed-phrase-field.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "seed_phrase"
+    },
+    {
+      "id": "authorization-field",
+      "input": "reject/authorization-field.event.json",
+      "schema": "1.0/events/submission-started.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "authorization"
+    },
+    {
+      "id": "rpc-url-field",
+      "input": "reject/rpc-url-field.event.json",
+      "schema": "1.0/events/submission-started.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "rpc_url"
+    },
+    {
+      "id": "cookie-field",
+      "input": "reject/cookie-field.event.json",
+      "schema": "1.0/events/submission-started.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "cookie"
+    },
+    {
+      "id": "raw-signed-bytes-field",
+      "input": "reject/raw-signed-bytes-field.event.json",
+      "schema": "1.0/events/signing-completed.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "signed_transaction_bytes"
+    },
+    {
+      "id": "oversized-metadata-field",
+      "input": "reject/oversized-metadata-field.event.json",
+      "schema": "1.0/events/trace-created.schema.json",
+      "expected_keyword": "additionalProperties",
+      "prohibited_key": "metadata",
+      "minimum_metadata_bytes": 512
+    },
+    {
+      "id": "oversized-allowed-detail",
+      "input": "reject/oversized-detail.event.json",
+      "schema": "1.0/events/data-quality-detected.schema.json",
+      "expected_keyword": "maxLength"
+    }
+  ],
+  "redact": [
+    {
+      "id": "bearer-in-error-message",
+      "input": "redact/bearer.input.event.json",
+      "expected": "redact/bearer.expected.event.json",
+      "schema": "1.0/events/simulation-completed.schema.json",
+      "pointers": ["/attributes/error/message"],
+      "canaries": ["LF_CANARY_BEARER_TOKEN_DO_NOT_USE"]
+    },
+    {
+      "id": "credential-rpc-url-in-error-message",
+      "input": "redact/rpc-url.input.event.json",
+      "expected": "redact/rpc-url.expected.event.json",
+      "schema": "1.0/events/submission-completed.schema.json",
+      "pointers": ["/attributes/error/message"],
+      "canaries": ["LF_CANARY_RPC_PASSWORD_DO_NOT_USE", "LF_CANARY_RPC_KEY_DO_NOT_USE"]
+    },
+    {
+      "id": "cookie-in-business-detail",
+      "input": "redact/cookie.input.event.json",
+      "expected": "redact/cookie.expected.event.json",
+      "schema": "1.0/events/business-outcome-observed.schema.json",
+      "pointers": ["/attributes/detail"],
+      "canaries": ["LF_CANARY_COOKIE_DO_NOT_USE"]
+    },
+    {
+      "id": "private-key-in-data-quality-detail",
+      "input": "redact/private-key.input.event.json",
+      "expected": "redact/private-key.expected.event.json",
+      "schema": "1.0/events/data-quality-detected.schema.json",
+      "pointers": ["/attributes/detail"],
+      "canaries": ["LF_CANARY_PRIVATE_KEY_DO_NOT_USE"]
+    }
+  ]
+}
