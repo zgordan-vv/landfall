@@ -12,6 +12,7 @@ node scripts/generate-protocol-ts.mjs --check
 node scripts/check-protocol-fixtures.mjs
 node scripts/check-protocol-compatibility.mjs
 node scripts/check-protocol-privacy-fixtures.mjs
+node scripts/check-protocol-privacy-classification.mjs
 
 unregistered_generated_paths=(
     openapi
@@ -26,4 +27,4 @@ for contract_path in "${unregistered_generated_paths[@]}"; do
     fi
 done
 
-printf 'Canonical schemas, generated types, fixtures, compatibility, and privacy rules are current.\n'
+printf 'Canonical schemas, generated types, fixtures, compatibility, and privacy rules are current and fully classified.\n'

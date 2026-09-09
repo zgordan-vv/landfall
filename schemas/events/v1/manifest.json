@@ -35,6 +35,10 @@
     "raw_event_version_mutable": false,
     "implicit_upcasting": false
   },
+  "privacy_classification": {
+    "version": "1.0",
+    "registry": "docs/event-privacy-classification.json"
+  },
   "typescript_generation": {
     "generator": "json-schema-to-typescript",
     "version": "16.0.0",

@@ -1,6 +1,6 @@
 # Landfall Event Protocol Catalog
 
-- **Status:** Phase 2 Tasks 1–9 implementation baseline
+- **Status:** Phase 2 complete (Tasks 1–10)
 - **Wire version:** `1.0`
 - **Date:** 2026-09-08
 - **Related decisions:** [ADR-002](adr/002-immutable-event-inputs-and-relational-projections.md), [ADR-003](adr/003-business-action-trace-attempt-event-and-alias-identifiers.md), [ADR-004](adr/004-privacy-modes-and-signed-byte-fingerprints.md), [ADR-005](adr/005-json-schema-event-contract-and-code-generation.md)
@@ -217,18 +217,18 @@ events and their projection jobs are durably committed together.
 The catalog can therefore express every Phase 2 golden incident without storing
 raw signed transactions or treating a derived diagnosis as source evidence.
 
-## 8. Deferred to the next protocol tasks
+## 8. Supporting protocol contracts
 
-The remaining protocol tasks define and strengthen:
-
-1. compatibility rules, privacy classifications, and shared valid/invalid
-   fixtures.
+The protocol baseline is completed by the exact-version
+[compatibility policy](schema-version-compatibility.md), executable shared
+[fixtures](../fixtures/protocol/README.md), and the
+[field-level privacy classification](event-privacy-classification.md).
 
 Canonical large-integer representation and bounds are defined in the
 [Decimal-String Contract](decimal-string-rules.md). Closed protocol-controlled
 vocabularies and their meanings are defined in the
 [Event Enum Contract](event-enum-contract.md).
 
-Those tasks may refine attribute names and composition, but they may not change
-the evidence meaning, identity boundaries, or raw-versus-derived distinction
-without updating this catalog and its governing ADRs.
+Future protocol versions may refine attribute names and composition, but they
+may not change the evidence meaning, identity boundaries, or raw-versus-derived
+distinction without updating this catalog and its governing ADRs.

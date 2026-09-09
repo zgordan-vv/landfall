@@ -1,0 +1,241 @@
+{
+  "classification_version": "1.0",
+  "schema_version": "1.0",
+  "classes": {
+    "container": {
+      "sensitivity": "structural",
+      "standard": "validate_children",
+      "full": "validate_children",
+      "strict": "validate_children"
+    },
+    "system_identifier": {
+      "sensitivity": "moderate",
+      "standard": "store",
+      "full": "store",
+      "strict": "store"
+    },
+    "customer_context": {
+      "sensitivity": "moderate",
+      "standard": "store_bounded",
+      "full": "store_bounded",
+      "strict": "store_bounded"
+    },
+    "timing": {
+      "sensitivity": "moderate",
+      "standard": "store",
+      "full": "store",
+      "strict": "store"
+    },
+    "normalized_telemetry": {
+      "sensitivity": "low",
+      "standard": "store",
+      "full": "store",
+      "strict": "store"
+    },
+    "public_chain_identifier": {
+      "sensitivity": "high",
+      "standard": "store",
+      "full": "store",
+      "strict": "local_only"
+    },
+    "public_chain_measurement": {
+      "sensitivity": "moderate",
+      "standard": "store",
+      "full": "store",
+      "strict": "store"
+    },
+    "pseudonymous_fingerprint": {
+      "sensitivity": "high",
+      "standard": "store_scoped",
+      "full": "store_scoped",
+      "strict": "store_scoped"
+    },
+    "bounded_free_text": {
+      "sensitivity": "high",
+      "standard": "redact_then_store",
+      "full": "redact_then_store",
+      "strict": "redact_then_store"
+    }
+  },
+  "fields": {
+    "batch": {
+      "batch_id": "system_identifier",
+      "sent_at": "timing",
+      "events": "container"
+    },
+    "envelope": {
+      "schema_version": "normalized_telemetry",
+      "event_id": "system_identifier",
+      "event_type": "normalized_telemetry",
+      "occurred_at": "timing",
+      "monotonic_ns": "timing",
+      "project_id": "system_identifier",
+      "environment_id": "system_identifier",
+      "trace_id": "system_identifier",
+      "business_action_id": "system_identifier",
+      "source": "container",
+      "privacy_mode": "normalized_telemetry",
+      "privacy_policy_version": "normalized_telemetry",
+      "redaction_version": "normalized_telemetry",
+      "attributes": "container"
+    },
+    "source": {
+      "kind": "normalized_telemetry",
+      "name": "customer_context",
+      "version": "customer_context",
+      "instance_id": "system_identifier",
+      "service": "customer_context",
+      "app_version": "customer_context"
+    },
+    "normalized_error": {
+      "category": "normalized_telemetry",
+      "code": "customer_context",
+      "message": "bounded_free_text",
+      "instruction_index": "public_chain_measurement",
+      "custom_code": "normalized_telemetry"
+    },
+    "signed_bytes_fingerprint": {
+      "algorithm": "normalized_telemetry",
+      "key_id": "system_identifier",
+      "value_hex": "pseudonymous_fingerprint"
+    }
+  },
+  "event_attributes": {
+    "landfall.data_quality.detected": {
+      "category": "normalized_telemetry",
+      "severity": "normalized_telemetry",
+      "impact": "normalized_telemetry",
+      "detail": "bounded_free_text",
+      "attempt_id": "system_identifier",
+      "batch_id": "system_identifier",
+      "source_event_id": "system_identifier",
+      "field": "customer_context"
+    },
+    "solana.blockhash.acquired": {
+      "route_id": "system_identifier",
+      "duration_ns": "timing",
+      "result": "normalized_telemetry",
+      "recent_blockhash": "public_chain_identifier",
+      "last_valid_block_height": "public_chain_measurement",
+      "context_slot": "public_chain_measurement",
+      "error": "container"
+    },
+    "solana.business_outcome.observed": {
+      "outcome": "normalized_telemetry",
+      "reason": "customer_context",
+      "detail": "bounded_free_text"
+    },
+    "solana.confirmation_wait.completed": {
+      "wait_id": "system_identifier",
+      "duration_ns": "timing",
+      "result": "normalized_telemetry",
+      "observed_commitment": "public_chain_measurement",
+      "error": "container"
+    },
+    "solana.confirmation_wait.started": {
+      "wait_id": "system_identifier",
+      "commitment": "public_chain_measurement",
+      "timeout_ns": "timing",
+      "search_transaction_history": "normalized_telemetry"
+    },
+    "solana.execution.enriched": {
+      "observer_source_id": "system_identifier",
+      "signature": "public_chain_identifier",
+      "slot": "public_chain_measurement",
+      "commitment": "public_chain_measurement",
+      "execution_result": "normalized_telemetry",
+      "block_time": "timing",
+      "fee_lamports": "public_chain_measurement",
+      "compute_units_consumed": "public_chain_measurement",
+      "error": "container",
+      "logs_present": "normalized_telemetry"
+    },
+    "solana.signing.completed": {
+      "signing_id": "system_identifier",
+      "duration_ns": "timing",
+      "result": "normalized_telemetry",
+      "signature": "public_chain_identifier",
+      "signed_bytes_fingerprint": "container",
+      "error": "container"
+    },
+    "solana.signing.started": {
+      "signing_id": "system_identifier",
+      "transaction_version": "normalized_telemetry",
+      "required_signatures": "normalized_telemetry"
+    },
+    "solana.simulation.completed": {
+      "simulation_id": "system_identifier",
+      "route_id": "system_identifier",
+      "duration_ns": "timing",
+      "transport_result": "normalized_telemetry",
+      "rpc_result": "normalized_telemetry",
+      "units_consumed": "public_chain_measurement",
+      "error": "container",
+      "logs_present": "normalized_telemetry"
+    },
+    "solana.simulation.started": {
+      "simulation_id": "system_identifier",
+      "route_id": "system_identifier",
+      "commitment": "public_chain_measurement",
+      "sig_verify": "normalized_telemetry",
+      "replace_recent_blockhash": "normalized_telemetry",
+      "min_context_slot": "public_chain_measurement"
+    },
+    "solana.status.observed": {
+      "observer_source_id": "system_identifier",
+      "source_result": "normalized_telemetry",
+      "duration_ns": "timing",
+      "signature": "public_chain_identifier",
+      "commitment": "public_chain_measurement",
+      "slot": "public_chain_measurement",
+      "confirmations": "public_chain_measurement",
+      "block_height": "public_chain_measurement",
+      "error": "container"
+    },
+    "solana.submission.completed": {
+      "attempt_id": "system_identifier",
+      "route_id": "system_identifier",
+      "duration_ns": "timing",
+      "transport_result": "normalized_telemetry",
+      "rpc_result": "normalized_telemetry",
+      "signature": "public_chain_identifier",
+      "route_receipt": "customer_context",
+      "error": "container"
+    },
+    "solana.submission.retry_scheduled": {
+      "previous_attempt_id": "system_identifier",
+      "retry_sequence": "normalized_telemetry",
+      "delay_ns": "timing",
+      "reason": "customer_context",
+      "next_route_id": "system_identifier"
+    },
+    "solana.submission.started": {
+      "attempt_id": "system_identifier",
+      "attempt_sequence": "normalized_telemetry",
+      "route_id": "system_identifier",
+      "encoding": "normalized_telemetry",
+      "skip_preflight": "normalized_telemetry",
+      "preflight_commitment": "public_chain_measurement",
+      "max_retries": "normalized_telemetry",
+      "min_context_slot": "public_chain_measurement"
+    },
+    "solana.trace.created": {
+      "flow": "customer_context",
+      "transaction_version": "normalized_telemetry",
+      "uses_durable_nonce": "normalized_telemetry"
+    }
+  },
+  "prohibited_fields": [
+    "private_key",
+    "seed_phrase",
+    "signed_transaction_bytes",
+    "raw_transaction",
+    "authorization",
+    "cookie",
+    "set_cookie",
+    "headers",
+    "metadata",
+    "endpoint_url",
+    "rpc_url"
+  ]
+}

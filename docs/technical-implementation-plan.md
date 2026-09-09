@@ -466,6 +466,9 @@ Define the immutable language that connects customer applications, Rust services
    with structural-rejection and canonical-redaction cases shared by Rust and
    TypeScript/Node checks.
 10. Document examples and field-level privacy classification.
+    Completed in [Event examples and field-level privacy
+    classification](event-privacy-classification.md), backed by a
+    machine-readable registry and schema-drift check.
 
 ### Golden incident fixture set
 
