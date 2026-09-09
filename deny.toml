@@ -11,6 +11,9 @@ ignore = []
 [licenses]
 allow = [
     "Apache-2.0",
+    # Required in addition to Apache-2.0 by unicode-ident, a transitive
+    # dependency of the pinned Serde/thiserror procedural macros.
+    "Unicode-3.0",
 ]
 confidence-threshold = 0.93
 

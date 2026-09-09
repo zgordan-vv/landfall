@@ -10,6 +10,13 @@ publish = false
 default = []
 
 [dependencies]
+serde.workspace = true
+thiserror.workspace = true
+time.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true

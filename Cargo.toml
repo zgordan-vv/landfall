@@ -23,6 +23,11 @@ landfall-protocol = { path = "crates/landfall-protocol", default-features = fals
 landfall-report = { path = "crates/landfall-report", default-features = false }
 landfall-server = { path = "crates/landfall-server", default-features = false }
 landfall-storage = { path = "crates/landfall-storage", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+time = { version = "0.3", features = ["formatting", "parsing"] }
+uuid = { version = "1.0", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 future_incompatible = { level = "warn", priority = -1 }

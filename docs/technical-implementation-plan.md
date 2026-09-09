@@ -450,7 +450,8 @@ Define the immutable language that connects customer applications, Rust services
    Completed: [Decimal-String Contract](decimal-string-rules.md).
 4. Define enums for privacy mode, commitment, transport result, RPC result, and
    normalized errors. Completed: [Event Enum Contract](event-enum-contract.md).
-5. Implement Rust wire types in `landfall-protocol`.
+5. Implement Rust wire types in `landfall-protocol`. Completed in
+   [`crates/landfall-protocol`](../crates/landfall-protocol/).
 6. Generate or verify `protocol-ts` types.
 7. Create valid and invalid fixture corpus.
 8. Add schema version compatibility rules.
