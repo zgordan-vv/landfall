@@ -8,7 +8,8 @@ use landfall_protocol::{
 
 use super::{
     CohortId, DiagnosticId, DomainInvariantError, EvidenceSet, ExecutionMetadataId,
-    LifecycleEvidence, RecommendationId, SimulationId, StatusObservationId,
+    LifecycleEvidence, RecommendationId, SimulationId, StateInvariantError, StatusObservationId,
+    TraceState,
 };
 
 /// One explicit customer intention that may contain replacement traces.
@@ -75,6 +76,7 @@ pub struct TransactionTrace {
     environment_id: EnvironmentId,
     business_action_id: Option<BusinessActionId>,
     evidence: EvidenceSet,
+    state: TraceState,
 }
 
 impl TransactionTrace {
@@ -91,7 +93,26 @@ impl TransactionTrace {
             environment_id,
             business_action_id,
             evidence: EvidenceSet::new(source_event),
+            state: TraceState::default(),
         }
+    }
+
+    /// Creates a trace with an already reduced, validated state.
+    pub fn with_state(
+        id: TraceId,
+        environment_id: EnvironmentId,
+        business_action_id: Option<BusinessActionId>,
+        evidence: EvidenceSet,
+        state: TraceState,
+    ) -> Result<Self, StateInvariantError> {
+        state.validate()?;
+        Ok(Self {
+            id,
+            environment_id,
+            business_action_id,
+            evidence,
+            state,
+        })
     }
 
     /// Adds another source event, deduplicating transport replays by event ID.
@@ -121,6 +142,12 @@ impl TransactionTrace {
     #[must_use]
     pub const fn evidence(&self) -> &EvidenceSet {
         &self.evidence
+    }
+
+    /// Current independently modeled state dimensions.
+    #[must_use]
+    pub const fn state(&self) -> TraceState {
+        self.state
     }
 }
 

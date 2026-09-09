@@ -7,6 +7,7 @@
 mod entities;
 mod evidence;
 mod ids;
+mod state;
 
 pub use entities::{
     AnalysisScope, BusinessAction, Diagnostic, ExecutionMetadata, Recommendation, Simulation,
@@ -16,6 +17,10 @@ pub use evidence::{EvidenceSet, LifecycleEvidence};
 pub use ids::{
     CohortId, DiagnosticId, DomainIdError, ExecutionMetadataId, RecommendationId, SimulationId,
     StatusObservationId,
+};
+pub use state::{
+    ApplicationOutcome, ExecutionState, LandingState, LifecycleStage, ObservationCompleteness,
+    StateInvariantError, TraceState,
 };
 
 pub use landfall_protocol::{

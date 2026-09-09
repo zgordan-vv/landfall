@@ -529,6 +529,9 @@ Implement Landfall's most important intellectual property independently of netwo
    - execution result;
    - application outcome;
    - observation completeness.
+   Completed in [`domain/state.rs`](../crates/landfall-core/src/domain/state.rs)
+   with a validated `TraceState` product type and explicit terminal-metric
+   eligibility without collapsing network, execution, and application claims.
 3. Implement canonical event ordering with clock-quality warnings.
 4. Implement the pure trace reducer.
 5. Implement retry versus replacement grouping rules.
