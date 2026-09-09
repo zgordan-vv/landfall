@@ -520,6 +520,9 @@ Implement Landfall's most important intellectual property independently of netwo
    - execution metadata;
    - diagnostic;
    - recommendation.
+   Completed in [`landfall-core::domain`](../crates/landfall-core/src/domain/)
+   with typed UUIDv7 and source-derived IDs, non-empty deduplicated evidence,
+   partial lifecycle evidence, and checked business-action/trace boundaries.
 2. Define orthogonal state dimensions:
    - lifecycle stage;
    - landing state;
