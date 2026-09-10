@@ -547,6 +547,10 @@ Implement Landfall's most important intellectual property independently of netwo
    replacement links, environment-scoped signature/fingerprint comparison,
    alias-candidate classification, and fail-closed identity conflicts.
 6. Implement data-quality grading.
+   Completed in [`landfall-core::data_quality`](../crates/landfall-core/src/data_quality/)
+   with the documented [`data-quality-v1`](data-quality-grading.md) rubric,
+   contextual required/optional evidence checks, deduplicated evidence-linked
+   findings, privacy-aware gaps, and deterministic A–F scoring.
 7. Implement initial confirmed rules:
    - simulation error;
    - RPC rejection;
