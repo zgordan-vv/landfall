@@ -657,6 +657,9 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    Implemented by the CLI in one in-memory trace analysis pipeline, preserving
    each product and its evidence links for the subsequent report model.
 5. Build a stable report-domain model.
+   Implemented in `landfall-report` with presentation-neutral `ReportDocument`,
+   `TraceReport`, semantic version manifest, stable state tokens, and pipeline
+   count fields.
 6. Render structured JSON.
 7. Render self-contained HTML with evidence timeline and limitations.
 8. Add `--privacy-profile` export redaction.
