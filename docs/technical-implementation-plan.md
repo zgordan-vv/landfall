@@ -645,6 +645,9 @@ Produce the first end-to-end usable artifact before building continuous infrastr
 ### Tasks
 
 1. Implement `landfall ingest <ndjson>`.
+   Completed in `landfall-cli` with streaming line-by-line decoding, semantic
+   validation, stdin support via `-`, stable JSON count output, and line-aware
+   errors.
 2. Stream and validate NDJSON rather than load the entire file.
 3. Group events into canonical traces and aliases in memory.
 4. Run reducer, data quality, diagnoses, recommendations, and metrics.
