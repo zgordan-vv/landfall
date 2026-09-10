@@ -31,6 +31,25 @@ pub struct DiagnosticFinding {
 }
 
 impl DiagnosticFinding {
+    /// Constructs a finding for deterministic integration tests and adapters.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn test_new(
+        id: DiagnosticId,
+        claim_key: DiagnosticClaimKey,
+        certainty: DiagnosticCertainty,
+        evidence: EvidenceSet,
+    ) -> Self {
+        Self {
+            id,
+            rule_id: DiagnosticRuleId::MissingEvidence,
+            rule_set_version: DIAGNOSTIC_RULE_SET_VERSION,
+            claim_key,
+            certainty,
+            evidence,
+            unknown_reason: None,
+        }
+    }
     /// Deterministic finding identity.
     #[must_use]
     pub const fn id(&self) -> DiagnosticId {

@@ -5,4 +5,5 @@ pub mod diagnostics;
 pub mod domain;
 pub mod grouping;
 pub mod ordering;
+pub mod recommendations;
 pub mod reducer;
