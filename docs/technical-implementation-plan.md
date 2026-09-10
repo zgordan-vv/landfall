@@ -533,6 +533,9 @@ Implement Landfall's most important intellectual property independently of netwo
    with a validated `TraceState` product type and explicit terminal-metric
    eligibility without collapsing network, execution, and application claims.
 3. Implement canonical event ordering with clock-quality warnings.
+   Completed in [`landfall-core::ordering`](../crates/landfall-core/src/ordering/)
+   with semantic and comparable-monotonic constraints, stable wall/receive/ID
+   fallback, duplicate handling, and explicit clock-quality warnings.
 4. Implement the pure trace reducer.
 5. Implement retry versus replacement grouping rules.
 6. Implement data-quality grading.

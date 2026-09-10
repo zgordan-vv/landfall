@@ -13,5 +13,8 @@ default = []
 landfall-protocol.workspace = true
 uuid.workspace = true
 
+[dev-dependencies]
+serde_json.workspace = true
+
 [lints]
 workspace = true
