@@ -542,6 +542,10 @@ Implement Landfall's most important intellectual property independently of netwo
    execution/application/completeness dimensions, expiry inference, evidence
    retention, explicit ambiguity warnings, and a stable reducer version.
 5. Implement retry versus replacement grouping rules.
+   Completed in [`landfall-core::grouping`](../crates/landfall-core/src/grouping/)
+   with attempt-ID grouping, retry-intent separation, explicit business-action
+   replacement links, environment-scoped signature/fingerprint comparison,
+   alias-candidate classification, and fail-closed identity conflicts.
 6. Implement data-quality grading.
 7. Implement initial confirmed rules:
    - simulation error;
