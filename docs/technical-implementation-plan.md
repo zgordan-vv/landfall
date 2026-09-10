@@ -654,6 +654,8 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    in-memory `TraceGrouping` reconstruction, and pairwise alias/replacement
    classification within project/environment boundaries.
 4. Run reducer, data quality, diagnoses, recommendations, and metrics.
+   Implemented by the CLI in one in-memory trace analysis pipeline, preserving
+   each product and its evidence links for the subsequent report model.
 5. Build a stable report-domain model.
 6. Render structured JSON.
 7. Render self-contained HTML with evidence timeline and limitations.

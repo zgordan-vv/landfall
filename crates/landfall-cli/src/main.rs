@@ -33,9 +33,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let accepted = events.len();
     let grouped = group_traces(events)?;
     println!(
-        "{{\"accepted_events\":{accepted},\"traces\":{},\"aliases\":{}}}",
+        "{{\"accepted_events\":{accepted},\"traces\":{},\"aliases\":{},\"analyses\":{}}}",
         grouped.traces.len(),
-        grouped.aliases.len()
+        grouped.aliases.len(),
+        grouped.analyses.len()
     );
     Ok(())
 }

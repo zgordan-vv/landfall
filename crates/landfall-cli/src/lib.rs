@@ -3,8 +3,16 @@
 use std::{collections::BTreeMap, io::BufRead};
 
 use landfall_core::{
+    data_quality::evaluate_data_quality,
+    diagnostics::{
+        ProbableDiagnosticConfig, evaluate_confirmed_diagnostics, evaluate_probable_diagnostics,
+        evaluate_unknown_diagnostics,
+    },
     grouping::{TraceGrouping, TraceRelationship, classify_trace_relationship, group_trace},
+    metrics::{TraceMetricFlags, trace_metric_flags},
     ordering::{CollectedEvent, OrderingConfig, canonical_order},
+    recommendations::{AdvisoryRecommendation, generate_recommendations},
+    reducer::{TraceProjection, reduce_trace},
 };
 use landfall_protocol::{TraceId, WireEvent};
 
@@ -88,6 +96,27 @@ pub struct InMemoryTraceGroups {
     pub traces: BTreeMap<TraceId, TraceGrouping>,
     /// Pairwise relationships proven by signed identity evidence.
     pub aliases: Vec<(TraceId, TraceId, TraceRelationship)>,
+    /// Derived offline analysis products by trace.
+    pub analyses: BTreeMap<TraceId, TraceAnalysis>,
+}
+
+/// Analysis products generated for one canonical trace.
+#[derive(Debug)]
+pub struct TraceAnalysis {
+    /// Reduced state projection.
+    pub projection: TraceProjection,
+    /// Number of data-quality findings.
+    pub data_quality_findings: usize,
+    /// Number of confirmed diagnostic findings.
+    pub confirmed_diagnostics: usize,
+    /// Number of probable diagnostic findings.
+    pub probable_diagnostics: usize,
+    /// Number of unknown diagnostic findings.
+    pub unknown_diagnostics: usize,
+    /// Evidence-linked advisory recommendations.
+    pub recommendations: Vec<AdvisoryRecommendation>,
+    /// Pure metric flags.
+    pub metrics: TraceMetricFlags,
 }
 
 /// Canonicalizes and groups a bounded in-memory event set by trace identity.
@@ -100,6 +129,7 @@ pub fn group_traces(
         by_trace.entry(trace).or_default().push(event);
     }
     let mut traces = BTreeMap::new();
+    let mut analyses = BTreeMap::new();
     for (trace, events) in by_trace {
         let ordered = canonical_order(
             events.into_iter().map(|event| {
@@ -108,7 +138,34 @@ pub fn group_traces(
             }),
             OrderingConfig::default(),
         )?;
-        traces.insert(trace, group_trace(&ordered)?);
+        let grouping = group_trace(&ordered)?;
+        let projection = reduce_trace(&ordered)?;
+        let quality = evaluate_data_quality(&ordered, &projection, &grouping)?;
+        let confirmed = evaluate_confirmed_diagnostics(&ordered, &projection);
+        let probable = evaluate_probable_diagnostics(
+            &ordered,
+            &projection,
+            &grouping,
+            ProbableDiagnosticConfig::default(),
+        );
+        let unknown = evaluate_unknown_diagnostics(&ordered, &projection, &grouping);
+        let mut findings = confirmed.clone();
+        findings.extend(probable.clone());
+        findings.extend(unknown.clone());
+        let recommendations = generate_recommendations(trace, &findings);
+        analyses.insert(
+            trace,
+            TraceAnalysis {
+                metrics: trace_metric_flags(&projection),
+                projection,
+                data_quality_findings: quality.findings().len(),
+                confirmed_diagnostics: confirmed.len(),
+                probable_diagnostics: probable.len(),
+                unknown_diagnostics: unknown.len(),
+                recommendations,
+            },
+        );
+        traces.insert(trace, grouping);
     }
     let values = traces.values().collect::<Vec<_>>();
     let mut aliases = Vec::new();
@@ -123,7 +180,11 @@ pub fn group_traces(
             }
         }
     }
-    Ok(InMemoryTraceGroups { traces, aliases })
+    Ok(InMemoryTraceGroups {
+        traces,
+        aliases,
+        analyses,
+    })
 }
 
 fn trace_id(event: &WireEvent) -> Option<TraceId> {
