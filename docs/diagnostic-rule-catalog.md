@@ -121,3 +121,11 @@ validity-window evidence) and an immutable event anchor when one exists.
 
 These findings describe what Landfall cannot establish from the retained trace;
 they do not assert that the transaction failed or identify an external cause.
+
+## Recommendation mapping
+
+The recommendation layer is advisory-only (`recommendation-rules-v1`). It maps
+supported findings to stable actions—compute headroom, signing delay, RPC route,
+retry policy, or evidence coverage—and copies both the diagnostic ID and source
+event evidence into the recommendation. No recommendation mutates, signs,
+submits, or retries a transaction.

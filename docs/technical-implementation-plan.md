@@ -578,6 +578,10 @@ Implement Landfall's most important intellectual property independently of netwo
    with `RULE-UNKNOWN-001`, explicit reason codes, `Unknown` certainty,
    immutable event anchors, and tests proving that evidence gaps do not become
    causal failure claims.
+10. Implement advisory recommendations and evidence references.
+    Completed in [`landfall-core::recommendations`](../crates/landfall-core/src/recommendations.rs)
+    with versioned recommendation keys, diagnostic links, immutable evidence
+    propagation, and advisory-only behavior.
 8. Implement initial probable rules:
    - excessive signing delay;
    - low compute headroom;
