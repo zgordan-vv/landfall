@@ -650,6 +650,9 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    errors.
 2. Stream and validate NDJSON rather than load the entire file.
 3. Group events into canonical traces and aliases in memory.
+   Completed in `landfall-cli` with trace partitioning, canonical ordering,
+   in-memory `TraceGrouping` reconstruction, and pairwise alias/replacement
+   classification within project/environment boundaries.
 4. Run reducer, data quality, diagnoses, recommendations, and metrics.
 5. Build a stable report-domain model.
 6. Render structured JSON.
