@@ -1,5 +1,7 @@
 //! Versioned deterministic diagnostic rules over one trace projection.
 
+use std::collections::BTreeMap;
+
 use landfall_protocol::{
     ConfirmationWaitResult, EventId, ExecutionResult, NormalizedErrorCategory, SimulationRpcResult,
     StatusSourceResult, SubmissionRpcResult, TransportResult, WireEvent,
@@ -7,6 +9,7 @@ use landfall_protocol::{
 
 use crate::{
     domain::{DiagnosticId, EvidenceSet, ExecutionState, LandingState},
+    grouping::TraceGrouping,
     ordering::CanonicalOrder,
     reducer::TraceProjection,
 };
@@ -78,6 +81,16 @@ pub enum DiagnosticRuleId {
     ValidityWindowPassed,
     /// Local timeout later contradicted by network success evidence.
     ClientTimeoutNetworkSuccess,
+    /// Signing consumed an unusually large local duration.
+    ExcessiveSigningDelay,
+    /// Simulation consumed a high absolute amount of compute.
+    LowComputeHeadroom,
+    /// One route shows repeated transport or throttling failures.
+    RouteDegradationSignal,
+    /// A retry was scheduled after an ambiguous or unsuccessful attempt.
+    UnsafeRedundantRetry,
+    /// Fee was below comparable local fee observations.
+    FeeLikelyUncompetitive,
 }
 
 impl DiagnosticRuleId {
@@ -91,6 +104,11 @@ impl DiagnosticRuleId {
             Self::ComputeBudgetFailure => "RULE-CU-001",
             Self::ValidityWindowPassed => "RULE-EXP-001",
             Self::ClientTimeoutNetworkSuccess => "RULE-TIMEOUT-001",
+            Self::ExcessiveSigningDelay => "RULE-SIGN-001",
+            Self::LowComputeHeadroom => "RULE-CU-002",
+            Self::RouteDegradationSignal => "RULE-ROUTE-001",
+            Self::UnsafeRedundantRetry => "RULE-RETRY-001",
+            Self::FeeLikelyUncompetitive => "RULE-FEE-001",
         }
     }
 }
@@ -110,6 +128,16 @@ pub enum DiagnosticClaimKey {
     ExpiredWithoutObservedInclusion,
     /// Client wait/submission timed out, but the transaction later landed successfully.
     ClientTimeoutFollowedByNetworkSuccess,
+    /// Local signing consumed a configured excessive duration.
+    ExcessiveSigningDelay,
+    /// Simulation consumed a high amount of compute without direct failure.
+    LowComputeHeadroom,
+    /// Repeated route failures suggest degraded RPC/network service.
+    RouteDegradationSignal,
+    /// Retry behavior is potentially unsafe or redundant.
+    UnsafeRedundantRetry,
+    /// Priority fee is probably uncompetitive (requires fee-market evidence).
+    FeeLikelyUncompetitive,
 }
 
 /// Certainty for a specific diagnostic claim.
@@ -117,6 +145,117 @@ pub enum DiagnosticClaimKey {
 pub enum DiagnosticCertainty {
     /// The category is directly supported by retained evidence.
     Confirmed,
+    /// The evidence supports a risk signal, but does not prove causality.
+    Probable,
+}
+
+/// Conservative thresholds for the initial probable rule set.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProbableDiagnosticConfig {
+    /// Signing duration at or above this value is considered excessive.
+    pub excessive_signing_duration_ns: u64,
+    /// Absolute simulated compute consumption considered low-headroom risk when
+    /// no requested limit was retained by the current protocol version.
+    pub low_compute_units_threshold: u64,
+    /// Number of route failures required before emitting a degradation signal.
+    pub route_failure_count_threshold: usize,
+}
+
+impl Default for ProbableDiagnosticConfig {
+    fn default() -> Self {
+        Self {
+            excessive_signing_duration_ns: 20_000_000_000,
+            low_compute_units_threshold: 90_000,
+            route_failure_count_threshold: 2,
+        }
+    }
+}
+
+/// Evaluates probable risk signals. Missing fee-market evidence intentionally
+/// produces no fee finding; a local trace cannot justify that claim.
+#[must_use]
+pub fn evaluate_probable_diagnostics(
+    events: &CanonicalOrder,
+    projection: &TraceProjection,
+    grouping: &TraceGrouping,
+    config: ProbableDiagnosticConfig,
+) -> Vec<DiagnosticFinding> {
+    let mut findings = Vec::new();
+    let has_direct_compute_failure = evaluate_confirmed_diagnostics(events, projection)
+        .iter()
+        .any(|finding| finding.claim_key() == DiagnosticClaimKey::ComputeBudgetFailure);
+
+    for collected in events.events() {
+        match &collected.event {
+            WireEvent::SigningCompleted(event)
+                if event.attributes.result == landfall_protocol::SigningResult::Completed
+                    && event.attributes.duration_ns.get()
+                        >= config.excessive_signing_duration_ns =>
+            {
+                push_probable(
+                    &mut findings,
+                    event.event_id,
+                    DiagnosticRuleId::ExcessiveSigningDelay,
+                    DiagnosticClaimKey::ExcessiveSigningDelay,
+                );
+            }
+            WireEvent::SimulationCompleted(event)
+                if !has_direct_compute_failure
+                    && event.attributes.rpc_result == SimulationRpcResult::Succeeded
+                    && event
+                        .attributes
+                        .units_consumed
+                        .is_some_and(|units| units.get() >= config.low_compute_units_threshold) =>
+            {
+                push_probable(
+                    &mut findings,
+                    event.event_id,
+                    DiagnosticRuleId::LowComputeHeadroom,
+                    DiagnosticClaimKey::LowComputeHeadroom,
+                );
+            }
+            _ => {}
+        }
+    }
+
+    let mut route_failures = BTreeMap::<landfall_protocol::RouteId, Vec<EventId>>::new();
+    for collected in events.events() {
+        if let WireEvent::SubmissionCompleted(event) = &collected.event {
+            let degraded = matches!(
+                event.attributes.transport_result,
+                TransportResult::Timeout | TransportResult::ConnectionFailed
+            ) || matches!(
+                event.attributes.rpc_result,
+                SubmissionRpcResult::RateLimited
+            );
+            if degraded {
+                route_failures
+                    .entry(event.attributes.route_id)
+                    .or_default()
+                    .push(event.event_id);
+            }
+        }
+    }
+    if let Some(evidence) = route_failures
+        .values()
+        .find(|ids| ids.len() >= config.route_failure_count_threshold)
+        .and_then(|ids| ids.last())
+    {
+        push_probable(
+            &mut findings,
+            *evidence,
+            DiagnosticRuleId::RouteDegradationSignal,
+            DiagnosticClaimKey::RouteDegradationSignal,
+        );
+    }
+
+    if grouping.has_retries()
+        && events.events().iter().any(|collected| matches!(&collected.event, WireEvent::SubmissionCompleted(event) if event.attributes.transport_result != TransportResult::ResponseReceived))
+        && let Some(evidence) = events.events().iter().rev().find_map(|collected| matches!(&collected.event, WireEvent::SubmissionStarted(_) | WireEvent::SubmissionCompleted(_)).then_some(collected.event_id()))
+    {
+        push_probable(&mut findings, evidence, DiagnosticRuleId::UnsafeRedundantRetry, DiagnosticClaimKey::UnsafeRedundantRetry);
+    }
+    findings
 }
 
 /// Evaluates the initial confirmed diagnostic rules for one trace.
@@ -230,6 +369,25 @@ fn push_finding(
         claim_key,
         certainty: DiagnosticCertainty::Confirmed,
         evidence,
+    });
+}
+
+fn push_probable(
+    findings: &mut Vec<DiagnosticFinding>,
+    evidence_event_id: EventId,
+    rule_id: DiagnosticRuleId,
+    claim_key: DiagnosticClaimKey,
+) {
+    let Ok(id) = DiagnosticId::try_from(evidence_event_id.into_uuid()) else {
+        return;
+    };
+    findings.push(DiagnosticFinding {
+        id,
+        rule_id,
+        rule_set_version: DIAGNOSTIC_RULE_SET_VERSION,
+        claim_key,
+        certainty: DiagnosticCertainty::Probable,
+        evidence: EvidenceSet::new(evidence_event_id),
     });
 }
 

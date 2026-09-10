@@ -568,6 +568,16 @@ Implement Landfall's most important intellectual property independently of netwo
    - low compute headroom;
    - route degradation signal;
    - unsafe/redundant retry;
+   - fee likely uncompetitive only with fee-market evidence.
+   Completed in [`landfall-core::diagnostics`](../crates/landfall-core/src/diagnostics/)
+   with configurable conservative thresholds, probable certainty, explicit
+   evidence gating, and trace-level golden tests. Fee diagnosis remains silent
+   until the required comparable fee observations are available.
+8. Implement initial probable rules:
+   - excessive signing delay;
+   - low compute headroom;
+   - route degradation signal;
+   - unsafe/redundant retry;
    - fee likely uncompetitive only when required evidence exists.
 9. Implement unknown/missing-evidence generation.
 10. Implement advisory recommendations and evidence references.

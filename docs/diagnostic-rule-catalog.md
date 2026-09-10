@@ -74,3 +74,38 @@ Result: `client_timeout_followed_by_network_success`.
 Why: client timeout and network success are separate facts. This prevents a UI or
 report from calling the transaction failed just because the application stopped
 waiting.
+
+## Probable Rules
+
+Probable rules are risk signals, not proofs of causality. They are emitted only
+when the local trace contains the required evidence.
+
+### RULE-SIGN-001 — Excessive signing delay
+
+Emitted for a completed signing operation lasting at least 20 seconds. The
+signal highlights validity-window consumption; it does not claim expiration.
+
+### RULE-CU-002 — Low compute headroom
+
+Emitted when successful simulation reports at least 90,000 consumed units and
+no direct compute failure exists. The current protocol does not retain a
+requested compute limit, so this version deliberately uses an absolute,
+conservative threshold and labels the result probable.
+
+### RULE-ROUTE-001 — Route degradation signal
+
+Emitted after at least two submission completions on one route show transport
+timeouts, connection failures, or rate limiting. This is a route-local signal,
+not a network-wide availability claim.
+
+### RULE-RETRY-001 — Unsafe or redundant retry signal
+
+Emitted when multiple attempts exist and at least one earlier submission ended
+without a response. The signal calls for review of the retry policy; it does not
+assert that a validator processed the earlier request.
+
+### RULE-FEE-001 — Fee likely uncompetitive
+
+Not emitted by the current trace-only evaluator. It requires a comparable
+fee-market sample, requested priority fee, and time-window alignment; without
+those inputs Landfall must remain silent rather than infer a fee cause.
