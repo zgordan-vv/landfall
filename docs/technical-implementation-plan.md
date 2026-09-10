@@ -582,6 +582,10 @@ Implement Landfall's most important intellectual property independently of netwo
     Completed in [`landfall-core::recommendations`](../crates/landfall-core/src/recommendations.rs)
     with versioned recommendation keys, diagnostic links, immutable evidence
     propagation, and advisory-only behavior.
+11. Implement metric definitions as pure functions over projections.
+    Completed in [`landfall-core::metrics`](../crates/landfall-core/src/metrics.rs)
+    with versioned terminal-denominator, landing, execution, and application
+    flags plus deterministic eligibility helpers.
 8. Implement initial probable rules:
    - excessive signing delay;
    - low compute headroom;
