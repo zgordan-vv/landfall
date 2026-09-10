@@ -10,6 +10,7 @@ publish = false
 default = []
 
 [dependencies]
+landfall-core.workspace = true
 landfall-protocol.workspace = true
 serde_json.workspace = true
 

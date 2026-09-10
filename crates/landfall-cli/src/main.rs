@@ -6,7 +6,7 @@ use std::{
     io::{self, BufReader},
 };
 
-use landfall_cli::stream_ndjson;
+use landfall_cli::{group_traces, ingest_ndjson};
 
 fn main() {
     if let Err(error) = run() {
@@ -29,7 +29,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Box::new(File::open(path)?)
     };
-    let accepted = stream_ndjson(BufReader::new(input), |_| Ok(()))?;
-    println!("{{\"accepted_events\":{accepted}}}");
+    let events = ingest_ndjson(BufReader::new(input))?;
+    let accepted = events.len();
+    let grouped = group_traces(events)?;
+    println!(
+        "{{\"accepted_events\":{accepted},\"traces\":{},\"aliases\":{}}}",
+        grouped.traces.len(),
+        grouped.aliases.len()
+    );
     Ok(())
 }

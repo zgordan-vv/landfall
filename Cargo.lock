@@ -65,6 +65,7 @@ dependencies = [
 name = "landfall-cli"
 version = "0.1.0"
 dependencies = [
+ "landfall-core",
  "landfall-protocol",
  "serde_json",
 ]

@@ -1,7 +1,7 @@
 //! NDJSON ingestion tests.
 #![allow(clippy::expect_used)]
 
-use landfall_cli::{IngestError, ingest_ndjson, stream_ndjson};
+use landfall_cli::{IngestError, group_traces, ingest_ndjson, stream_ndjson};
 use std::io::Cursor;
 
 #[test]
@@ -21,6 +21,8 @@ fn accepts_multiple_events_and_skips_blank_lines() {
         stream_ndjson(Cursor::new(ndjson), |_| Ok(())).expect("stream"),
         2
     );
+    let grouped = group_traces(batch.events).expect("group");
+    assert_eq!(grouped.traces.len(), 1);
 }
 
 #[test]
