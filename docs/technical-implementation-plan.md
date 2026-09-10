@@ -537,6 +537,10 @@ Implement Landfall's most important intellectual property independently of netwo
    with semantic and comparable-monotonic constraints, stable wall/receive/ID
    fallback, duplicate handling, and explicit clock-quality warnings.
 4. Implement the pure trace reducer.
+   Completed in [`landfall-core::reducer`](../crates/landfall-core/src/reducer/)
+   with full-replay identity validation, independently derived lifecycle/landing/
+   execution/application/completeness dimensions, expiry inference, evidence
+   retention, explicit ambiguity warnings, and a stable reducer version.
 5. Implement retry versus replacement grouping rules.
 6. Implement data-quality grading.
 7. Implement initial confirmed rules:
