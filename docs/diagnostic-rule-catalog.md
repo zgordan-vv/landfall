@@ -109,3 +109,15 @@ assert that a validator processed the earlier request.
 Not emitted by the current trace-only evaluator. It requires a comparable
 fee-market sample, requested priority fee, and time-window alignment; without
 those inputs Landfall must remain silent rather than infer a fee cause.
+
+## Unknown / Missing Evidence
+
+### RULE-UNKNOWN-001 — Required evidence missing
+
+The evaluator converts contextual data-quality gaps into findings with
+`claim_key = missing_evidence` and `certainty = unknown`. Each finding carries
+an `unknown_reason` (for example missing signing, observer, execution, or
+validity-window evidence) and an immutable event anchor when one exists.
+
+These findings describe what Landfall cannot establish from the retained trace;
+they do not assert that the transaction failed or identify an external cause.

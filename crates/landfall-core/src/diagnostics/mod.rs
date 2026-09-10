@@ -8,9 +8,10 @@ use landfall_protocol::{
 };
 
 use crate::{
+    data_quality::{DataQualityFindingCode, evaluate_data_quality},
     domain::{DiagnosticId, EvidenceSet, ExecutionState, LandingState},
     grouping::TraceGrouping,
-    ordering::CanonicalOrder,
+    ordering::{CanonicalOrder, CollectedEvent},
     reducer::TraceProjection,
 };
 
@@ -26,6 +27,7 @@ pub struct DiagnosticFinding {
     claim_key: DiagnosticClaimKey,
     certainty: DiagnosticCertainty,
     evidence: EvidenceSet,
+    unknown_reason: Option<UnknownReason>,
 }
 
 impl DiagnosticFinding {
@@ -64,6 +66,12 @@ impl DiagnosticFinding {
     pub const fn evidence(&self) -> &EvidenceSet {
         &self.evidence
     }
+
+    /// Structured reason why a claim remains unknown, when applicable.
+    #[must_use]
+    pub const fn unknown_reason(&self) -> Option<UnknownReason> {
+        self.unknown_reason
+    }
 }
 
 /// Stable identifier for a deterministic diagnostic rule.
@@ -91,6 +99,8 @@ pub enum DiagnosticRuleId {
     UnsafeRedundantRetry,
     /// Fee was below comparable local fee observations.
     FeeLikelyUncompetitive,
+    /// Required evidence is missing or materially incomplete.
+    MissingEvidence,
 }
 
 impl DiagnosticRuleId {
@@ -109,6 +119,7 @@ impl DiagnosticRuleId {
             Self::RouteDegradationSignal => "RULE-ROUTE-001",
             Self::UnsafeRedundantRetry => "RULE-RETRY-001",
             Self::FeeLikelyUncompetitive => "RULE-FEE-001",
+            Self::MissingEvidence => "RULE-UNKNOWN-001",
         }
     }
 }
@@ -138,6 +149,8 @@ pub enum DiagnosticClaimKey {
     UnsafeRedundantRetry,
     /// Priority fee is probably uncompetitive (requires fee-market evidence).
     FeeLikelyUncompetitive,
+    /// Required evidence is missing or materially incomplete.
+    MissingEvidence,
 }
 
 /// Certainty for a specific diagnostic claim.
@@ -147,6 +160,37 @@ pub enum DiagnosticCertainty {
     Confirmed,
     /// The evidence supports a risk signal, but does not prove causality.
     Probable,
+    /// No causal claim is made because required evidence is absent.
+    Unknown,
+}
+
+/// Machine-readable missing-evidence reason.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum UnknownReason {
+    /// Trace creation event was not retained.
+    MissingTraceCreated,
+    /// No signing evidence was retained.
+    MissingSigningEvidence,
+    /// No submission invocation was retained.
+    MissingSubmissionEvidence,
+    /// A submission start has no completion.
+    MissingSubmissionResponse,
+    /// Validity-window boundary is absent.
+    MissingLastValidBlockHeight,
+    /// Observer coverage is absent for a non-terminal trace.
+    MissingObserverCoverage,
+    /// Included transaction lacks execution metadata.
+    MissingExecutionMetadata,
+    /// Optional simulation evidence is absent.
+    MissingSimulationEvidence,
+    /// Signed identity correlation is unavailable.
+    MissingSignedIdentity,
+    /// Explicit business-action identity is absent.
+    MissingBusinessActionCorrelation,
+    /// Ordering clocks are uncertain.
+    ClockQualityIssue,
+    /// Observer disagreement was reported.
+    ObserverDisagreement,
 }
 
 /// Conservative thresholds for the initial probable rule set.
@@ -256,6 +300,77 @@ pub fn evaluate_probable_diagnostics(
         push_probable(&mut findings, evidence, DiagnosticRuleId::UnsafeRedundantRetry, DiagnosticClaimKey::UnsafeRedundantRetry);
     }
     findings
+}
+
+/// Converts data-quality gaps into explicit unknown findings.
+#[must_use]
+pub fn evaluate_unknown_diagnostics(
+    events: &CanonicalOrder,
+    projection: &TraceProjection,
+    grouping: &TraceGrouping,
+) -> Vec<DiagnosticFinding> {
+    let Ok(assessment) = evaluate_data_quality(events, projection, grouping) else {
+        return Vec::new();
+    };
+    let anchor = events.events().first().map(CollectedEvent::event_id);
+    let Some(anchor) = anchor else {
+        return Vec::new();
+    };
+    assessment
+        .findings()
+        .iter()
+        .filter_map(|finding| unknown_reason(finding.code()).map(|reason| (reason, finding)))
+        .filter_map(|(reason, finding)| {
+            let evidence = finding.evidence().next().copied().unwrap_or(anchor);
+            let Ok(id) = DiagnosticId::try_from(evidence.into_uuid()) else {
+                return None;
+            };
+            Some(DiagnosticFinding {
+                id,
+                rule_id: DiagnosticRuleId::MissingEvidence,
+                rule_set_version: DIAGNOSTIC_RULE_SET_VERSION,
+                claim_key: DiagnosticClaimKey::MissingEvidence,
+                certainty: DiagnosticCertainty::Unknown,
+                evidence: EvidenceSet::new(evidence),
+                unknown_reason: Some(reason),
+            })
+        })
+        .collect()
+}
+
+fn unknown_reason(code: DataQualityFindingCode) -> Option<UnknownReason> {
+    Some(match code {
+        DataQualityFindingCode::MissingTraceCreated => UnknownReason::MissingTraceCreated,
+        DataQualityFindingCode::MissingSigningEvidence => UnknownReason::MissingSigningEvidence,
+        DataQualityFindingCode::MissingSubmissionEvidence => {
+            UnknownReason::MissingSubmissionEvidence
+        }
+        DataQualityFindingCode::MissingSubmissionResponse { .. }
+        | DataQualityFindingCode::MissingRetrySource { .. } => {
+            UnknownReason::MissingSubmissionResponse
+        }
+        DataQualityFindingCode::MissingLastValidBlockHeight => {
+            UnknownReason::MissingLastValidBlockHeight
+        }
+        DataQualityFindingCode::MissingObserverCoverage => UnknownReason::MissingObserverCoverage,
+        DataQualityFindingCode::MissingExecutionMetadata => UnknownReason::MissingExecutionMetadata,
+        DataQualityFindingCode::MissingSimulationEvidence => {
+            UnknownReason::MissingSimulationEvidence
+        }
+        DataQualityFindingCode::MissingSignedIdentity
+        | DataQualityFindingCode::SignedIdentityWithheldByPrivacy => {
+            UnknownReason::MissingSignedIdentity
+        }
+        DataQualityFindingCode::MissingBusinessActionCorrelation => {
+            UnknownReason::MissingBusinessActionCorrelation
+        }
+        DataQualityFindingCode::ClockQualityIssue => UnknownReason::ClockQualityIssue,
+        DataQualityFindingCode::Reported(
+            landfall_protocol::DataQualityCategory::ObserverDisagreement,
+        )
+        | DataQualityFindingCode::ConflictingSignedIdentity => UnknownReason::ObserverDisagreement,
+        DataQualityFindingCode::Reported(_) => return None,
+    })
 }
 
 /// Evaluates the initial confirmed diagnostic rules for one trace.
@@ -369,6 +484,7 @@ fn push_finding(
         claim_key,
         certainty: DiagnosticCertainty::Confirmed,
         evidence,
+        unknown_reason: None,
     });
 }
 
@@ -388,6 +504,7 @@ fn push_probable(
         claim_key,
         certainty: DiagnosticCertainty::Probable,
         evidence: EvidenceSet::new(evidence_event_id),
+        unknown_reason: None,
     });
 }
 

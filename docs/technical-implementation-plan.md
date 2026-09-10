@@ -573,6 +573,11 @@ Implement Landfall's most important intellectual property independently of netwo
    with configurable conservative thresholds, probable certainty, explicit
    evidence gating, and trace-level golden tests. Fee diagnosis remains silent
    until the required comparable fee observations are available.
+9. Implement unknown and missing-evidence generation.
+   Completed in [`landfall-core::diagnostics`](../crates/landfall-core/src/diagnostics/)
+   with `RULE-UNKNOWN-001`, explicit reason codes, `Unknown` certainty,
+   immutable event anchors, and tests proving that evidence gaps do not become
+   causal failure claims.
 8. Implement initial probable rules:
    - excessive signing delay;
    - low compute headroom;
