@@ -558,6 +558,11 @@ Implement Landfall's most important intellectual property independently of netwo
    - compute-budget failure;
    - validity window passed without observed inclusion;
    - client timeout followed by network success.
+   Completed in [`landfall-core::diagnostics`](../crates/landfall-core/src/diagnostics/)
+   with the documented [`diagnostic-rules-v1`](diagnostic-rule-catalog.md)
+   confirmed rule set, stable rule IDs, per-claim certainty, evidence-linked
+   findings, compute-budget specificity, expiration evidence selection, and
+   deterministic replay tests.
 8. Implement initial probable rules:
    - excessive signing delay;
    - low compute headroom;
