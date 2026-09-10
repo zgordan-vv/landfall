@@ -39,8 +39,25 @@ impl std::fmt::Display for IngestError {
 impl std::error::Error for IngestError {}
 
 /// Reads and validates events one line at a time, retaining only decoded events.
+///
+/// Prefer [`stream_ndjson`] for production-sized inputs when the caller does not
+/// need to retain the complete event set.
 pub fn ingest_ndjson<R: BufRead>(reader: R) -> Result<Vec<WireEvent>, IngestError> {
     let mut events = Vec::new();
+    stream_ndjson(reader, |event| {
+        events.push(event);
+        Ok(())
+    })?;
+    Ok(events)
+}
+
+/// Streams validated events to `sink` without accumulating the input.
+pub fn stream_ndjson<R, F>(reader: R, mut sink: F) -> Result<usize, IngestError>
+where
+    R: BufRead,
+    F: FnMut(WireEvent) -> Result<(), IngestError>,
+{
+    let mut accepted = 0;
     for (index, line) in reader.lines().enumerate() {
         let line = line.map_err(IngestError::Io)?;
         if line.trim().is_empty() {
@@ -54,9 +71,10 @@ pub fn ingest_ndjson<R: BufRead>(reader: R) -> Result<Vec<WireEvent>, IngestErro
             line: index + 1,
             source,
         })?;
-        events.push(event);
+        sink(event)?;
+        accepted += 1;
     }
-    Ok(events)
+    Ok(accepted)
 }
 
 fn validate_event(event: &WireEvent) -> Result<(), landfall_protocol::WireValueError> {
