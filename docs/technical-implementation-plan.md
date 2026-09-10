@@ -586,6 +586,10 @@ Implement Landfall's most important intellectual property independently of netwo
     Completed in [`landfall-core::metrics`](../crates/landfall-core/src/metrics.rs)
     with versioned terminal-denominator, landing, execution, and application
     flags plus deterministic eligibility helpers.
+12. Version reducer, rule set, and metric definitions.
+    Completed in [`landfall-core::versions`](../crates/landfall-core/src/versions.rs)
+    with a single immutable manifest and semantic-compatibility check covering
+    reducer, diagnostics, metrics, and recommendations.
 8. Implement initial probable rules:
    - excessive signing delay;
    - low compute headroom;

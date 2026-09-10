@@ -8,3 +8,4 @@ pub mod metrics;
 pub mod ordering;
 pub mod recommendations;
 pub mod reducer;
+pub mod versions;
