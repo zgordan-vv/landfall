@@ -725,6 +725,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    business-action/trace tables, explicit alias relationships, and typed
    attempt, simulation, observation, and execution projections.
 6. Implement diagnostics, evidence, recommendations, and disposition history.
+   Completed in migration `0005_create_diagnostics_recommendations.sql` with
+   versioned certainty, many-to-many evidence links, recommendation-to-
+   diagnostic links, and append-only disposition records.
 7. Implement jobs with lease fields and active dedupe keys.
 8. Implement report metadata/artifact tables.
 9. Build repository traits at service boundaries and SQLx implementations.
