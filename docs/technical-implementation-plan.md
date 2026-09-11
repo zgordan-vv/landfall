@@ -1165,6 +1165,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with project/environment/status filters and RFC3339 time windows
    bounded to a maximum of 31 days.
 3. Implement trace detail with attempts, observations, evidence, recommendations, and watermark.
+   Completed with a generic serializable trace-detail read model carrying all
+   five sections and an explicit projection watermark.
 4. Implement signature lookup with privacy/log safeguards.
 5. Implement business-action detail and multiple-success warning.
 6. Implement metric summary with numerator/denominator/exclusions.
