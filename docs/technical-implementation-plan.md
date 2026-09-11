@@ -1180,6 +1180,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with deterministic grade distribution, gap counts, explicit empty
    selection semantics, and the scoring-rubric version.
 8. Implement descriptive cohort comparison.
+   Completed with completed-window safeguards, sample-size warnings, missing
+   data rates, and absolute/relative metric changes.
 9. Implement recommendation disposition and history.
 10. Implement project/environment/route read configuration endpoints.
 11. Implement authenticated detailed system status.
