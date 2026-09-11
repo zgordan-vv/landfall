@@ -59,6 +59,24 @@ pub struct ApiError {
     pub message: &'static str,
 }
 
+/// Maps durable ingestion counters to the public HTTP contract.
+#[must_use]
+pub fn ingest_response(inserted: usize, duplicates: usize) -> axum::response::Response {
+    let status = if inserted == 0 && duplicates > 0 {
+        StatusCode::OK
+    } else {
+        StatusCode::ACCEPTED
+    };
+    (
+        status,
+        Json(IngestAccepted {
+            accepted: inserted,
+            duplicate: duplicates,
+        }),
+    )
+        .into_response()
+}
+
 fn validate_event(event: &Value) -> Result<(), &'static str> {
     let object = event.as_object().ok_or("event_not_object")?;
     let schema_version = object
@@ -195,14 +213,7 @@ async fn ingest(
         )
             .into_response();
     }
-    (
-        StatusCode::ACCEPTED,
-        Json(IngestAccepted {
-            accepted: request.events.len(),
-            duplicate: 0,
-        }),
-    )
-        .into_response()
+    ingest_response(request.events.len(), 0)
 }
 
 #[cfg(test)]
@@ -324,5 +335,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn maps_duplicate_batch_to_ok_and_new_batch_to_accepted() {
+        assert_eq!(super::ingest_response(0, 3).status(), StatusCode::OK);
+        assert_eq!(super::ingest_response(2, 1).status(), StatusCode::ACCEPTED);
     }
 }

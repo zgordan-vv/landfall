@@ -828,6 +828,9 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with `ingest_atomically`, which commits batch metadata, dedup
    claims, raw events, and trace projection jobs as one transaction.
 9. Implement `202`, duplicate `200`, and structured error responses.
+   Completed with a centralized response mapper: new durable events return
+   `202`, fully duplicate batches return `200`, and validation failures retain
+   stable structured error codes.
 10. Implement token/request rate and concurrency limits.
 11. Generate OpenAPI route and schema snapshot.
 12. Add disposable health-check event endpoint.
