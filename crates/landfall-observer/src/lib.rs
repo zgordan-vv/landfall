@@ -40,6 +40,62 @@ pub struct ObservationQueue {
 /// Solana RPC's maximum signature-status request size for one call.
 pub const MAX_SIGNATURE_STATUS_BATCH: usize = 256;
 
+/// Bounded exponential polling policy shared by observation jobs.
+#[derive(Debug, Clone, Copy)]
+pub struct AdaptivePollPolicy {
+    pub initial: Duration,
+    pub maximum: Duration,
+}
+
+impl AdaptivePollPolicy {
+    pub fn new(initial: Duration, maximum: Duration) -> Result<Self, &'static str> {
+        if initial.is_zero() || maximum < initial {
+            return Err("polling maximum must be at least the non-zero initial interval");
+        }
+        Ok(Self { initial, maximum })
+    }
+
+    pub fn delay(&self, attempt: u32, rate_limited: bool) -> Duration {
+        let exponent = attempt.min(16);
+        let multiplier = 1u32.checked_shl(exponent).unwrap_or(u32::MAX);
+        let base = self.initial.saturating_mul(multiplier);
+        let delayed = if rate_limited {
+            base.saturating_mul(2)
+        } else {
+            base
+        };
+        delayed.min(self.maximum)
+    }
+}
+
+/// Per-route minimum interval limiter; each route has an independent budget.
+pub struct RouteRateLimiter {
+    interval: Duration,
+    next_allowed: Mutex<Instant>,
+}
+
+impl RouteRateLimiter {
+    pub fn new(interval: Duration) -> Self {
+        Self {
+            interval,
+            next_allowed: Mutex::new(Instant::now()),
+        }
+    }
+
+    pub async fn wait(&self) {
+        let delay = {
+            let now = Instant::now();
+            let mut next = self.next_allowed.lock().expect("rate limiter mutex");
+            let delay = next.saturating_duration_since(now);
+            *next = now.max(*next) + self.interval;
+            delay
+        };
+        if !delay.is_zero() {
+            tokio::time::sleep(delay).await;
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct SignatureStatusesResponse {
     value: Vec<Option<serde_json::Value>>,
@@ -333,5 +389,23 @@ mod tests {
         assert_eq!(queue.pop_due(now).expect("low").job_id, "low");
         assert!(queue.pop_due(now).is_none());
         assert_eq!(queue.len(), 1);
+    }
+
+    #[test]
+    fn polling_delay_grows_but_stays_bounded() {
+        let policy = AdaptivePollPolicy::new(Duration::from_millis(100), Duration::from_secs(1))
+            .expect("policy");
+        assert_eq!(policy.delay(0, false), Duration::from_millis(100));
+        assert_eq!(policy.delay(2, false), Duration::from_millis(400));
+        assert_eq!(policy.delay(2, true), Duration::from_millis(800));
+        assert_eq!(policy.delay(10, false), Duration::from_secs(1));
+    }
+
+    #[tokio::test]
+    async fn route_limiter_allows_independent_routes() {
+        let first = RouteRateLimiter::new(Duration::ZERO);
+        let second = RouteRateLimiter::new(Duration::ZERO);
+        first.wait().await;
+        second.wait().await;
     }
 }

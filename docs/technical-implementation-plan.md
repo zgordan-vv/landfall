@@ -1104,6 +1104,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with bounded 256-signature chunks and stable result ordering
    across multiple JSON-RPC calls.
 6. Implement adaptive polling and per-route rate limits.
+   Completed with bounded exponential polling intervals, rate-limit expansion,
+   and independent per-route minimum request intervals.
 7. Persist first null, state changes, periodic checkpoints, RPC error transitions, and terminal evidence.
 8. Implement expiry evaluation from current block height and `lastValidBlockHeight`.
 9. Enqueue and implement `getTransaction` enrichment.
