@@ -12,6 +12,7 @@ default = []
 [dependencies]
 landfall-core.workspace = true
 landfall-protocol.workspace = true
+landfall-report.workspace = true
 serde_json.workspace = true
 
 [lints]

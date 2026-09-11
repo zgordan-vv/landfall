@@ -661,6 +661,9 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    `TraceReport`, semantic version manifest, stable state tokens, and pipeline
    count fields.
 6. Render structured JSON.
+   Implemented using `serde` on the report-domain model; CLI emits a stable
+   pretty-printed `ReportDocument` containing versions, trace summaries, and
+   alias counts.
 7. Render self-contained HTML with evidence timeline and limitations.
 8. Add `--privacy-profile` export redaction.
 9. Add example input and expected report snapshots.

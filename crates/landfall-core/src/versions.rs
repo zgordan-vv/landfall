@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// All semantic versions needed to interpret a derived result.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
 pub struct CoreVersionManifest {
     /// Trace reducer semantics.
     pub reducer: &'static str,

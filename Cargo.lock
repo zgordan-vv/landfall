@@ -67,6 +67,7 @@ version = "0.1.0"
 dependencies = [
  "landfall-core",
  "landfall-protocol",
+ "landfall-report",
  "serde_json",
 ]
 
@@ -75,6 +76,7 @@ name = "landfall-core"
 version = "0.1.0"
 dependencies = [
  "landfall-protocol",
+ "serde",
  "serde_json",
  "uuid",
 ]
@@ -104,6 +106,8 @@ version = "0.1.0"
 dependencies = [
  "landfall-core",
  "landfall-protocol",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

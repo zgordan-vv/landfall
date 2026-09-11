@@ -2,9 +2,10 @@
 
 use landfall_core::{domain::TraceState, versions::CoreVersionManifest};
 use landfall_protocol::TraceId;
+use serde::Serialize;
 
 /// Stable report-domain document independent of presentation formats.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ReportDocument {
     /// Semantics used to produce this document.
     pub versions: CoreVersionManifest,
@@ -15,7 +16,7 @@ pub struct ReportDocument {
 }
 
 /// Presentation-neutral summary for one trace.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct TraceReport {
     /// Trace identity.
     pub trace_id: TraceId,
@@ -85,7 +86,7 @@ impl TraceReport {
 }
 
 /// Counts produced by the core analysis pipeline.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 pub struct ReportCounts {
     /// Data-quality findings.
     pub data_quality_findings: usize,
