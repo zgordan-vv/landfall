@@ -9,6 +9,7 @@ export * from "./buffer.js";
 export * from "./batching.js";
 export * from "./transport.js";
 export * from "./flush.js";
+export * from "./solana-boundary.js";
 import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
 
 export interface SdkOptions {

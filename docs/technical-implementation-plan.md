@@ -1020,6 +1020,9 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with a machine-checked lane manifest for exact Kit 8.2.0, Node
    24 compatibility, and an explicit empty plugin tuple.
 2. Define adapter boundary independent of Kit internals.
+   Completed with generic `SolanaClientPort` lifecycle types and a
+   result/error-preserving customer-operation wrapper; the neutral SDK has no
+   `@solana/kit` runtime import.
 3. Capture blockhash and `lastValidBlockHeight`.
 4. Capture simulation result and compute units when available.
 5. Measure signing delay without accessing signer secrets.
