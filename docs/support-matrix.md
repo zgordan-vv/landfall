@@ -54,7 +54,7 @@ The first releasable end-to-end lane is:
 | Transaction formats | Legacy and version 0 (`v0`) |
 | Privacy | `standard` by default or explicit `full` |
 
-The implementation manifests, examples, lockfile, container image, generated
+The implementation manifests (including [`config/solana-kit-lane.json`](../config/solana-kit-lane.json)), examples, lockfile, container image, generated
 software bill of materials, CI logs, `landfall doctor`, and release notes MUST
 agree with this row before P0 is released.
 

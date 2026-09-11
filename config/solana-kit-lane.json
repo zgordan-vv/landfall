@@ -1,0 +1,7 @@
+{
+  "client": "@solana/kit",
+  "version": "8.2.0",
+  "plugins": [],
+  "node": ">=24.11.0 <25.0.0",
+  "status": "supported-p0"
+}

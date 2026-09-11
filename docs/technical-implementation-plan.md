@@ -1017,6 +1017,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
 ### Tasks
 
 1. Implement and verify the frozen `@solana/kit` 8.2.0 lane; add any required plugin tuple to the support matrix before release.
+   Completed with a machine-checked lane manifest for exact Kit 8.2.0, Node
+   24 compatibility, and an explicit empty plugin tuple.
 2. Define adapter boundary independent of Kit internals.
 3. Capture blockhash and `lastValidBlockHeight`.
 4. Capture simulation result and compute units when available.
