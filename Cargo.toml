@@ -29,6 +29,7 @@ async-trait = "0.1"
 axum = "0.8"
 tracing = "0.1"
 sha2 = "0.10"
+tower-http = { version = "0.6", features = ["limit"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls", "macros", "migrate", "uuid"] }
 tokio = { version = "1.0", features = ["macros", "rt"] }
 thiserror = "2.0"

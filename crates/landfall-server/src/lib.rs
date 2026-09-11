@@ -14,10 +14,13 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
 use uuid::Uuid;
 
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
+pub const MAX_COMPRESSED_BODY_BYTES: usize = 256 * 1024;
+pub const MAX_DECOMPRESSED_BODY_BYTES: usize = 2 * 1024 * 1024;
 
 #[derive(Clone, Default)]
 pub struct AppState {
@@ -47,8 +50,34 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/ingest", post(ingest))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
+        .layer(RequestBodyLimitLayer::new(MAX_DECOMPRESSED_BODY_BYTES))
+        .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
         .with_state(Arc::new(state))
+}
+
+async fn compressed_body_limit(
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> impl IntoResponse {
+    let encoded = request.headers().get("content-encoding").is_some();
+    let too_large = request
+        .headers()
+        .get("content-length")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<usize>().ok())
+        .is_some_and(|length| encoded && length > MAX_COMPRESSED_BODY_BYTES);
+    if too_large {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(ApiError {
+                code: "compressed_body_too_large",
+                message: "compressed request body exceeds limit",
+            }),
+        )
+            .into_response();
+    }
+    next.run(request).await
 }
 
 async fn liveness() -> impl IntoResponse {
@@ -188,5 +217,19 @@ mod tests {
             .unwrap();
         assert_eq!(live.status(), StatusCode::OK);
         assert_eq!(ready.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn rejects_oversized_compressed_body_before_json_decode() {
+        let request = Request::post("/v1/ingest")
+            .header("content-encoding", "gzip")
+            .header("content-length", super::MAX_COMPRESSED_BODY_BYTES + 1)
+            .body(Body::empty())
+            .unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

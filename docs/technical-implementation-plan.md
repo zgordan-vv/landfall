@@ -812,6 +812,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with hash-only SHA-256 token records and constant-time lookup
    policy covering bearer parsing, scope, expiry, and revocation decisions.
 5. Implement compressed and decompressed body limits.
+   Completed with an early compressed `Content-Length` guard and Axum's
+   decompressed request-body limit for JSON extraction.
 6. Implement batch schema/semantic validation.
 7. Repeat privacy enforcement server-side.
 8. Implement atomic transaction:
