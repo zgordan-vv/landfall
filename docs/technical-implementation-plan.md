@@ -1110,6 +1110,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with an append-only evidence log covering first-null, status
    transitions, checkpoints, RPC error transitions, and terminal outcomes.
 8. Implement expiry evaluation from current block height and `lastValidBlockHeight`.
+   Completed with strict `current > last_valid` evaluation and an explicit
+   durable-nonce indeterminate result.
 9. Enqueue and implement `getTransaction` enrichment.
 10. Normalize execution error, fee, compute units, slot, block time, and transaction version.
 11. Implement observer route health and data-quality gaps.

@@ -40,6 +40,28 @@ pub struct ObservationQueue {
 /// Solana RPC's maximum signature-status request size for one call.
 pub const MAX_SIGNATURE_STATUS_BATCH: usize = 256;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExpirationDecision {
+    NotExpired,
+    Expired,
+    IndeterminateDurableNonce,
+}
+
+/// Evaluates recent-blockhash validity without applying it to durable-nonce transactions.
+pub fn evaluate_expiration(
+    current_block_height: u64,
+    last_valid_block_height: u64,
+    durable_nonce: bool,
+) -> ExpirationDecision {
+    if durable_nonce {
+        ExpirationDecision::IndeterminateDurableNonce
+    } else if current_block_height > last_valid_block_height {
+        ExpirationDecision::Expired
+    } else {
+        ExpirationDecision::NotExpired
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ObservationEvidence {
     FirstNull {
@@ -515,5 +537,21 @@ mod tests {
             log.records()[5],
             ObservationEvidence::Terminal { .. }
         ));
+    }
+
+    #[test]
+    fn expiration_uses_strictly_greater_height_and_handles_nonce() {
+        assert_eq!(
+            evaluate_expiration(500, 500, false),
+            ExpirationDecision::NotExpired
+        );
+        assert_eq!(
+            evaluate_expiration(501, 500, false),
+            ExpirationDecision::Expired
+        );
+        assert_eq!(
+            evaluate_expiration(9_999, 1, true),
+            ExpirationDecision::IndeterminateDurableNonce
+        );
     }
 }
