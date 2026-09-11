@@ -12,6 +12,10 @@ default = []
 [dependencies]
 landfall-core.workspace = true
 landfall-protocol.workspace = true
+sqlx.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
 
 [lints]
 workspace = true
