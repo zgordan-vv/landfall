@@ -1189,6 +1189,8 @@ Expose the platform's read model through stable documented APIs.
     Completed with deterministic redacted project/environment/route payloads;
     secrets, credentials, and raw endpoints are never exposed.
 11. Implement authenticated detailed system status.
+    Completed with `system:read` authorization, redacted dependency metrics,
+    queue/lag visibility, observer health, retention, and version reporting.
 12. Add ETag/projection version behavior.
 13. Generate OpenAPI and TypeScript API client.
 

@@ -36,6 +36,7 @@ pub mod metrics_summary;
 pub mod pagination;
 pub mod recommendation_disposition;
 pub mod signature_lookup;
+pub mod system_status;
 pub mod trace_detail;
 pub mod trace_filters;
 use tower_http::limit::RequestBodyLimitLayer;
