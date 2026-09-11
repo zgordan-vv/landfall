@@ -872,6 +872,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
 ### Tasks
 
 1. Implement server worker supervisor and cancellation.
+   Completed with a tracked `WorkerSupervisor`, child cancellation tokens, and
+   graceful shutdown awaiting every worker handle.
 2. Implement `project_trace` job worker.
 3. Resolve trace aliases by signature/digest.
 4. Load canonical raw events.

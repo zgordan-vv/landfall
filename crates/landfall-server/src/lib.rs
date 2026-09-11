@@ -2,6 +2,8 @@
 #![allow(missing_docs)]
 
 pub mod auth;
+pub mod workers;
+pub use workers::WorkerSupervisor;
 
 use axum::{
     Json, Router,

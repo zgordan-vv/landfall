@@ -33,7 +33,8 @@ tower-http = { version = "0.6", features = ["limit"] }
 tower = { version = "0.5", features = ["limit"] }
 utoipa = { version = "5", features = ["uuid", "time"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls", "macros", "migrate", "uuid", "time"] }
-tokio = { version = "1.0", features = ["macros", "rt"] }
+tokio = { version = "1.0", features = ["macros", "rt", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 thiserror = "2.0"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 uuid = { version = "1.0", default-features = false, features = ["std", "v7"] }
