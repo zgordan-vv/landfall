@@ -100,6 +100,44 @@ pub struct ReportCounts {
     pub recommendations: usize,
 }
 
+/// One row returned by a bounded report query.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReportQueryRow {
+    /// Trace identity selected by the query.
+    pub trace_id: TraceId,
+    /// Reduced lifecycle state at the query watermark.
+    pub state: TraceState,
+    /// Derived pipeline counts for this trace.
+    pub counts: ReportCounts,
+}
+
+/// Report plus the projection watermark from which it was built.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct ReportSnapshot {
+    /// Presentation-neutral report document.
+    pub document: ReportDocument,
+    /// Monotonic projection version frozen by the query.
+    pub projection_watermark: u64,
+}
+
+/// Builds the R0 report model from database/query rows at one frozen watermark.
+#[must_use]
+pub fn document_from_query_rows(
+    versions: CoreVersionManifest,
+    rows: impl IntoIterator<Item = ReportQueryRow>,
+    alias_count: usize,
+    projection_watermark: u64,
+) -> ReportSnapshot {
+    let traces = rows
+        .into_iter()
+        .map(|row| TraceReport::from_state(row.trace_id, row.state, row.counts))
+        .collect();
+    ReportSnapshot {
+        document: ReportDocument::new(versions, traces, alias_count),
+        projection_watermark,
+    }
+}
+
 /// Privacy profile applied during report export.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PrivacyProfile {

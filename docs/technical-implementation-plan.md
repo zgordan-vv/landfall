@@ -1334,6 +1334,8 @@ Complete audit and operator workflows around the continuous platform.
 ### Tasks
 
 1. Reuse R0 report model through database/query inputs.
+   Completed with a query-row adapter that reuses the R0 trace projection and
+   carries a frozen projection watermark in `ReportSnapshot`.
 2. Implement report job API and worker.
 3. Freeze cohort watermark and rule/schema versions.
 4. Implement HTML/JSON artifact storage with size/checksum.

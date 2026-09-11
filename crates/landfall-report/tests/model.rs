@@ -9,7 +9,9 @@ use landfall_core::{
     versions::current_versions,
 };
 use landfall_protocol::TraceId;
-use landfall_report::{ReportCounts, ReportDocument, TraceReport};
+use landfall_report::{
+    ReportCounts, ReportDocument, ReportQueryRow, TraceReport, document_from_query_rows,
+};
 use std::str::FromStr;
 
 #[test]
@@ -27,4 +29,28 @@ fn state_is_projected_to_stable_report_tokens() {
     assert!(report.terminal_eligible);
     let document = ReportDocument::new(current_versions(), vec![report], 0);
     assert_eq!(document.traces.len(), 1);
+}
+
+#[test]
+fn query_rows_build_a_watermarked_snapshot() {
+    let trace = TraceId::from_str("0198ef10-0007-7000-8000-000000000201").expect("trace");
+    let state = TraceState {
+        lifecycle: LifecycleStage::Observed,
+        landing: LandingState::Finalized,
+        execution: ExecutionState::Success,
+        application: ApplicationOutcome::Success,
+        observation: ObservationCompleteness::Complete,
+    };
+    let snapshot = document_from_query_rows(
+        current_versions(),
+        [ReportQueryRow {
+            trace_id: trace,
+            state,
+            counts: ReportCounts::default(),
+        }],
+        0,
+        184_220_941,
+    );
+    assert_eq!(snapshot.projection_watermark, 184_220_941);
+    assert_eq!(snapshot.document.traces.len(), 1);
 }
