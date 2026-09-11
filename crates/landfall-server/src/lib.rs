@@ -6,6 +6,8 @@ pub mod workers;
 pub use workers::WorkerSupervisor;
 pub mod projector_worker;
 pub use projector_worker::{ProjectTraceJob, project_trace_queue, run_project_trace_worker};
+pub mod alias_resolver;
+pub use alias_resolver::{AliasResolution, AliasResolver};
 
 use axum::{
     Json, Router,

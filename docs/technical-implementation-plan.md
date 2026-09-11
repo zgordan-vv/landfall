@@ -878,6 +878,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with a cancellable bounded-queue worker loop and injected
    processor callback for deterministic orchestration tests.
 3. Resolve trace aliases by signature/digest.
+   Completed with a project/environment-scoped alias index for versioned
+   fingerprints; cross-environment matches are intentionally unrelated.
 4. Load canonical raw events.
 5. Run deterministic reducer.
 6. Replace/upsert typed child projections in one transaction.
