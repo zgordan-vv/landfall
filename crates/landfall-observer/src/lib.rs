@@ -40,6 +40,93 @@ pub struct ObservationQueue {
 /// Solana RPC's maximum signature-status request size for one call.
 pub const MAX_SIGNATURE_STATUS_BATCH: usize = 256;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ObservationEvidence {
+    FirstNull {
+        observed_at: String,
+    },
+    StatusChanged {
+        from: Option<String>,
+        to: String,
+        observed_at: String,
+    },
+    Checkpoint {
+        observed_at: String,
+        block_height: Option<u64>,
+    },
+    RpcErrorTransition {
+        previous: Option<String>,
+        current: String,
+        observed_at: String,
+    },
+    Terminal {
+        outcome: String,
+        observed_at: String,
+    },
+}
+
+/// Append-only evidence accumulator; callers persist its records durably.
+#[derive(Debug, Default)]
+pub struct ObservationEvidenceLog {
+    records: Vec<ObservationEvidence>,
+    last_status: Option<String>,
+    saw_null: bool,
+    last_rpc_error: Option<String>,
+}
+
+impl ObservationEvidenceLog {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn records(&self) -> &[ObservationEvidence] {
+        &self.records
+    }
+    pub fn record_status(&mut self, status: Option<&str>, observed_at: impl Into<String>) {
+        let observed_at = observed_at.into();
+        if status.is_none() && !self.saw_null {
+            self.saw_null = true;
+            self.records.push(ObservationEvidence::FirstNull {
+                observed_at: observed_at.clone(),
+            });
+        }
+        if let Some(status) = status {
+            if self.last_status.as_deref() != Some(status) {
+                let from = self.last_status.replace(status.to_owned());
+                self.records.push(ObservationEvidence::StatusChanged {
+                    from,
+                    to: status.to_owned(),
+                    observed_at,
+                });
+            }
+        }
+    }
+    pub fn checkpoint(&mut self, observed_at: impl Into<String>, block_height: Option<u64>) {
+        self.records.push(ObservationEvidence::Checkpoint {
+            observed_at: observed_at.into(),
+            block_height,
+        });
+    }
+    pub fn record_rpc_error(&mut self, error: Option<&str>, observed_at: impl Into<String>) {
+        if self.last_rpc_error.as_deref() != error {
+            let previous = self.last_rpc_error.clone();
+            self.last_rpc_error = error.map(str::to_owned);
+            if let Some(current) = error {
+                self.records.push(ObservationEvidence::RpcErrorTransition {
+                    previous,
+                    current: current.to_owned(),
+                    observed_at: observed_at.into(),
+                });
+            }
+        }
+    }
+    pub fn terminal(&mut self, outcome: impl Into<String>, observed_at: impl Into<String>) {
+        self.records.push(ObservationEvidence::Terminal {
+            outcome: outcome.into(),
+            observed_at: observed_at.into(),
+        });
+    }
+}
+
 /// Bounded exponential polling policy shared by observation jobs.
 #[derive(Debug, Clone, Copy)]
 pub struct AdaptivePollPolicy {
@@ -407,5 +494,26 @@ mod tests {
         let second = RouteRateLimiter::new(Duration::ZERO);
         first.wait().await;
         second.wait().await;
+    }
+
+    #[test]
+    fn evidence_log_records_first_null_transitions_checkpoints_and_terminal() {
+        let mut log = ObservationEvidenceLog::new();
+        log.record_status(None, "t1");
+        log.record_status(None, "t2");
+        log.record_status(Some("processed"), "t3");
+        log.record_status(Some("confirmed"), "t4");
+        log.record_rpc_error(Some("rate_limited"), "t5");
+        log.checkpoint("t6", Some(42));
+        log.terminal("confirmed", "t7");
+        assert_eq!(log.records().len(), 6);
+        assert!(matches!(
+            log.records()[0],
+            ObservationEvidence::FirstNull { .. }
+        ));
+        assert!(matches!(
+            log.records()[5],
+            ObservationEvidence::Terminal { .. }
+        ));
     }
 }

@@ -1107,6 +1107,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with bounded exponential polling intervals, rate-limit expansion,
    and independent per-route minimum request intervals.
 7. Persist first null, state changes, periodic checkpoints, RPC error transitions, and terminal evidence.
+   Completed with an append-only evidence log covering first-null, status
+   transitions, checkpoints, RPC error transitions, and terminal outcomes.
 8. Implement expiry evaluation from current block height and `lastValidBlockHeight`.
 9. Enqueue and implement `getTransaction` enrichment.
 10. Normalize execution error, fee, compute units, slot, block time, and transaction version.
