@@ -1249,6 +1249,10 @@ following dashboard tasks.
 - CLI command hints;
 - data-quality warnings.
 
+Completed with an onboarding health panel, first-trace CLI checklist, project
+and environment status, collector/observer/schema/privacy indicators, and an
+explicit incomplete-observer data-quality warning.
+
 ### Step 12.3 — Overview
 
 - landing and execution metrics;
