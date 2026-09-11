@@ -710,6 +710,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    - `telemetry`;
    - `work`;
    - `reporting`.
+   Completed with append-only migration `0001_create_schemas.sql`, baseline
+   metadata/batch/job/report tables, and PostgreSQL smoke validation.
 3. Implement projects, environments, routes, and API-token tables.
 4. Implement event dedup registry and daily raw-event partition parent.
 5. Implement business actions, traces, aliases, typed child projections.
