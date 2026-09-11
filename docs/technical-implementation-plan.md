@@ -948,6 +948,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with typed builders for trace creation, signing start, and
    submission start using generated protocol envelopes.
 5. Implement UUIDv7 generation/canonical format.
+   Completed with a canonical lowercase UUIDv7 generator and format validator
+   for SDK identities.
 6. Implement signed-byte fingerprinting according to ADR.
 7. Implement endpoint redaction and metadata allowlist.
 8. Implement bounded in-memory buffer.
