@@ -19,6 +19,8 @@ pub mod recommendations;
 pub use recommendations::{RecommendationWrite, append_recommendations};
 pub mod watermarks;
 pub use watermarks::advance_projection_watermark;
+pub mod observation_jobs;
+pub use observation_jobs::enqueue_observation_if_eligible;
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;
