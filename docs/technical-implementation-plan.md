@@ -740,6 +740,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    Completed with `PersistenceRepository`, `PgRepositories`, and a translated
    `RepositoryError` boundary; SQL remains behind the trait.
 10. Implement migration runner and version health check.
+   Completed with compile-time embedded SQLx migrations, an explicit runner,
+   and a health result that detects failed, missing, or unexpected versions.
 11. Implement test database lifecycle and seed helpers.
 12. Add partition creation/retention primitives.
 13. Inspect query plans for trace lookup and bounded time search.

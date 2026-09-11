@@ -4,6 +4,7 @@ WORKDIR /workspace
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+COPY migrations ./migrations
 
 RUN cargo build --locked --release --bin landfall-server
 
