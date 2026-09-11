@@ -838,6 +838,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with a code-first `utoipa` document exposed at `/openapi.json`
    and a snapshot-style contract test.
 12. Add disposable health-check event endpoint.
+   Completed with `POST /health/event`, which returns a clearly marked
+   synthetic event and does not persist customer telemetry.
 
 ### Tests
 

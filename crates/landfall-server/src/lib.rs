@@ -120,6 +120,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
+        .route("/health/event", axum::routing::post(health_event))
         .layer(RequestBodyLimitLayer::new(MAX_DECOMPRESSED_BODY_BYTES))
         .layer(ConcurrencyLimitLayer::new(MAX_CONCURRENT_REQUESTS))
         .layer(middleware::from_fn(request_rate_limit))
@@ -130,6 +131,19 @@ pub fn router(state: AppState) -> Router {
 
 async fn openapi() -> impl IntoResponse {
     Json(ApiDoc::openapi())
+}
+
+async fn health_event() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "synthetic": true,
+            "event_id": Uuid::now_v7().to_string(),
+            "schema_version": "1.0",
+            "event_type": "solana.trace.created",
+            "message": "disposable health-check event; not persisted"
+        })),
+    )
 }
 
 static RATE_WINDOW: OnceLock<Mutex<(Instant, u32)>> = OnceLock::new();
@@ -411,6 +425,16 @@ mod tests {
         assert!(document.contains("/v1/ingest"));
         assert!(document.contains("IngestRequest"));
         assert!(document.contains("202"));
+    }
+
+    #[tokio::test]
+    async fn health_event_is_explicitly_synthetic() {
+        let request = Request::post("/health/event").body(Body::empty()).unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[test]
