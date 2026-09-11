@@ -2,9 +2,57 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
 mod http;
 pub use http::ReqwestRouteClient;
+
+#[derive(Debug, Clone, Copy)]
+struct CachedHeight {
+    value: u64,
+    fetched_at: Instant,
+}
+
+/// Shared short-lived block-height cache for observer jobs on one route.
+pub struct BlockHeightCache {
+    ttl: Duration,
+    value: Mutex<Option<CachedHeight>>,
+}
+
+impl BlockHeightCache {
+    pub fn new(ttl: Duration) -> Self {
+        Self {
+            ttl,
+            value: Mutex::new(None),
+        }
+    }
+
+    pub async fn get_or_refresh<T: RpcTransport>(
+        &self,
+        client: &JsonRpcClient<T>,
+    ) -> Result<u64, RpcClientError> {
+        if let Some(cached) = *self
+            .value
+            .lock()
+            .map_err(|_| RpcClientError::MalformedResponse)?
+        {
+            if cached.fetched_at.elapsed() < self.ttl {
+                return Ok(cached.value);
+            }
+        }
+        let height: u64 = client.call(1, "getBlockHeight", Vec::<u8>::new()).await?;
+        let mut slot = self
+            .value
+            .lock()
+            .map_err(|_| RpcClientError::MalformedResponse)?;
+        *slot = Some(CachedHeight {
+            value: height,
+            fetched_at: Instant::now(),
+        });
+        Ok(height)
+    }
+}
 
 #[derive(Debug, Serialize)]
 struct RpcRequest<'a, P> {
@@ -139,5 +187,21 @@ mod tests {
             error,
             RpcClientError::Provider { code: -32005, .. }
         ));
+    }
+
+    #[tokio::test]
+    async fn block_height_is_shared_until_ttl_expires() {
+        let client = JsonRpcClient::new(
+            "https://rpc.example",
+            FakeTransport {
+                response: br#"{"jsonrpc":"2.0","id":1,"result":321}"#.to_vec(),
+            },
+        );
+        let cache = BlockHeightCache::new(Duration::from_secs(60));
+        assert_eq!(cache.get_or_refresh(&client).await.expect("height"), 321);
+        assert_eq!(
+            cache.get_or_refresh(&client).await.expect("cached height"),
+            321
+        );
     }
 }

@@ -1095,6 +1095,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with a route-owned pooled `reqwest::Client`, Rustls-only TLS,
    bounded timeout, endpoint consistency check, and sanitized HTTP failures.
 3. Implement `getBlockHeight` shared cache/worker.
+   Completed with a route-scoped TTL cache that shares fresh heights across
+   observer jobs and refreshes through the provider-neutral JSON-RPC client.
 4. Implement durable observation schedule and in-memory priority queue.
 5. Batch `getSignatureStatuses` by route/options, default 100, maximum 256.
 6. Implement adaptive polling and per-route rate limits.
