@@ -1236,6 +1236,11 @@ Make lifecycle evidence and uncertainty understandable within seconds.
 - error boundary and loading/empty states;
 - MSW fixture environment.
 
+Completed with the React/Vite shell, hash-based overview/traces/comparison
+routes, design tokens, responsive accessible navigation, error boundary, and a
+fixture-mode loading surface. API-client/MSW wiring remains isolated for the
+following dashboard tasks.
+
 ### Step 12.2 — Onboarding and system health
 
 - project/environment status;
