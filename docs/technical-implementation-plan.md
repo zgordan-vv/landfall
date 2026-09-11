@@ -1362,6 +1362,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with validated deletion jobs, immutable tombstones, audit reason
    and actor fields, and read-path deletion checks.
 8. Implement partition creation and retention worker.
+   Completed with deterministic cutoff planning, sorted partition selection,
+   safety validation, and explicit dry-run semantics.
 9. Add backup/restore and incident runbooks.
 
 ### Tests
