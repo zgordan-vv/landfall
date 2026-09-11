@@ -7,6 +7,8 @@ pub use migrations::{
     MIGRATION_SET_VERSION, MIGRATOR, MigrationHealth, expected_migration_versions,
     migration_health, run_migrations,
 };
+pub mod ingestion;
+pub use ingestion::{IngestEvent, IngestOutcome, ingest_atomically};
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;

@@ -825,6 +825,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    - raw-event insert;
    - minimal identity upsert;
    - projection job enqueue.
+   Completed with `ingest_atomically`, which commits batch metadata, dedup
+   claims, raw events, and trace projection jobs as one transaction.
 9. Implement `202`, duplicate `200`, and structured error responses.
 10. Implement token/request rate and concurrency limits.
 11. Generate OpenAPI route and schema snapshot.
