@@ -8,6 +8,8 @@ export * from "./privacy.js";
 export * from "./buffer.js";
 export * from "./batching.js";
 export * from "./transport.js";
+export * from "./flush.js";
+import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;
@@ -75,6 +77,15 @@ export class LandfallSdk {
 
   recordDroppedEvents(count = 1): void { this.#health.recordDropped(count); }
   recordTransportFailure(count = 1): void { this.#health.recordTransportFailure(count); }
+
+  async flush(flushOperation: () => Promise<void>, options: FlushOptions = {}): Promise<FlushResult> {
+    const result = await boundedFlush(flushOperation, options);
+    if (result.status === "failed") {
+      this.recordTransportFailure();
+      this.reportTelemetryError({ code: "transport", message: "shutdown flush failed", cause: result.error });
+    }
+    return result;
+  }
 
   startTrace(traceId: TraceId, businessAction?: BusinessActionContext): TraceContext {
     const context: TraceContext = {

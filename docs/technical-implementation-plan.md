@@ -969,6 +969,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with aggregate dropped-event and transport-failure counters,
    immutable snapshots, and a fail-open health-change callback.
 12. Implement bounded shutdown flush.
+   Completed with a timeout-bounded flush helper and SDK failure reporting;
+   shutdown cannot wait indefinitely for a collector.
 13. Build ESM package and declarations; add CJS only if support decision requires it.
 14. Create manual-events example.
 
