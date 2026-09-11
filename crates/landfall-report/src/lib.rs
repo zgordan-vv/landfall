@@ -120,6 +120,42 @@ pub struct ReportSnapshot {
     pub projection_watermark: u64,
 }
 
+/// Immutable semantic scope captured before report queries begin.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct FrozenReportScope {
+    /// User-visible cohort identifier or selection label.
+    pub cohort_id: String,
+    /// Projection watermark used for every query in the report.
+    pub projection_watermark: u64,
+    /// Event schema version used by the query adapter.
+    pub schema_version: String,
+    /// Core rule and metric versions used for derived values.
+    pub versions: CoreVersionManifest,
+}
+
+/// Freezes report semantics before asynchronous work is queued.
+pub fn freeze_report_scope(
+    cohort_id: impl Into<String>,
+    projection_watermark: u64,
+    schema_version: impl Into<String>,
+    versions: CoreVersionManifest,
+) -> Result<FrozenReportScope, &'static str> {
+    let cohort_id = cohort_id.into();
+    let schema_version = schema_version.into();
+    if cohort_id.trim().is_empty() {
+        return Err("cohort_id must not be empty");
+    }
+    if schema_version.trim().is_empty() {
+        return Err("schema_version must not be empty");
+    }
+    Ok(FrozenReportScope {
+        cohort_id,
+        projection_watermark,
+        schema_version,
+        versions,
+    })
+}
+
 /// Builds the R0 report model from database/query rows at one frozen watermark.
 #[must_use]
 pub fn document_from_query_rows(

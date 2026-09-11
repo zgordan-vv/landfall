@@ -11,6 +11,7 @@ use landfall_core::{
 use landfall_protocol::TraceId;
 use landfall_report::{
     ReportCounts, ReportDocument, ReportQueryRow, TraceReport, document_from_query_rows,
+    freeze_report_scope,
 };
 use std::str::FromStr;
 
@@ -53,4 +54,13 @@ fn query_rows_build_a_watermarked_snapshot() {
     );
     assert_eq!(snapshot.projection_watermark, 184_220_941);
     assert_eq!(snapshot.document.traces.len(), 1);
+}
+
+#[test]
+fn report_scope_freezes_versions_and_rejects_empty_identity() {
+    let scope =
+        freeze_report_scope("cohort-a", 17, "events-v1", current_versions()).expect("scope");
+    assert_eq!(scope.projection_watermark, 17);
+    assert_eq!(scope.schema_version, "events-v1");
+    assert!(freeze_report_scope("", 17, "events-v1", current_versions()).is_err());
 }

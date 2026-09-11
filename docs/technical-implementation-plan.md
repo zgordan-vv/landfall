@@ -1340,6 +1340,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with a bounded report queue, registry-backed status transitions,
    frozen watermark capture, failure details, and cooperative cancellation.
 3. Freeze cohort watermark and rule/schema versions.
+   Completed with immutable `FrozenReportScope` validation capturing cohort,
+   projection watermark, event schema, and core semantic versions.
 4. Implement HTML/JSON artifact storage with size/checksum.
 5. Run export-specific redaction and secret scan.
 6. Implement CLI:
