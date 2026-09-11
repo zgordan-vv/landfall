@@ -16,6 +16,62 @@ use landfall_core::{
 };
 use landfall_protocol::{TraceId, WireEvent};
 
+/// Selector accepted by the reproject command.
+#[derive(Debug, Clone, Eq, PartialEq)]
+#[allow(missing_docs)]
+pub enum ReprojectSelector {
+    Trace(TraceId),
+    TimeRange { from: String, until: String },
+    RuleSetVersion(String),
+}
+
+/// Parses exactly one reproject scope from CLI-style arguments.
+pub fn parse_reproject_selector(args: &[String]) -> Result<ReprojectSelector, &'static str> {
+    if args.len() == 2 && args[0] == "--trace" {
+        return args[1]
+            .parse()
+            .map(ReprojectSelector::Trace)
+            .map_err(|_| "invalid trace id");
+    }
+    if args.len() == 4 && args[0] == "--from" && args[2] == "--until" {
+        if args[1].is_empty() || args[3].is_empty() {
+            return Err("time range values must not be empty");
+        }
+        return Ok(ReprojectSelector::TimeRange {
+            from: args[1].clone(),
+            until: args[3].clone(),
+        });
+    }
+    if args.len() == 2 && args[0] == "--rule-set-version" && !args[1].is_empty() {
+        return Ok(ReprojectSelector::RuleSetVersion(args[1].clone()));
+    }
+    Err(
+        "choose exactly one: --trace ID, --from RFC3339 --until RFC3339, or --rule-set-version VERSION",
+    )
+}
+
+#[cfg(test)]
+mod reproject_tests {
+    use super::{ReprojectSelector, parse_reproject_selector};
+    #[test]
+    fn accepts_one_scope_and_rejects_ambiguous_input() {
+        let trace = "0198ef00-0000-7000-8000-000000000300".to_owned();
+        assert!(matches!(
+            parse_reproject_selector(&["--trace".into(), trace]),
+            Ok(ReprojectSelector::Trace(_))
+        ));
+        assert!(
+            parse_reproject_selector(&[
+                "--trace".into(),
+                "id".into(),
+                "--rule-set-version".into(),
+                "v1".into()
+            ])
+            .is_err()
+        );
+    }
+}
+
 /// Error while reading or validating one NDJSON record.
 #[derive(Debug)]
 pub enum IngestError {

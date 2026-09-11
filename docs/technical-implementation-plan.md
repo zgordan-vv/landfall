@@ -905,6 +905,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with atomic in-process counters for projected, failed, and dead
    jobs plus a gauge-like projection lag snapshot.
 12. Add reproject command for one trace, time range, or rule version.
+   Completed with validated CLI selector parsing for trace, bounded RFC3339
+   range, or rule-set version replay scopes.
 
 ### Tests
 
