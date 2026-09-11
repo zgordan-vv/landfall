@@ -17,6 +17,8 @@ pub mod diagnostics;
 pub use diagnostics::{DiagnosticWrite, append_diagnostics};
 pub mod recommendations;
 pub use recommendations::{RecommendationWrite, append_recommendations};
+pub mod watermarks;
+pub use watermarks::advance_projection_watermark;
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;

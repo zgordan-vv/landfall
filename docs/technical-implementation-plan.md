@@ -896,6 +896,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with atomic append-only recommendation writes and duplicate-safe
    links to diagnostics and immutable evidence events.
 9. Increment projection version/watermark.
+   Completed with a dedicated per-trace watermark table and monotonic
+   version advance helper that ignores stale projection writes.
 10. Enqueue observation only when eligible.
 11. Add projection-lag and dead-job metrics.
 12. Add reproject command for one trace, time range, or rule version.
