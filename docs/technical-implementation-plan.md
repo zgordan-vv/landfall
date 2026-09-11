@@ -963,6 +963,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with bounded batch assembly, generated batch IDs, and retry
    objects preserving the original ID and event ordering.
 10. Implement HTTP/gzip transport and backoff with jitter.
+   Completed with an injected batch transport, gzip flag, bounded retry count,
+   exponential backoff, and injectable jitter/sleep for deterministic tests.
 11. Implement drop/transport health counters and customer callback.
 12. Implement bounded shutdown flush.
 13. Build ESM package and declarations; add CJS only if support decision requires it.

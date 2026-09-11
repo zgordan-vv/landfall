@@ -1,0 +1,34 @@
+import type { OutboundBatch } from "./batching.js";
+
+export interface TransportResponse { readonly status: number }
+export type BatchTransport<T> = (batch: OutboundBatch<T>, compressed: boolean) => Promise<TransportResponse>;
+
+export interface RetryOptions {
+  readonly maxAttempts?: number;
+  readonly baseDelayMs?: number;
+  readonly jitter?: () => number;
+  readonly sleep?: (delayMs: number) => Promise<void>;
+}
+
+/** Sends a batch with bounded exponential backoff and injectable gzip transport. */
+export async function sendWithRetry<T>(batch: OutboundBatch<T>, transport: BatchTransport<T>, options: RetryOptions = {}): Promise<TransportResponse> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const baseDelayMs = options.baseDelayMs ?? 100;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) throw new Error("maxAttempts must be positive");
+  const jitter = options.jitter ?? Math.random;
+  const sleep = options.sleep ?? ((delayMs: number) => new Promise<void>((resolve) => {
+    const timerHost = globalThis as unknown as { setTimeout: (handler: () => void, timeout: number) => unknown };
+    timerHost.setTimeout(resolve, delayMs);
+  }));
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await transport(batch, true);
+      if (response.status < 500 || attempt === maxAttempts) return response;
+    } catch (error) {
+      if (attempt === maxAttempts) throw error;
+    }
+    const delay = baseDelayMs * 2 ** (attempt - 1) * (0.5 + Math.max(0, Math.min(1, jitter())));
+    await sleep(delay);
+  }
+  throw new Error("unreachable retry state");
+}
