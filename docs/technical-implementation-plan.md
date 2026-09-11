@@ -1171,6 +1171,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with strict-mode denial, empty-input validation, and a bounded
    response carrying only signature/status/log-presence metadata.
 5. Implement business-action detail and multiple-success warning.
+   Completed with a serializable business-action read model grouping trace IDs
+   and flagging more than one successful trace.
 6. Implement metric summary with numerator/denominator/exclusions.
 7. Implement data-quality summary.
 8. Implement descriptive cohort comparison.
