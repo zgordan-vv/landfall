@@ -1,4 +1,6 @@
 import type { TraceId } from "@landfall/protocol";
+import { HealthCounters, type HealthChangeCallback, type SdkHealth } from "./diagnostics.js";
+export * from "./diagnostics.js";
 export * from "./builders.js";
 export * from "./ids.js";
 export * from "./fingerprint.js";
@@ -10,6 +12,7 @@ export * from "./transport.js";
 export interface SdkOptions {
   readonly collectorUrl: string;
   readonly onTelemetryError?: (error: TelemetryError) => void;
+  readonly onHealthChange?: HealthChangeCallback;
   readonly maxBatchEvents?: number;
   readonly maxBufferEvents?: number;
 }
@@ -59,13 +62,19 @@ export interface TraceContext {
 export class LandfallSdk {
   readonly #options: SdkOptions;
   readonly #config: SdkConfig;
+  readonly #health: HealthCounters;
 
   constructor(options: SdkOptions) {
     this.#config = validateConfig(options);
     this.#options = options;
+    this.#health = new HealthCounters(options.onHealthChange);
   }
 
   get config(): SdkConfig { return this.#config; }
+  get health(): SdkHealth { return this.#health.snapshot; }
+
+  recordDroppedEvents(count = 1): void { this.#health.recordDropped(count); }
+  recordTransportFailure(count = 1): void { this.#health.recordTransportFailure(count); }
 
   startTrace(traceId: TraceId, businessAction?: BusinessActionContext): TraceContext {
     const context: TraceContext = {

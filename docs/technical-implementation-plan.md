@@ -966,6 +966,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with an injected batch transport, gzip flag, bounded retry count,
    exponential backoff, and injectable jitter/sleep for deterministic tests.
 11. Implement drop/transport health counters and customer callback.
+   Completed with aggregate dropped-event and transport-failure counters,
+   immutable snapshots, and a fail-open health-change callback.
 12. Implement bounded shutdown flush.
 13. Build ESM package and declarations; add CJS only if support decision requires it.
 14. Create manual-events example.
