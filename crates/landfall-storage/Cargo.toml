@@ -13,6 +13,7 @@ default = []
 landfall-core.workspace = true
 landfall-protocol.workspace = true
 sqlx.workspace = true
+async-trait.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

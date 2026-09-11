@@ -737,6 +737,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    metadata and immutable JSON/HTML artifact manifests containing privacy,
    storage-key, hash, and byte-size attributes.
 9. Build repository traits at service boundaries and SQLx implementations.
+   Completed with `PersistenceRepository`, `PgRepositories`, and a translated
+   `RepositoryError` boundary; SQL remains behind the trait.
 10. Implement migration runner and version health check.
 11. Implement test database lifecycle and seed helpers.
 12. Add partition creation/retention primitives.
