@@ -36,6 +36,7 @@ pub mod etag;
 pub mod metrics_summary;
 pub mod pagination;
 pub mod recommendation_disposition;
+pub mod report_jobs;
 pub mod signature_lookup;
 pub mod system_status;
 pub mod trace_detail;

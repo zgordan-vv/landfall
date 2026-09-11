@@ -1337,6 +1337,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with a query-row adapter that reuses the R0 trace projection and
    carries a frozen projection watermark in `ReportSnapshot`.
 2. Implement report job API and worker.
+   Completed with a bounded report queue, registry-backed status transitions,
+   frozen watermark capture, failure details, and cooperative cancellation.
 3. Freeze cohort watermark and rule/schema versions.
 4. Implement HTML/JSON artifact storage with size/checksum.
 5. Run export-specific redaction and secret scan.
