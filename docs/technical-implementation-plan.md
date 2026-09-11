@@ -1302,6 +1302,10 @@ sections, and an explicit missing-evidence checklist.
 - small-sample warning;
 - instrumentation coverage by app/SDK version.
 
+Completed with a version-based cohort builder, sample and completeness
+display, descriptive absolute/relative changes, small-sample warning, and
+instrumentation coverage by SDK and collector schema.
+
 ### Tests
 
 - component behavior with MSW fixtures;

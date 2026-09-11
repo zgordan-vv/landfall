@@ -56,6 +56,15 @@ h2 { margin: .35rem 0 1rem; font-size: 1.2rem; }
 .detail-list { display: grid; gap: .8rem; margin: 0; padding-left: 1.2rem; color: var(--muted); font-size: .85rem; }
 .detail-list .status-label { margin-left: .4rem; }
 .checklist { list-style: none; padding-left: 0; }
+.cohort-builder { margin-top: 2.5rem; padding: 1.5rem; border: 1px solid #2d3c54; border-radius: .8rem; background: var(--surface); }
+.select-grid, .comparison-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.select-grid label { color: var(--muted); font-size: .8rem; }
+.select-grid select { display: block; width: 100%; margin-top: .4rem; padding: .7rem; border: 1px solid #40516c; border-radius: .4rem; color: #fff; background: #0b1019; }
+.comparison-grid .state-card { margin-top: 1rem; }
+.comparison-number { margin: .75rem 0 .3rem; color: var(--accent); font-size: 2rem; font-weight: 800; }
+.coverage-row { display: flex; justify-content: space-between; padding: .75rem 0; color: var(--muted); border-bottom: 1px solid #2d3c54; }
+.coverage-row:last-child { border-bottom: 0; }
+.coverage-row b { color: #fff; }
 .status-dot { display: inline-block; width: .6rem; height: .6rem; margin-right: .6rem; border-radius: 50%; background: var(--accent); }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; }
 .metric-grid div { padding: 1rem; border-radius: .5rem; background: #1c2738; }
@@ -74,4 +83,4 @@ h2 { margin: .35rem 0 1rem; font-size: 1.2rem; }
 .metric-grid strong, .metric-grid span { display: block; }
 .metric-grid strong { font-size: 1.5rem; }
 .metric-grid span { color: var(--muted); font-size: .8rem; margin-top: .3rem; }
-@media (max-width: 640px) { .layout { grid-template-columns: 1fr; } nav { display: flex; gap: .35rem; padding: .75rem 1rem; border-right: 0; border-bottom: 1px solid #273246; } .nav-caption { display: none; } .nav-link { padding: .5rem .65rem; } .metric-grid, .check-list, .trend-grid, .detail-grid { grid-template-columns: 1fr; } .trace-row { grid-template-columns: 1fr auto; } .trace-row time { grid-column: 1 / -1; } .detail-header { align-items: start; flex-direction: column; gap: .7rem; } }
+@media (max-width: 640px) { .layout { grid-template-columns: 1fr; } nav { display: flex; gap: .35rem; padding: .75rem 1rem; border-right: 0; border-bottom: 1px solid #273246; } .nav-caption { display: none; } .nav-link { padding: .5rem .65rem; } .metric-grid, .check-list, .trend-grid, .detail-grid, .select-grid, .comparison-grid { grid-template-columns: 1fr; } .trace-row { grid-template-columns: 1fr auto; } .trace-row time { grid-column: 1 / -1; } .detail-header { align-items: start; flex-direction: column; gap: .7rem; } }
