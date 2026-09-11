@@ -24,6 +24,7 @@
     "build": "pnpm --recursive build",
     "check:protocol-generated": "node scripts/generate-protocol-ts.mjs --check",
     "check:solana-kit-lane": "node scripts/check-solana-kit-lane.mjs",
+    "check:solana-lifecycle-fixtures": "node scripts/check-solana-lifecycle-fixtures.mjs",
     "dev:dashboard": "pnpm --filter @landfall/dashboard dev",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",

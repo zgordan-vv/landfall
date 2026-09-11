@@ -1,0 +1,6 @@
+[
+  {"id":"success","simulation":"succeeded","client_submission":"accepted","observed":"confirmed","expected":"confirmed"},
+  {"id":"simulation-failure","simulation":"execution_error","client_submission":"not_started","observed":"not_observed","expected":"simulation_failed"},
+  {"id":"timeout-later-success","simulation":"succeeded","client_submission":"timeout","observed":"confirmed","expected":"confirmed_after_client_timeout"},
+  {"id":"expiration","simulation":"succeeded","client_submission":"accepted","observed":"not_observed","last_valid_block_height":"500","observed_block_height":"501","expected":"expired"}
+]
