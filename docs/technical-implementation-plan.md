@@ -1159,6 +1159,8 @@ Expose the platform's read model through stable documented APIs.
 ### Tasks
 
 1. Implement cursor-pagination utility.
+   Completed with bounded opaque offset cursors, deterministic slice pagination,
+   and explicit invalid-cursor/limit errors.
 2. Implement trace list filters and bounded-time validation.
 3. Implement trace detail with attempts, observations, evidence, recommendations, and watermark.
 4. Implement signature lookup with privacy/log safeguards.
