@@ -721,6 +721,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    event identity registry, range-partitioned raw event parent, and bounded
    environment/trace time indexes without a JSON GIN index.
 5. Implement business actions, traces, aliases, typed child projections.
+   Completed in migration `0004_create_reporting_entities.sql` with scoped
+   business-action/trace tables, explicit alias relationships, and typed
+   attempt, simulation, observation, and execution projections.
 6. Implement diagnostics, evidence, recommendations, and disposition history.
 7. Implement jobs with lease fields and active dedupe keys.
 8. Implement report metadata/artifact tables.
