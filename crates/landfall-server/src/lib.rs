@@ -1,10 +1,19 @@
 //! Composition root and public application-service surface for Landfall.
 #![allow(missing_docs)]
 
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::post};
+use axum::{
+    Json, Router,
+    extract::State,
+    http::{HeaderValue, Request, StatusCode},
+    middleware::{self, Next},
+    response::IntoResponse,
+    routing::post,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use tracing::info_span;
+use uuid::Uuid;
 
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
 
@@ -31,7 +40,25 @@ pub struct ApiError {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/ingest", post(ingest))
+        .layer(middleware::from_fn(request_context))
         .with_state(Arc::new(state))
+}
+
+async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
+    let request_id = request
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.is_empty() && value.len() <= 128)
+        .map_or_else(|| Uuid::now_v7().to_string(), ToOwned::to_owned);
+    let span = info_span!("http_request", request_id = %request_id, method = %request.method(), path = %request.uri().path());
+    let _entered = span.enter();
+    request.extensions_mut().insert(request_id.clone());
+    let mut response = next.run(request).await;
+    if let Ok(value) = HeaderValue::from_str(&request_id) {
+        response.headers_mut().insert("x-request-id", value);
+    }
+    response
 }
 
 async fn ingest(
@@ -107,6 +134,20 @@ mod tests {
                 .unwrap()
                 .status(),
             StatusCode::BAD_REQUEST
+        );
+    }
+
+    #[tokio::test]
+    async fn preserves_or_generates_request_id() {
+        let request = Request::post("/v1/ingest")
+            .header("content-type", "application/json")
+            .header("x-request-id", "portfolio-test-1")
+            .body(Body::from(r#"{"events":[{"type":"created"}]}"#))
+            .unwrap();
+        let response = router(super::AppState).oneshot(request).await.unwrap();
+        assert_eq!(
+            response.headers().get("x-request-id").unwrap(),
+            "portfolio-test-1"
         );
     }
 }

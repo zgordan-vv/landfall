@@ -803,6 +803,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with typed application state, `/v1/ingest`, bounded batches, and
    structured `400`/`413` validation responses.
 2. Add request IDs and structured tracing spans.
+   Completed with propagated/generated `X-Request-Id` headers and an
+   `http_request` span containing request ID, method, and path.
 3. Add liveness/readiness endpoints.
 4. Implement bearer-token hashing, lookup, scope, expiration, and revocation.
 5. Implement compressed and decompressed body limits.
