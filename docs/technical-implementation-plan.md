@@ -1274,6 +1274,10 @@ action placeholder.
 - accessible state/certainty labels;
 - saved filters are P1, not required.
 
+Completed with an accessible fixture trace list, free-text filtering for trace
+and route identifiers, URL-hash filter persistence, semantic status labels,
+empty-state handling, and bounded next-page control.
+
 ### Step 12.5 — Trace detail
 
 - state summary;
