@@ -1162,6 +1162,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with bounded opaque offset cursors, deterministic slice pagination,
    and explicit invalid-cursor/limit errors.
 2. Implement trace list filters and bounded-time validation.
+   Completed with project/environment/status filters and RFC3339 time windows
+   bounded to a maximum of 31 days.
 3. Implement trace detail with attempts, observations, evidence, recommendations, and watermark.
 4. Implement signature lookup with privacy/log safeguards.
 5. Implement business-action detail and multiple-success warning.
