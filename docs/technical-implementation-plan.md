@@ -957,6 +957,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with endpoint credential/query redaction and bounded scalar
    metadata allowlisting for explicitly approved keys.
 8. Implement bounded in-memory buffer.
+   Completed with a generic FIFO buffer enforcing a fixed capacity and
+   explicit overflow result for health/error accounting.
 9. Implement batch assembly and stable retries.
 10. Implement HTTP/gzip transport and backoff with jitter.
 11. Implement drop/transport health counters and customer callback.
