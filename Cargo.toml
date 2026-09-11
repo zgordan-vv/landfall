@@ -31,6 +31,7 @@ tracing = "0.1"
 sha2 = "0.10"
 tower-http = { version = "0.6", features = ["limit"] }
 tower = { version = "0.5", features = ["limit"] }
+utoipa = { version = "5", features = ["uuid", "time"] }
 sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls", "macros", "migrate", "uuid", "time"] }
 tokio = { version = "1.0", features = ["macros", "rt"] }
 thiserror = "2.0"

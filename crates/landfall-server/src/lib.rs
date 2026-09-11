@@ -20,6 +20,7 @@ use std::time::{Duration, Instant};
 use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
+use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
 
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
@@ -47,22 +48,30 @@ pub struct AppState {
     pub ready: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct IngestRequest {
     pub events: Vec<Value>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct IngestAccepted {
     pub accepted: usize,
     pub duplicate: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiError {
     pub code: &'static str,
     pub message: &'static str,
 }
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(ingest),
+    components(schemas(IngestRequest, IngestAccepted, ApiError)),
+    info(title = "Landfall Ingestion API", version = "0.1.0")
+)]
+pub struct ApiDoc;
 
 /// Maps durable ingestion counters to the public HTTP contract.
 #[must_use]
@@ -110,12 +119,17 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/ingest", post(ingest))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
+        .route("/openapi.json", axum::routing::get(openapi))
         .layer(RequestBodyLimitLayer::new(MAX_DECOMPRESSED_BODY_BYTES))
         .layer(ConcurrencyLimitLayer::new(MAX_CONCURRENT_REQUESTS))
         .layer(middleware::from_fn(request_rate_limit))
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
         .with_state(Arc::new(state))
+}
+
+async fn openapi() -> impl IntoResponse {
+    Json(ApiDoc::openapi())
 }
 
 static RATE_WINDOW: OnceLock<Mutex<(Instant, u32)>> = OnceLock::new();
@@ -200,6 +214,17 @@ async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> 
     response
 }
 
+#[utoipa::path(
+    post,
+    path = "/v1/ingest",
+    request_body = IngestRequest,
+    responses(
+        (status = 202, description = "At least one event accepted", body = IngestAccepted),
+        (status = 200, description = "All events were duplicates", body = IngestAccepted),
+        (status = 400, description = "Invalid or privacy-unsafe event", body = ApiError),
+        (status = 413, description = "Batch or body too large", body = ApiError)
+    )
+)]
 async fn ingest(
     State(_state): State<Arc<AppState>>,
     Json(request): Json<IngestRequest>,
@@ -254,12 +279,13 @@ async fn ingest(
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
-    use super::router;
+    use super::{ApiDoc, router};
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
     use tower::ServiceExt;
+    use utoipa::OpenApi as _;
 
     #[tokio::test]
     async fn accepts_non_empty_batch() {
@@ -377,6 +403,14 @@ mod tests {
     fn limits_are_positive_and_bounded() {
         assert!(super::MAX_REQUESTS_PER_SECOND > 0);
         assert!(super::MAX_CONCURRENT_REQUESTS <= super::MAX_REQUESTS_PER_SECOND as usize);
+    }
+
+    #[test]
+    fn openapi_snapshot_contains_ingest_contract() {
+        let document = ApiDoc::openapi().to_pretty_json().unwrap();
+        assert!(document.contains("/v1/ingest"));
+        assert!(document.contains("IngestRequest"));
+        assert!(document.contains("202"));
     }
 
     #[test]

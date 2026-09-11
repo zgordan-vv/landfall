@@ -835,6 +835,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with a bounded process-wide request window (`429` on exhaustion)
    and Axum/Tower concurrency limiting before handler execution.
 11. Generate OpenAPI route and schema snapshot.
+   Completed with a code-first `utoipa` document exposed at `/openapi.json`
+   and a snapshot-style contract test.
 12. Add disposable health-check event endpoint.
 
 ### Tests
