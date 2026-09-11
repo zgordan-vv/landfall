@@ -8,7 +8,7 @@ use std::{
 
 use landfall_cli::{group_traces, ingest_ndjson};
 use landfall_core::versions::current_versions;
-use landfall_report::{ReportCounts, ReportDocument, TraceReport};
+use landfall_report::{PrivacyProfile, ReportCounts, ReportDocument, TraceReport, render_json};
 
 fn main() {
     if let Err(error) = run() {
@@ -23,8 +23,24 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: landfall ingest <ndjson-file>".into());
     }
     let path = args.next().ok_or("missing NDJSON file")?;
+    let profile = match args.next().as_deref() {
+        Some("--privacy-profile") => match args.next().as_deref() {
+            Some("internal") | None => PrivacyProfile::Internal,
+            Some("shareable") => PrivacyProfile::Shareable,
+            _ => return Err("privacy profile must be internal or shareable".into()),
+        },
+        None => PrivacyProfile::Internal,
+        Some(_) => {
+            return Err(
+                "usage: landfall ingest <ndjson-file> [--privacy-profile internal|shareable]"
+                    .into(),
+            );
+        }
+    };
     if args.next().is_some() {
-        return Err("usage: landfall ingest <ndjson-file>".into());
+        return Err(
+            "usage: landfall ingest <ndjson-file> [--privacy-profile internal|shareable]".into(),
+        );
     }
     let input: Box<dyn io::Read> = if path == "-" {
         Box::new(io::stdin())
@@ -51,6 +67,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         })
         .collect();
     let document = ReportDocument::new(current_versions(), traces, grouped.aliases.len());
-    println!("{}", serde_json::to_string_pretty(&document)?);
+    println!("{}", render_json(&document, profile)?);
     Ok(())
 }

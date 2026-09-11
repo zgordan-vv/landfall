@@ -100,6 +100,33 @@ pub struct ReportCounts {
     pub recommendations: usize,
 }
 
+/// Privacy profile applied during report export.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PrivacyProfile {
+    /// Full identifiers for trusted internal use.
+    Internal,
+    /// Redacts trace identifiers for external sharing.
+    Shareable,
+}
+
+/// Serializes a report with the selected privacy profile.
+pub fn render_json(
+    document: &ReportDocument,
+    profile: PrivacyProfile,
+) -> Result<String, serde_json::Error> {
+    let traces = document.traces.iter().map(|trace| serde_json::json!({
+        "trace_id": match profile { PrivacyProfile::Internal => trace.trace_id.to_string(), PrivacyProfile::Shareable => "[redacted]".to_string() },
+        "lifecycle": trace.lifecycle, "landing": trace.landing, "execution": trace.execution,
+        "application": trace.application, "terminal_eligible": trace.terminal_eligible,
+        "data_quality_findings": trace.data_quality_findings, "confirmed_diagnostics": trace.confirmed_diagnostics,
+        "probable_diagnostics": trace.probable_diagnostics, "unknown_diagnostics": trace.unknown_diagnostics,
+        "recommendations": trace.recommendations,
+    })).collect::<Vec<_>>();
+    serde_json::to_string_pretty(
+        &serde_json::json!({ "versions": document.versions, "traces": traces, "alias_count": document.alias_count }),
+    )
+}
+
 impl ReportDocument {
     /// Creates a report from already-derived, presentation-neutral records.
     #[must_use]
@@ -161,5 +188,17 @@ pub fn render_html(document: &ReportDocument) -> String {
         html.push_str("</td></tr>");
     }
     html.push_str("</tbody></table></body></html>");
+    html
+}
+
+/// Renders HTML using a privacy profile; shareable mode redacts trace IDs.
+#[must_use]
+pub fn render_html_with_profile(document: &ReportDocument, profile: PrivacyProfile) -> String {
+    let mut html = render_html(document);
+    if matches!(profile, PrivacyProfile::Shareable) {
+        for trace in &document.traces {
+            html = html.replace(&trace.trace_id.to_string(), "[redacted]");
+        }
+    }
     html
 }
