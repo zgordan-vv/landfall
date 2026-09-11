@@ -13,6 +13,8 @@ pub mod trace_events;
 pub use trace_events::{RawEventRow, load_events_for_trace};
 pub mod projections;
 pub use projections::{AttemptProjectionWrite, TraceProjectionWrite, replace_trace_projection};
+pub mod diagnostics;
+pub use diagnostics::{DiagnosticWrite, append_diagnostics};
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;
