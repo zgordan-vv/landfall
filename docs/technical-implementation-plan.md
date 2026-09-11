@@ -1343,6 +1343,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with immutable `FrozenReportScope` validation capturing cohort,
    projection watermark, event schema, and core semantic versions.
 4. Implement HTML/JSON artifact storage with size/checksum.
+   Completed with format/privacy metadata, a 10 MiB size cap, SHA-256
+   integrity checks, and immutable download bytes.
 5. Run export-specific redaction and secret scan.
 6. Implement CLI:
    - `init`;
