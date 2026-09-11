@@ -729,6 +729,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    versioned certainty, many-to-many evidence links, recommendation-to-
    diagnostic links, and append-only disposition records.
 7. Implement jobs with lease fields and active dedupe keys.
+   Completed in migration `0006_create_work_jobs.sql` with explicit lifecycle
+   states, `locked_by`/`locked_until` leases, retry counters, and a partial
+   unique index for ready/running dedupe keys.
 8. Implement report metadata/artifact tables.
 9. Build repository traits at service boundaries and SQLx implementations.
 10. Implement migration runner and version health check.
