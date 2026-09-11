@@ -975,6 +975,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with an ESM-only package export, explicit module/types metadata,
    and declaration generation verified by a package smoke test.
 14. Create manual-events example.
+   Completed with `examples/sdk-manual-events.mjs`, demonstrating typed
+   lifecycle builders, bounded buffering, batch assembly, and shutdown flush.
 
 ### Public API qualities
 
