@@ -887,6 +887,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with a persisted-row adapter that deserializes `WireEvent`,
    canonical-orders events, and invokes the existing pure reducer.
 6. Replace/upsert typed child projections in one transaction.
+   Completed with transactional trace upsert and delete/replace of typed
+   submission-attempt children in a single SQLx transaction.
 7. Preserve/supersede diagnosis history.
 8. Persist recommendation and evidence links.
 9. Increment projection version/watermark.
