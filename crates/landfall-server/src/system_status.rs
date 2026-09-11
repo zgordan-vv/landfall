@@ -3,6 +3,7 @@
 use crate::auth::{ApiTokenRecord, AuthError, authorize};
 use serde::Serialize;
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 
 /// Internal snapshot supplied by health probes and workers.
 #[derive(Debug, Clone)]
@@ -18,7 +19,7 @@ pub struct SystemStatusSnapshot {
 }
 
 /// Safe component-level status exposed to an administrator.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct DetailedSystemStatus {
     pub status: Status,
     pub database_ready: bool,
@@ -32,7 +33,7 @@ pub struct DetailedSystemStatus {
 }
 
 /// Overall status derived from dependency health, without exposing secrets.
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     Ok,

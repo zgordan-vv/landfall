@@ -1,9 +1,10 @@
 //! Redacted read models for project, environment, and route configuration.
 
 use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Public project configuration returned by read endpoints.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct ProjectConfig {
     pub project_id: String,
     pub display_name: String,
@@ -11,7 +12,7 @@ pub struct ProjectConfig {
 }
 
 /// Public environment configuration; secrets and raw endpoints are omitted.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct EnvironmentConfig {
     pub environment_id: String,
     pub display_name: String,
@@ -20,7 +21,7 @@ pub struct EnvironmentConfig {
 }
 
 /// Public route configuration safe for dashboards and diagnostics.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct RouteConfig {
     pub route_id: String,
     pub label: String,

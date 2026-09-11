@@ -6,9 +6,10 @@ use landfall_core::data_quality::{
     DATA_QUALITY_VERSION, DataQualityAssessment, DataQualityFindingCode, DataQualityGrade,
 };
 use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Aggregate quality distribution for a selected set of reduced traces.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct DataQualitySummary {
     /// Number of assessments included in the summary.
     pub assessments: u64,
@@ -23,14 +24,14 @@ pub struct DataQualitySummary {
 }
 
 /// Count for one [`DataQualityGrade`].
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct GradeCount {
     pub grade: char,
     pub count: u64,
 }
 
 /// Count for one stable, machine-readable quality-gap key.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq, Eq)]
 pub struct GapCount {
     pub gap: String,
     pub count: u64,

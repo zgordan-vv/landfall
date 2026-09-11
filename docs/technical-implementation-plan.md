@@ -1195,6 +1195,8 @@ Expose the platform's read model through stable documented APIs.
     Completed with strong version-derived ETags, projection-version metadata,
     and exact `If-None-Match` conditional-read semantics.
 13. Generate OpenAPI and TypeScript API client.
+    Completed by registering Phase 11 schemas in `ApiDoc` and adding the typed
+    `@landfall/api-client` fetch client with injectable transport.
 
 ### Tests
 

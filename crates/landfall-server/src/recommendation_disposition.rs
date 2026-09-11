@@ -1,9 +1,10 @@
 //! Append-only recommendation disposition read/write semantics.
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// User decision recorded for an advisory recommendation.
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum RecommendationDisposition {
     Accepted,
@@ -13,7 +14,7 @@ pub enum RecommendationDisposition {
 }
 
 /// One immutable audit entry. A new decision appends another entry.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, Serialize, ToSchema, PartialEq, Eq)]
 pub struct DispositionRecord {
     pub disposition_id: String,
     pub recommendation_id: String,

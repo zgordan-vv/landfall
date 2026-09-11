@@ -1,6 +1,7 @@
 //! Descriptive, bounded comparison model for two completed cohorts.
 
 use serde::Serialize;
+use utoipa::ToSchema;
 
 /// Input metrics for one frozen cohort selection.
 #[derive(Debug, Clone, Copy)]
@@ -33,7 +34,7 @@ impl std::fmt::Display for ComparisonError {
 impl std::error::Error for ComparisonError {}
 
 /// Descriptive comparison of candidate metrics against a baseline cohort.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, ToSchema, PartialEq)]
 pub struct CohortComparison {
     pub baseline_rate: Option<f64>,
     pub candidate_rate: Option<f64>,

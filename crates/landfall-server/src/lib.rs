@@ -90,7 +90,17 @@ pub struct ApiError {
 #[derive(OpenApi)]
 #[openapi(
     paths(ingest),
-    components(schemas(IngestRequest, IngestAccepted, ApiError)),
+    components(schemas(
+        IngestRequest,
+        IngestAccepted,
+        ApiError,
+        crate::metrics_summary::MetricSummary,
+        crate::data_quality_summary::DataQualitySummary,
+        crate::cohort_comparison::CohortComparison,
+        crate::recommendation_disposition::DispositionRecord,
+        crate::system_status::DetailedSystemStatus,
+        crate::config_read_model::ProjectConfig
+    )),
     info(title = "Landfall Ingestion API", version = "0.1.0")
 )]
 pub struct ApiDoc;
