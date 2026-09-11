@@ -1,4 +1,5 @@
 import type { TraceId } from "@landfall/protocol";
+export * from "./builders.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;
