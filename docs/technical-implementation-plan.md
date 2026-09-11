@@ -1359,6 +1359,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with a validated command dispatcher, human/JSON output, and the
    existing NDJSON ingest path preserved.
 7. Implement trace-deletion job and tombstone/audit behavior.
+   Completed with validated deletion jobs, immutable tombstones, audit reason
+   and actor fields, and read-path deletion checks.
 8. Implement partition creation and retention worker.
 9. Add backup/restore and incident runbooks.
 

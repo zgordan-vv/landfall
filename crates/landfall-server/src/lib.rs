@@ -33,6 +33,7 @@ pub mod business_action;
 pub mod cohort_comparison;
 pub mod config_read_model;
 pub mod data_quality_summary;
+pub mod deletion;
 pub mod etag;
 pub mod export_safety;
 pub mod metrics_summary;
