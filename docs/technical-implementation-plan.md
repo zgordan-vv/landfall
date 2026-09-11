@@ -936,6 +936,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
 ### Tasks
 
 1. Design minimal public API and error policy.
+   Completed with `LandfallSdk`, `TraceContext`, `BusinessActionContext`, and
+   a callback-based telemetry error policy that never throws from `emit`.
 2. Implement validated immutable configuration.
 3. Implement `BusinessActionContext` and `TraceContext`.
 4. Implement typed manual lifecycle event builders.
