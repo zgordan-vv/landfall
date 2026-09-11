@@ -22,6 +22,19 @@ use uuid::Uuid;
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
 pub const MAX_COMPRESSED_BODY_BYTES: usize = 256 * 1024;
 pub const MAX_DECOMPRESSED_BODY_BYTES: usize = 2 * 1024 * 1024;
+const PROHIBITED_PRIVACY_KEYS: &[&str] = &[
+    "private_key",
+    "seed_phrase",
+    "signed_transaction_bytes",
+    "raw_transaction",
+    "authorization",
+    "cookie",
+    "set_cookie",
+    "headers",
+    "metadata",
+    "endpoint_url",
+    "rpc_url",
+];
 
 #[derive(Clone, Default)]
 pub struct AppState {
@@ -57,6 +70,16 @@ fn validate_event(event: &Value) -> Result<(), &'static str> {
         .and_then(Value::as_str)
         .ok_or("missing_event_type")?;
     check_event_compatibility(schema_version, event_type).map_err(|error| error.code().as_str())
+}
+
+fn contains_prohibited_key(value: &Value) -> bool {
+    match value {
+        Value::Object(object) => object.iter().any(|(key, child)| {
+            PROHIBITED_PRIVACY_KEYS.contains(&key.as_str()) || contains_prohibited_key(child)
+        }),
+        Value::Array(values) => values.iter().any(contains_prohibited_key),
+        _ => false,
+    }
 }
 
 pub fn router(state: AppState) -> Router {
@@ -158,6 +181,16 @@ async fn ingest(
             Json(ApiError {
                 code: "invalid_event",
                 message: "batch contains an invalid event",
+            }),
+        )
+            .into_response();
+    }
+    if request.events.iter().any(contains_prohibited_key) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "privacy_violation",
+                message: "event contains a prohibited field",
             }),
         )
             .into_response();
@@ -272,6 +305,19 @@ mod tests {
             .body(Body::from(
                 r#"{"events":[{"schema_version":"1.0","event_type":"unknown"}]}"#,
             ))
+            .unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn rejects_prohibited_privacy_key() {
+        let request = Request::post("/v1/ingest")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"events":[{"schema_version":"1.0","event_type":"solana.trace.created","attributes":{"seed_phrase":"canary-secret"}}]}"#))
             .unwrap();
         let response = router(super::AppState::default())
             .oneshot(request)

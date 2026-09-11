@@ -818,6 +818,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with schema-version/event-type compatibility checks and atomic
    rejection of batches containing unsupported or malformed events.
 7. Repeat privacy enforcement server-side.
+   Completed with recursive prohibited-key scanning across objects and arrays,
+   returning a non-reflective `privacy_violation` error before persistence.
 8. Implement atomic transaction:
    - dedup claim;
    - raw-event insert;
