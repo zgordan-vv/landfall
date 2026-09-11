@@ -40,6 +40,49 @@ pub struct ObservationQueue {
 /// Solana RPC's maximum signature-status request size for one call.
 pub const MAX_SIGNATURE_STATUS_BATCH: usize = 256;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RouteHealth {
+    pub requests: u64,
+    pub successes: u64,
+    pub failures: u64,
+    pub rate_limited: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DataQualityGap {
+    NoStatusEvidence,
+    RpcUnavailable,
+    MalformedProviderResponse,
+    UnsupportedTransactionVersion,
+}
+
+/// Aggregates health independently for each configured observer route.
+#[derive(Debug, Default)]
+pub struct RouteHealthRegistry {
+    routes: std::collections::HashMap<String, RouteHealth>,
+}
+
+impl RouteHealthRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn record(&mut self, route_id: &str, result: Result<(), &str>) {
+        let health = self.routes.entry(route_id.to_owned()).or_default();
+        health.requests += 1;
+        match result {
+            Ok(()) => health.successes += 1,
+            Err("rate_limited") => {
+                health.failures += 1;
+                health.rate_limited += 1;
+            }
+            Err(_) => health.failures += 1,
+        }
+    }
+    pub fn get(&self, route_id: &str) -> RouteHealth {
+        self.routes.get(route_id).copied().unwrap_or_default()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpirationDecision {
     NotExpired,
@@ -658,5 +701,24 @@ mod tests {
             evaluate_expiration(9_999, 1, true),
             ExpirationDecision::IndeterminateDurableNonce
         );
+    }
+
+    #[test]
+    fn route_health_isolated_and_rate_limits_are_visible() {
+        let mut registry = RouteHealthRegistry::new();
+        registry.record("primary", Ok(()));
+        registry.record("primary", Err("rate_limited"));
+        registry.record("backup", Err("timeout"));
+        assert_eq!(
+            registry.get("primary"),
+            RouteHealth {
+                requests: 2,
+                successes: 1,
+                failures: 1,
+                rate_limited: 1
+            }
+        );
+        assert_eq!(registry.get("backup").failures, 1);
+        assert_eq!(registry.get("missing"), RouteHealth::default());
     }
 }

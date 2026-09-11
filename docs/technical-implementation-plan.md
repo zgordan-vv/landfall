@@ -1119,6 +1119,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with provider-neutral execution normalization, exact decimal
    integer fields, version mapping, log-presence signal, and error flag.
 11. Implement observer route health and data-quality gaps.
+   Completed with per-route request/success/failure/rate-limit counters and
+   explicit gap categories for missing or unusable evidence.
 12. Detect durable-nonce/unsupported validity cases without false expiration.
 13. Support clean cancellation and restart recovery.
 
