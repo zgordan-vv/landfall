@@ -2,6 +2,53 @@
 
 use std::{collections::BTreeMap, io::BufRead};
 
+/// Supported operator commands beyond NDJSON ingestion.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum OperatorCommand {
+    Init,
+    Doctor,
+    Trace,
+    Report(String),
+    Rules,
+    RetentionDryRun,
+    Demo,
+}
+
+/// Parses the stable operator command surface.
+pub fn parse_operator_command(args: &[String]) -> Result<OperatorCommand, &'static str> {
+    match args {
+        [command] if command == "init" => Ok(OperatorCommand::Init),
+        [command] if command == "doctor" => Ok(OperatorCommand::Doctor),
+        [command] if command == "trace" => Ok(OperatorCommand::Trace),
+        [command, sub] if command == "report" => Ok(OperatorCommand::Report(sub.clone())),
+        [command] if command == "rules" => Ok(OperatorCommand::Rules),
+        [command, run, dry] if command == "retention" && run == "run" && dry == "--dry-run" => {
+            Ok(OperatorCommand::RetentionDryRun)
+        }
+        [command] if command == "demo" => Ok(OperatorCommand::Demo),
+        _ => Err(
+            "usage: init | doctor | trace | report <create|status|download> | rules | retention run --dry-run | demo",
+        ),
+    }
+}
+
+#[cfg(test)]
+mod operator_tests {
+    use super::*;
+    #[test]
+    fn parses_operator_commands() {
+        assert_eq!(
+            parse_operator_command(&["init".into()]),
+            Ok(OperatorCommand::Init)
+        );
+        assert_eq!(
+            parse_operator_command(&["report".into(), "status".into()]),
+            Ok(OperatorCommand::Report("status".into()))
+        );
+        assert!(parse_operator_command(&["unknown".into()]).is_err());
+    }
+}
+
 use landfall_core::{
     data_quality::evaluate_data_quality,
     diagnostics::{
