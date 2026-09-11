@@ -36,6 +36,12 @@ export interface BusinessActionContext {
   readonly name?: string;
 }
 
+export function createBusinessActionContext(businessActionId: string, name?: string): BusinessActionContext {
+  if (businessActionId.trim().length === 0 || businessActionId.length > 128) throw new Error("businessActionId must be 1-128 characters");
+  const context: BusinessActionContext = { businessActionId: businessActionId.trim() };
+  return Object.freeze(name === undefined ? context : { ...context, name: name.slice(0, 160) });
+}
+
 export interface TraceContext {
   readonly traceId: TraceId;
   readonly businessAction?: BusinessActionContext;

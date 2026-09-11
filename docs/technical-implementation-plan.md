@@ -942,6 +942,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with URL, batch-size, and buffer-size validation plus a frozen
    `SdkConfig` snapshot exposed read-only by the SDK.
 3. Implement `BusinessActionContext` and `TraceContext`.
+   Completed with validated immutable business-action contexts and explicit
+   trace linkage for grouping multiple transaction attempts.
 4. Implement typed manual lifecycle event builders.
 5. Implement UUIDv7 generation/canonical format.
 6. Implement signed-byte fingerprinting according to ADR.
