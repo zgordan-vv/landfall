@@ -16,6 +16,7 @@ landfall-protocol.workspace = true
 sqlx.workspace = true
 async-trait.workspace = true
 uuid.workspace = true
+time.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

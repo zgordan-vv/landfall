@@ -746,6 +746,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    Completed with explicit PostgreSQL reset and deterministic control-plane
    seed helpers that preserve the SQLx migration ledger.
 12. Add partition creation/retention primitives.
+   Completed with date-scoped daily partition creation and explicit retention
+   cleanup that validates generated identifiers before executing DDL.
 13. Inspect query plans for trace lookup and bounded time search.
 
 ### Database engineering rules
