@@ -1092,6 +1092,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with an injected Rust transport, JSON-RPC 2.0 request/response
    handling, and normalized transport/provider/malformed-response errors.
 2. Implement route-specific pooled Reqwest client with Rustls.
+   Completed with a route-owned pooled `reqwest::Client`, Rustls-only TLS,
+   bounded timeout, endpoint consistency check, and sanitized HTTP failures.
 3. Implement `getBlockHeight` shared cache/worker.
 4. Implement durable observation schedule and in-memory priority queue.
 5. Batch `getSignatureStatuses` by route/options, default 100, maximum 256.

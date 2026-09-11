@@ -3,6 +3,9 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+mod http;
+pub use http::ReqwestRouteClient;
+
 #[derive(Debug, Serialize)]
 struct RpcRequest<'a, P> {
     jsonrpc: &'static str,
