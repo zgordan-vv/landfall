@@ -1174,6 +1174,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with a serializable business-action read model grouping trace IDs
    and flagging more than one successful trace.
 6. Implement metric summary with numerator/denominator/exclusions.
+   Completed with versioned summaries that exclude in-flight and unknown rows
+   explicitly rather than silently treating them as failures or successes.
 7. Implement data-quality summary.
 8. Implement descriptive cohort comparison.
 9. Implement recommendation disposition and history.
