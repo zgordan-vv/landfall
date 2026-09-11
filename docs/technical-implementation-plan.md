@@ -806,6 +806,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with propagated/generated `X-Request-Id` headers and an
    `http_request` span containing request ID, method, and path.
 3. Add liveness/readiness endpoints.
+   Completed with `/health/live` for process liveness and `/health/ready` for
+   dependency readiness, including a `503` response when not ready.
 4. Implement bearer-token hashing, lookup, scope, expiration, and revocation.
 5. Implement compressed and decompressed body limits.
 6. Implement batch schema/semantic validation.

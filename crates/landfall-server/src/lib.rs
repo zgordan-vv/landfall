@@ -18,7 +18,10 @@ use uuid::Uuid;
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
 
 #[derive(Clone, Default)]
-pub struct AppState;
+pub struct AppState {
+    /// Whether dependencies are ready for traffic.
+    pub ready: bool,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct IngestRequest {
@@ -40,8 +43,23 @@ pub struct ApiError {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/ingest", post(ingest))
+        .route("/health/live", axum::routing::get(liveness))
+        .route("/health/ready", axum::routing::get(readiness))
         .layer(middleware::from_fn(request_context))
         .with_state(Arc::new(state))
+}
+
+async fn liveness() -> impl IntoResponse {
+    (StatusCode::OK, Json(serde_json::json!({ "status": "ok" })))
+}
+
+async fn readiness(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let status = if state.ready {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (status, Json(serde_json::json!({ "ready": state.ready })))
 }
 
 async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
@@ -112,7 +130,7 @@ mod tests {
             .body(Body::from(r#"{"events":[{"type":"created"}]}"#))
             .unwrap();
         assert_eq!(
-            router(super::AppState)
+            router(super::AppState::default())
                 .oneshot(request)
                 .await
                 .unwrap()
@@ -128,7 +146,7 @@ mod tests {
             .body(Body::from(r#"{"events":[]}"#))
             .unwrap();
         assert_eq!(
-            router(super::AppState)
+            router(super::AppState::default())
                 .oneshot(request)
                 .await
                 .unwrap()
@@ -144,10 +162,29 @@ mod tests {
             .header("x-request-id", "portfolio-test-1")
             .body(Body::from(r#"{"events":[{"type":"created"}]}"#))
             .unwrap();
-        let response = router(super::AppState).oneshot(request).await.unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
         assert_eq!(
             response.headers().get("x-request-id").unwrap(),
             "portfolio-test-1"
         );
+    }
+
+    #[tokio::test]
+    async fn liveness_and_readiness_are_distinct() {
+        let app = router(super::AppState { ready: false });
+        let live = app
+            .clone()
+            .oneshot(Request::get("/health/live").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let ready = app
+            .oneshot(Request::get("/health/ready").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(live.status(), StatusCode::OK);
+        assert_eq!(ready.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 }
