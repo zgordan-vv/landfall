@@ -3,6 +3,26 @@ import type { TraceId } from "@landfall/protocol";
 export interface SdkOptions {
   readonly collectorUrl: string;
   readonly onTelemetryError?: (error: TelemetryError) => void;
+  readonly maxBatchEvents?: number;
+  readonly maxBufferEvents?: number;
+}
+
+export interface SdkConfig {
+  readonly collectorUrl: string;
+  readonly maxBatchEvents: number;
+  readonly maxBufferEvents: number;
+}
+
+export function validateConfig(options: SdkOptions): SdkConfig {
+  const collectorUrl = options.collectorUrl.trim();
+  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(collectorUrl) && !/^http:\/\/localhost(?::\d+)?(?:\/.*)?$/.test(collectorUrl)) {
+    throw new Error("collectorUrl must use HTTPS (or localhost for development)");
+  }
+  const maxBatchEvents = options.maxBatchEvents ?? 100;
+  const maxBufferEvents = options.maxBufferEvents ?? 1_000;
+  if (!Number.isInteger(maxBatchEvents) || maxBatchEvents < 1 || maxBatchEvents > 1_000) throw new Error("maxBatchEvents must be between 1 and 1000");
+  if (!Number.isInteger(maxBufferEvents) || maxBufferEvents < maxBatchEvents || maxBufferEvents > 100_000) throw new Error("maxBufferEvents must be between maxBatchEvents and 100000");
+  return Object.freeze({ collectorUrl, maxBatchEvents, maxBufferEvents });
 }
 
 export interface TelemetryError {
@@ -25,13 +45,14 @@ export interface TraceContext {
 /** Minimal non-blocking instrumentation facade. Telemetry failures are reported, never thrown. */
 export class LandfallSdk {
   readonly #options: SdkOptions;
+  readonly #config: SdkConfig;
 
   constructor(options: SdkOptions) {
-    if (!options.collectorUrl.startsWith("https://") && !options.collectorUrl.startsWith("http://localhost")) {
-      throw new Error("collectorUrl must use HTTPS (or localhost for development)");
-    }
+    this.#config = validateConfig(options);
     this.#options = options;
   }
+
+  get config(): SdkConfig { return this.#config; }
 
   startTrace(traceId: TraceId, businessAction?: BusinessActionContext): TraceContext {
     const context: TraceContext = {

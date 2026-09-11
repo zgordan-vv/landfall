@@ -939,6 +939,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with `LandfallSdk`, `TraceContext`, `BusinessActionContext`, and
    a callback-based telemetry error policy that never throws from `emit`.
 2. Implement validated immutable configuration.
+   Completed with URL, batch-size, and buffer-size validation plus a frozen
+   `SdkConfig` snapshot exposed read-only by the SDK.
 3. Implement `BusinessActionContext` and `TraceContext`.
 4. Implement typed manual lifecycle event builders.
 5. Implement UUIDv7 generation/canonical format.
