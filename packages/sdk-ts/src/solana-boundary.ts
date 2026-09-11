@@ -15,6 +15,31 @@ export interface SimulationSnapshot {
   readonly error?: unknown;
 }
 
+export type MonotonicClock = () => bigint;
+
+export interface SigningMeasurement<T> {
+  readonly result: "completed" | "failed";
+  readonly durationNs: string;
+  readonly value?: T;
+  readonly error?: unknown;
+}
+
+/** Measures application-owned signing without receiving or inspecting signer material. */
+export async function measureSigning<T>(signOperation: () => Promise<T>, clock: MonotonicClock): Promise<SigningMeasurement<T>> {
+  const started = clock();
+  try {
+    const value = await signOperation();
+    return Object.freeze({ result: "completed" as const, durationNs: durationDelta(started, clock()), value });
+  } catch (error) {
+    return Object.freeze({ result: "failed" as const, durationNs: durationDelta(started, clock()), error });
+  }
+}
+
+function durationDelta(started: bigint, ended: bigint): string {
+  if (ended < started) throw new Error("monotonic clock moved backwards");
+  return (ended - started).toString(10);
+}
+
 export function normalizeSimulationResult(input: unknown): SimulationSnapshot {
   if (input === null || typeof input !== "object") return { rpcResult: "malformed_response" };
   const value = input as { err?: unknown; unitsConsumed?: unknown; logs?: unknown; blockhashNotFound?: unknown };

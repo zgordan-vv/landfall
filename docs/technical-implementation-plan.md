@@ -1030,6 +1030,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with client-neutral simulation normalization, exact compute-unit
    serialization, log presence detection, and stable error classification.
 5. Measure signing delay without accessing signer secrets.
+   Completed with an injected monotonic clock and a signing-operation wrapper
+   that records exact nanosecond duration while preserving value/error identity.
 6. Fingerprint signed bytes in memory.
 7. Wrap submission attempts with route and configuration.
 8. Capture application confirmation-wait result.
