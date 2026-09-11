@@ -713,6 +713,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    Completed with append-only migration `0001_create_schemas.sql`, baseline
    metadata/batch/job/report tables, and PostgreSQL smoke validation.
 3. Implement projects, environments, routes, and API-token tables.
+   Completed in migration `0002_create_control_entities.sql` with scoped
+   foreign keys, uniqueness boundaries, route enablement, token expiry/revocation,
+   and hash-only token storage.
 4. Implement event dedup registry and daily raw-event partition parent.
 5. Implement business actions, traces, aliases, typed child projections.
 6. Implement diagnostics, evidence, recommendations, and disposition history.
