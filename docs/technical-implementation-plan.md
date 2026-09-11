@@ -1183,6 +1183,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with completed-window safeguards, sample-size warnings, missing
    data rates, and absolute/relative metric changes.
 9. Implement recommendation disposition and history.
+   Completed with append-only typed decisions, bounded reasons, actor/timestamp
+   audit fields, latest-state lookup, and duplicate-ID protection.
 10. Implement project/environment/route read configuration endpoints.
 11. Implement authenticated detailed system status.
 12. Add ETag/projection version behavior.
