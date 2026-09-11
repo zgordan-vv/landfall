@@ -1101,6 +1101,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with a deterministic due-time/priority queue; durable job rows can
    be re-enqueued after restart without changing ordering semantics.
 5. Batch `getSignatureStatuses` by route/options, default 100, maximum 256.
+   Completed with bounded 256-signature chunks and stable result ordering
+   across multiple JSON-RPC calls.
 6. Implement adaptive polling and per-route rate limits.
 7. Persist first null, state changes, periodic checkpoints, RPC error transitions, and terminal evidence.
 8. Implement expiry evaluation from current block height and `lastValidBlockHeight`.

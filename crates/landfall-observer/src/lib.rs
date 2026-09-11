@@ -37,6 +37,32 @@ pub struct ObservationQueue {
     entries: BinaryHeap<ObservationSchedule>,
 }
 
+/// Solana RPC's maximum signature-status request size for one call.
+pub const MAX_SIGNATURE_STATUS_BATCH: usize = 256;
+
+#[derive(Debug, Deserialize)]
+struct SignatureStatusesResponse {
+    value: Vec<Option<serde_json::Value>>,
+}
+
+/// Fetches statuses in bounded chunks while preserving input ordering.
+pub async fn get_signature_statuses<T: RpcTransport>(
+    client: &JsonRpcClient<T>,
+    signatures: &[String],
+) -> Result<Vec<Option<serde_json::Value>>, RpcClientError> {
+    if signatures.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut statuses = Vec::with_capacity(signatures.len());
+    for chunk in signatures.chunks(MAX_SIGNATURE_STATUS_BATCH) {
+        let response: SignatureStatusesResponse = client
+            .call(1, "getSignatureStatuses", serde_json::json!([chunk]))
+            .await?;
+        statuses.extend(response.value);
+    }
+    Ok(statuses)
+}
+
 impl ObservationQueue {
     pub fn new() -> Self {
         Self {
@@ -256,6 +282,29 @@ mod tests {
             cache.get_or_refresh(&client).await.expect("cached height"),
             321
         );
+    }
+
+    struct StatusTransport;
+    #[async_trait]
+    impl RpcTransport for StatusTransport {
+        async fn post(&self, _: &str, body: Vec<u8>) -> Result<Vec<u8>, String> {
+            let request: serde_json::Value =
+                serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+            let count = request["params"][0].as_array().map_or(0, Vec::len);
+            Ok(serde_json::json!({ "jsonrpc": "2.0", "id": 1, "result": { "value": (0..count).map(|_| serde_json::json!({"confirmations": 1})).collect::<Vec<_>>() } }).to_string().into_bytes())
+        }
+    }
+
+    #[tokio::test]
+    async fn signature_statuses_are_chunked_at_256() {
+        let client = JsonRpcClient::new("https://rpc.example", StatusTransport);
+        let signatures = (0..257)
+            .map(|index| format!("sig-{index}"))
+            .collect::<Vec<_>>();
+        let statuses = get_signature_statuses(&client, &signatures)
+            .await
+            .expect("statuses");
+        assert_eq!(statuses.len(), 257);
     }
 
     #[test]
