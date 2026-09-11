@@ -1192,6 +1192,8 @@ Expose the platform's read model through stable documented APIs.
     Completed with `system:read` authorization, redacted dependency metrics,
     queue/lag visibility, observer health, retention, and version reporting.
 12. Add ETag/projection version behavior.
+    Completed with strong version-derived ETags, projection-version metadata,
+    and exact `If-None-Match` conditional-read semantics.
 13. Generate OpenAPI and TypeScript API client.
 
 ### Tests
