@@ -4,6 +4,8 @@
 pub mod auth;
 pub mod workers;
 pub use workers::WorkerSupervisor;
+pub mod projector_worker;
+pub use projector_worker::{ProjectTraceJob, project_trace_queue, run_project_trace_worker};
 
 use axum::{
     Json, Router,

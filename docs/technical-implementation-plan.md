@@ -875,6 +875,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with a tracked `WorkerSupervisor`, child cancellation tokens, and
    graceful shutdown awaiting every worker handle.
 2. Implement `project_trace` job worker.
+   Completed with a cancellable bounded-queue worker loop and injected
+   processor callback for deterministic orchestration tests.
 3. Resolve trace aliases by signature/digest.
 4. Load canonical raw events.
 5. Run deterministic reducer.
