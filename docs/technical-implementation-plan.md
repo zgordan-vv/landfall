@@ -1113,6 +1113,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with strict `current > last_valid` evaluation and an explicit
    durable-nonce indeterminate result.
 9. Enqueue and implement `getTransaction` enrichment.
+   Completed with a provider-neutral request that explicitly advertises
+   `maxSupportedTransactionVersion: 0` and safely preserves a missing result.
 10. Normalize execution error, fee, compute units, slot, block time, and transaction version.
 11. Implement observer route health and data-quality gaps.
 12. Detect durable-nonce/unsupported validity cases without false expiration.

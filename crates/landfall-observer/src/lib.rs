@@ -228,6 +228,23 @@ pub async fn get_signature_statuses<T: RpcTransport>(
     Ok(statuses)
 }
 
+/// Fetches optional execution details while explicitly supporting legacy and v0 transactions.
+pub async fn get_transaction<T: RpcTransport>(
+    client: &JsonRpcClient<T>,
+    signature: &str,
+) -> Result<Option<serde_json::Value>, RpcClientError> {
+    if signature.trim().is_empty() {
+        return Err(RpcClientError::MalformedResponse);
+    }
+    client
+        .call(
+            1,
+            "getTransaction",
+            serde_json::json!([signature, { "maxSupportedTransactionVersion": 0 }]),
+        )
+        .await
+}
+
 impl ObservationQueue {
     pub fn new() -> Self {
         Self {
@@ -470,6 +487,28 @@ mod tests {
             .await
             .expect("statuses");
         assert_eq!(statuses.len(), 257);
+    }
+
+    struct TransactionTransport;
+    #[async_trait]
+    impl RpcTransport for TransactionTransport {
+        async fn post(&self, _: &str, body: Vec<u8>) -> Result<Vec<u8>, String> {
+            let request: serde_json::Value =
+                serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+            assert_eq!(request["method"], "getTransaction");
+            assert_eq!(request["params"][1]["maxSupportedTransactionVersion"], 0);
+            Ok(br#"{"jsonrpc":"2.0","id":1,"result":{"slot":42}}"#.to_vec())
+        }
+    }
+
+    #[tokio::test]
+    async fn transaction_details_request_enables_v0() {
+        let client = JsonRpcClient::new("https://rpc.example", TransactionTransport);
+        let result = get_transaction(&client, "signature")
+            .await
+            .expect("transaction")
+            .expect("details");
+        assert_eq!(result["slot"], 42);
     }
 
     #[test]
