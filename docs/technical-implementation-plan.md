@@ -902,6 +902,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with an explicit eligibility gate and deduplicated `observe_trace`
    job type; ineligible traces enqueue nothing.
 11. Add projection-lag and dead-job metrics.
+   Completed with atomic in-process counters for projected, failed, and dead
+   jobs plus a gauge-like projection lag snapshot.
 12. Add reproject command for one trace, time range, or rule version.
 
 ### Tests

@@ -10,6 +10,8 @@ pub mod alias_resolver;
 pub use alias_resolver::{AliasResolution, AliasResolver};
 pub mod projection;
 pub use projection::{ProjectionError, reduce_loaded_events};
+pub mod projection_metrics;
+pub use projection_metrics::{ProjectionMetrics, ProjectionMetricsSnapshot};
 
 use axum::{
     Json, Router,
