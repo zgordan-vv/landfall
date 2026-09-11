@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use std::{cmp::Ordering, collections::BinaryHeap};
+use tokio_util::sync::CancellationToken;
 
 mod http;
 pub use http::ReqwestRouteClient;
@@ -35,6 +36,45 @@ impl PartialOrd for ObservationSchedule {
 /// In-memory due-time queue; durable jobs are re-enqueued after process restart.
 pub struct ObservationQueue {
     entries: BinaryHeap<ObservationSchedule>,
+}
+
+/// Cooperative cancellation handle shared by observer workers.
+#[derive(Clone)]
+pub struct ObserverCancellation {
+    token: CancellationToken,
+}
+
+impl ObserverCancellation {
+    pub fn new() -> Self {
+        Self {
+            token: CancellationToken::new(),
+        }
+    }
+    pub fn cancel(&self) {
+        self.token.cancel();
+    }
+    pub fn is_cancelled(&self) -> bool {
+        self.token.is_cancelled()
+    }
+    pub async fn cancelled(&self) {
+        self.token.cancelled().await;
+    }
+}
+
+impl Default for ObserverCancellation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Rehydrates ready durable schedules into a fresh process-local queue.
+pub fn rehydrate_queue(
+    queue: &mut ObservationQueue,
+    schedules: impl IntoIterator<Item = ObservationSchedule>,
+) {
+    for schedule in schedules {
+        queue.push(schedule);
+    }
 }
 
 /// Solana RPC's maximum signature-status request size for one call.
@@ -755,6 +795,29 @@ mod tests {
             evaluate_validity(ValidityCase::Unsupported, Some(900), Some(1)),
             ExpirationDecision::UnsupportedValidity
         );
+    }
+
+    #[tokio::test]
+    async fn cancellation_is_cooperative_and_queue_can_be_rehydrated() {
+        let cancellation = ObserverCancellation::new();
+        let waiter = cancellation.clone();
+        let task = tokio::spawn(async move {
+            waiter.cancelled().await;
+        });
+        cancellation.cancel();
+        task.await.expect("cancellation waiter");
+        assert!(cancellation.is_cancelled());
+        let mut queue = ObservationQueue::new();
+        rehydrate_queue(
+            &mut queue,
+            [ObservationSchedule {
+                job_id: "recovered".into(),
+                trace_id: "trace".into(),
+                due_at: Instant::now(),
+                priority: 1,
+            }],
+        );
+        assert_eq!(queue.len(), 1);
     }
 
     #[test]

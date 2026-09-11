@@ -1125,6 +1125,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with explicit validity classification and separate indeterminate /
    unsupported outcomes that bypass recent-blockhash expiry rules.
 13. Support clean cancellation and restart recovery.
+   Completed with cooperative `CancellationToken` shutdown and deterministic
+   rehydration of durable schedules into a fresh in-memory queue.
 
 ### Tests
 
