@@ -893,6 +893,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with append-only versioned diagnostic writes and evidence links;
    newer rows supersede prior claims by rule-set version without mutating history.
 8. Persist recommendation and evidence links.
+   Completed with atomic append-only recommendation writes and duplicate-safe
+   links to diagnostics and immutable evidence events.
 9. Increment projection version/watermark.
 10. Enqueue observation only when eligible.
 11. Add projection-lag and dead-job metrics.
