@@ -1,4 +1,5 @@
-import type { SimulationRpcResult } from "@landfall/protocol";
+import type { SimulationRpcResult, SignedBytesFingerprint, UuidV7 } from "@landfall/protocol";
+import { fingerprintSignedBytes, type HmacBytes } from "./fingerprint.js";
 
 /** Adapter-facing types intentionally contain no @solana/kit runtime imports. */
 export interface SolanaBlockhashSnapshot {
@@ -16,6 +17,16 @@ export interface SimulationSnapshot {
 }
 
 export type MonotonicClock = () => bigint;
+
+/** Fingerprints a transient copy of signed bytes and wipes that copy immediately. */
+export function fingerprintSignedBytesInMemory(keyId: UuidV7, signedBytes: Uint8Array, hmac: HmacBytes): SignedBytesFingerprint {
+  const transient = signedBytes.slice();
+  try {
+    return fingerprintSignedBytes(keyId, transient, hmac);
+  } finally {
+    transient.fill(0);
+  }
+}
 
 export interface SigningMeasurement<T> {
   readonly result: "completed" | "failed";

@@ -1033,6 +1033,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with an injected monotonic clock and a signing-operation wrapper
    that records exact nanosecond duration while preserving value/error identity.
 6. Fingerprint signed bytes in memory.
+   Completed with a transient-copy fingerprint helper that passes exact bytes
+   to the injected HMAC and wipes the copy immediately after hashing.
 7. Wrap submission attempts with route and configuration.
 8. Capture application confirmation-wait result.
 9. Build a controlled SOL-transfer or harmless-instruction example for local validator/devnet.

@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { captureLatestBlockhash, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation } from "../dist/index.js";
+import { captureLatestBlockhash, fingerprintSignedBytesInMemory, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation } from "../dist/index.js";
+
+test("signed-byte fingerprint uses exact bytes and wipes its transient copy", () => {
+  const input = new Uint8Array([1, 2, 3]);
+  let observed;
+  const result = fingerprintSignedBytesInMemory("0198ef00-0000-7000-8000-000000000900", input, (bytes) => { observed = Array.from(bytes); return new Uint8Array(32).fill(bytes[0]); });
+  assert.deepEqual(observed, [1, 2, 3]);
+  assert.deepEqual(Array.from(input), [1, 2, 3]);
+  assert.equal(result.value_hex.slice(0, 2), "01");
+});
 
 test("signing measurement records monotonic delay without signer access", async () => {
   const ticks = [1000n, 1234n];
