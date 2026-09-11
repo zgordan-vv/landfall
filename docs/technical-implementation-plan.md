@@ -815,6 +815,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    Completed with an early compressed `Content-Length` guard and Axum's
    decompressed request-body limit for JSON extraction.
 6. Implement batch schema/semantic validation.
+   Completed with schema-version/event-type compatibility checks and atomic
+   rejection of batches containing unsupported or malformed events.
 7. Repeat privacy enforcement server-side.
 8. Implement atomic transaction:
    - dedup claim;

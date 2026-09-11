@@ -11,6 +11,7 @@ use axum::{
     response::IntoResponse,
     routing::post,
 };
+use landfall_protocol::check_event_compatibility;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
@@ -43,6 +44,19 @@ pub struct IngestAccepted {
 pub struct ApiError {
     pub code: &'static str,
     pub message: &'static str,
+}
+
+fn validate_event(event: &Value) -> Result<(), &'static str> {
+    let object = event.as_object().ok_or("event_not_object")?;
+    let schema_version = object
+        .get("schema_version")
+        .and_then(Value::as_str)
+        .ok_or("missing_schema_version")?;
+    let event_type = object
+        .get("event_type")
+        .and_then(Value::as_str)
+        .ok_or("missing_event_type")?;
+    check_event_compatibility(schema_version, event_type).map_err(|error| error.code().as_str())
 }
 
 pub fn router(state: AppState) -> Router {
@@ -134,6 +148,20 @@ async fn ingest(
         )
             .into_response();
     }
+    if request
+        .events
+        .iter()
+        .any(|event| validate_event(event).is_err())
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_event",
+                message: "batch contains an invalid event",
+            }),
+        )
+            .into_response();
+    }
     (
         StatusCode::ACCEPTED,
         Json(IngestAccepted {
@@ -158,7 +186,9 @@ mod tests {
     async fn accepts_non_empty_batch() {
         let request = Request::post("/v1/ingest")
             .header("content-type", "application/json")
-            .body(Body::from(r#"{"events":[{"type":"created"}]}"#))
+            .body(Body::from(
+                r#"{"events":[{"schema_version":"1.0","event_type":"solana.trace.created"}]}"#,
+            ))
             .unwrap();
         assert_eq!(
             router(super::AppState::default())
@@ -191,7 +221,9 @@ mod tests {
         let request = Request::post("/v1/ingest")
             .header("content-type", "application/json")
             .header("x-request-id", "portfolio-test-1")
-            .body(Body::from(r#"{"events":[{"type":"created"}]}"#))
+            .body(Body::from(
+                r#"{"events":[{"schema_version":"1.0","event_type":"solana.trace.created"}]}"#,
+            ))
             .unwrap();
         let response = router(super::AppState::default())
             .oneshot(request)
@@ -231,5 +263,20 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    }
+
+    #[tokio::test]
+    async fn rejects_unsupported_event_type() {
+        let request = Request::post("/v1/ingest")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"events":[{"schema_version":"1.0","event_type":"unknown"}]}"#,
+            ))
+            .unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 }
