@@ -34,6 +34,7 @@ pub mod cohort_comparison;
 pub mod config_read_model;
 pub mod data_quality_summary;
 pub mod etag;
+pub mod export_safety;
 pub mod metrics_summary;
 pub mod pagination;
 pub mod recommendation_disposition;

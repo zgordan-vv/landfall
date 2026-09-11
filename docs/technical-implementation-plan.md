@@ -1346,6 +1346,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with format/privacy metadata, a 10 MiB size cap, SHA-256
    integrity checks, and immutable download bytes.
 5. Run export-specific redaction and secret scan.
+   Completed with recursive sensitive-key/value scanning and shape-preserving
+   `[redacted]` export transformation.
 6. Implement CLI:
    - `init`;
    - `doctor`;
