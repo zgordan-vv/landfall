@@ -1,3 +1,5 @@
+import type { SimulationRpcResult } from "@landfall/protocol";
+
 /** Adapter-facing types intentionally contain no @solana/kit runtime imports. */
 export interface SolanaBlockhashSnapshot {
   readonly blockhash: string;
@@ -5,6 +7,32 @@ export interface SolanaBlockhashSnapshot {
 }
 
 export type BlockHeightInput = string | bigint;
+
+export interface SimulationSnapshot {
+  readonly rpcResult: SimulationRpcResult;
+  readonly unitsConsumed?: string;
+  readonly logsPresent?: boolean;
+  readonly error?: unknown;
+}
+
+export function normalizeSimulationResult(input: unknown): SimulationSnapshot {
+  if (input === null || typeof input !== "object") return { rpcResult: "malformed_response" };
+  const value = input as { err?: unknown; unitsConsumed?: unknown; logs?: unknown; blockhashNotFound?: unknown };
+  let rpcResult: SimulationRpcResult = "succeeded";
+  if (value.blockhashNotFound === true) rpcResult = "blockhash_not_found";
+  else if (value.err !== undefined && value.err !== null) rpcResult = "execution_error";
+  const unitsConsumed = normalizeUnsignedDecimal(value.unitsConsumed);
+  const snapshot: SimulationSnapshot = { rpcResult, ...(unitsConsumed === undefined ? {} : { unitsConsumed }), ...(value.logs === undefined ? {} : { logsPresent: Array.isArray(value.logs) && value.logs.length > 0 }), ...(value.err === undefined || value.err === null ? {} : { error: value.err }) };
+  return Object.freeze(snapshot);
+}
+
+function normalizeUnsignedDecimal(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "bigint") return value < 0n ? undefined : value.toString(10);
+  if (typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value.trim())) return value.trim();
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return String(value);
+  return undefined;
+}
 
 /** Normalizes Kit's bigint/string block-height representations at the boundary. */
 export function normalizeBlockhashSnapshot(blockhash: string, lastValidBlockHeight: BlockHeightInput): SolanaBlockhashSnapshot {

@@ -1027,6 +1027,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with boundary normalization preserving exact decimal block-height
    precision (including Kit bigint values) and rejecting non-canonical input.
 4. Capture simulation result and compute units when available.
+   Completed with client-neutral simulation normalization, exact compute-unit
+   serialization, log presence detection, and stable error classification.
 5. Measure signing delay without accessing signer secrets.
 6. Fingerprint signed bytes in memory.
 7. Wrap submission attempts with route and configuration.

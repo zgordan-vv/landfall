@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { captureLatestBlockhash, normalizeBlockhashSnapshot, preserveCustomerOperation } from "../dist/index.js";
+import { captureLatestBlockhash, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation } from "../dist/index.js";
+
+test("simulation capture preserves compute units and classifies execution errors", () => {
+  assert.deepEqual(normalizeSimulationResult({ err: null, unitsConsumed: 9007199254740993n, logs: ["ok"] }), { rpcResult: "succeeded", unitsConsumed: "9007199254740993", logsPresent: true });
+  assert.equal(normalizeSimulationResult({ err: { InstructionError: [0, "Custom"] } }).rpcResult, "execution_error");
+  assert.equal(normalizeSimulationResult({ blockhashNotFound: true }).rpcResult, "blockhash_not_found");
+  assert.equal(normalizeSimulationResult("bad").rpcResult, "malformed_response");
+});
 
 test("blockhash capture normalizes an exact validity height", async () => {
   const client = { getLatestBlockhash: async () => ({ blockhash: "  hash-1 ", lastValidBlockHeight: 123n }), simulate: async () => ({}), sign: async () => ({}), submit: async () => "sig", confirm: async () => ({}) };
