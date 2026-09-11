@@ -674,6 +674,9 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    Added deterministic offline snapshot coverage in `landfall-cli` and the
    [`offline-golden-incidents`](offline-golden-incidents.md) runbook.
 10. Document how to inspect each golden incident.
+    Added [`golden-incident-runbook.md`](golden-incident-runbook.md) with
+    copy-paste CLI commands, fixture-to-behavior mapping, and privacy-profile
+    guidance.
 
 ### Tests
 
