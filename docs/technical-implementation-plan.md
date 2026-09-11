@@ -1168,6 +1168,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with a generic serializable trace-detail read model carrying all
    five sections and an explicit projection watermark.
 4. Implement signature lookup with privacy/log safeguards.
+   Completed with strict-mode denial, empty-input validation, and a bounded
+   response carrying only signature/status/log-presence metadata.
 5. Implement business-action detail and multiple-success warning.
 6. Implement metric summary with numerator/denominator/exclusions.
 7. Implement data-quality summary.

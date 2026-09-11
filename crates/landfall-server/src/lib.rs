@@ -29,6 +29,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tower::limit::ConcurrencyLimitLayer;
 pub mod pagination;
+pub mod signature_lookup;
 pub mod trace_detail;
 pub mod trace_filters;
 use tower_http::limit::RequestBodyLimitLayer;
