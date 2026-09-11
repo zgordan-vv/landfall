@@ -30,6 +30,7 @@ use std::time::{Duration, Instant};
 use tower::limit::ConcurrencyLimitLayer;
 pub mod business_action;
 pub mod cohort_comparison;
+pub mod config_read_model;
 pub mod data_quality_summary;
 pub mod metrics_summary;
 pub mod pagination;
