@@ -665,6 +665,8 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    pretty-printed `ReportDocument` containing versions, trace summaries, and
    alias counts.
 7. Render self-contained HTML with evidence timeline and limitations.
+   Implemented in `landfall-report::render_html` with embedded CSS, stable state
+   and diagnostic columns, semantic versions, and no external assets.
 8. Add `--privacy-profile` export redaction.
 9. Add example input and expected report snapshots.
 10. Document how to inspect each golden incident.

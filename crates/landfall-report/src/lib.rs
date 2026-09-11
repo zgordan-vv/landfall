@@ -115,3 +115,51 @@ impl ReportDocument {
         }
     }
 }
+
+/// Renders a self-contained HTML document with no external assets.
+#[must_use]
+pub fn render_html(document: &ReportDocument) -> String {
+    let mut html = String::from(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Landfall report</title><style>body{font:16px system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#17202a}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d7dce2;padding:.5rem;text-align:left}th{background:#f3f5f7}.muted{color:#5f6b76}.badge{font-family:monospace}</style></head><body>",
+    );
+    html.push_str("<h1>Landfall report</h1><p class=\"muted\">Semantic versions: ");
+    html.push_str(document.versions.reducer);
+    html.push_str(" / ");
+    html.push_str(document.versions.diagnostics);
+    html.push_str(" / ");
+    html.push_str(document.versions.metrics);
+    html.push_str(" / ");
+    html.push_str(document.versions.recommendations);
+    html.push_str("</p><p>Traces: <strong>");
+    html.push_str(&document.traces.len().to_string());
+    html.push_str("</strong> · aliases/replacements: <strong>");
+    html.push_str(&document.alias_count.to_string());
+    html.push_str("</strong></p><table><thead><tr><th>Trace</th><th>Lifecycle</th><th>Landing</th><th>Execution</th><th>Application</th><th>Terminal eligible</th><th>Quality</th><th>Diagnostics</th><th>Recommendations</th></tr></thead><tbody>");
+    for trace in &document.traces {
+        html.push_str("<tr><td class=\"badge\">");
+        html.push_str(&trace.trace_id.to_string());
+        html.push_str("</td><td>");
+        html.push_str(trace.lifecycle);
+        html.push_str("</td><td>");
+        html.push_str(trace.landing);
+        html.push_str("</td><td>");
+        html.push_str(trace.execution);
+        html.push_str("</td><td>");
+        html.push_str(trace.application);
+        html.push_str("</td><td>");
+        html.push_str(if trace.terminal_eligible { "yes" } else { "no" });
+        html.push_str("</td><td>");
+        html.push_str(&trace.data_quality_findings.to_string());
+        html.push_str("</td><td>confirmed=");
+        html.push_str(&trace.confirmed_diagnostics.to_string());
+        html.push_str(", probable=");
+        html.push_str(&trace.probable_diagnostics.to_string());
+        html.push_str(", unknown=");
+        html.push_str(&trace.unknown_diagnostics.to_string());
+        html.push_str("</td><td>");
+        html.push_str(&trace.recommendations.to_string());
+        html.push_str("</td></tr>");
+    }
+    html.push_str("</tbody></table></body></html>");
+    html
+}
