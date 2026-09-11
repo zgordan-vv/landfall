@@ -1262,6 +1262,10 @@ explicit incomplete-observer data-quality warning.
 - baseline selection;
 - metric-definition drawers.
 
+Completed with fixture-backed operational metric cards, baseline deltas, a
+latency p95 trend, route coverage breakdown, and an accessible metric-definition
+action placeholder.
+
 ### Step 12.4 — Trace search and list
 
 - filter state in URL;
