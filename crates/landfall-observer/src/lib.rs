@@ -88,6 +88,39 @@ pub enum ExpirationDecision {
     NotExpired,
     Expired,
     IndeterminateDurableNonce,
+    UnsupportedValidity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValidityCase {
+    RecentBlockhash,
+    DurableNonce,
+    Unsupported,
+}
+
+pub fn classify_validity(transaction_version: &str, uses_durable_nonce: bool) -> ValidityCase {
+    if uses_durable_nonce {
+        ValidityCase::DurableNonce
+    } else if matches!(transaction_version, "legacy" | "v0") {
+        ValidityCase::RecentBlockhash
+    } else {
+        ValidityCase::Unsupported
+    }
+}
+
+pub fn evaluate_validity(
+    case: ValidityCase,
+    current_block_height: Option<u64>,
+    last_valid_block_height: Option<u64>,
+) -> ExpirationDecision {
+    match case {
+        ValidityCase::DurableNonce => ExpirationDecision::IndeterminateDurableNonce,
+        ValidityCase::Unsupported => ExpirationDecision::UnsupportedValidity,
+        ValidityCase::RecentBlockhash => match (current_block_height, last_valid_block_height) {
+            (Some(current), Some(last_valid)) => evaluate_expiration(current, last_valid, false),
+            _ => ExpirationDecision::NotExpired,
+        },
+    }
 }
 
 /// Evaluates recent-blockhash validity without applying it to durable-nonce transactions.
@@ -700,6 +733,27 @@ mod tests {
         assert_eq!(
             evaluate_expiration(9_999, 1, true),
             ExpirationDecision::IndeterminateDurableNonce
+        );
+    }
+
+    #[test]
+    fn validity_cases_never_false_expire_nonce_or_unsupported_versions() {
+        assert_eq!(
+            classify_validity("legacy", false),
+            ValidityCase::RecentBlockhash
+        );
+        assert_eq!(
+            classify_validity("legacy", true),
+            ValidityCase::DurableNonce
+        );
+        assert_eq!(classify_validity("v1", false), ValidityCase::Unsupported);
+        assert_eq!(
+            evaluate_validity(ValidityCase::DurableNonce, Some(900), Some(1)),
+            ExpirationDecision::IndeterminateDurableNonce
+        );
+        assert_eq!(
+            evaluate_validity(ValidityCase::Unsupported, Some(900), Some(1)),
+            ExpirationDecision::UnsupportedValidity
         );
     }
 

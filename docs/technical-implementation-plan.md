@@ -1122,6 +1122,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with per-route request/success/failure/rate-limit counters and
    explicit gap categories for missing or unusable evidence.
 12. Detect durable-nonce/unsupported validity cases without false expiration.
+   Completed with explicit validity classification and separate indeterminate /
+   unsupported outcomes that bypass recent-blockhash expiry rules.
 13. Support clean cancellation and restart recovery.
 
 ### Tests
