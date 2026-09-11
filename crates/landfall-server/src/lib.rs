@@ -1,6 +1,8 @@
 //! Composition root and public application-service surface for Landfall.
 #![allow(missing_docs)]
 
+pub mod auth;
+
 use axum::{
     Json, Router,
     extract::State,
