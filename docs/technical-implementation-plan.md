@@ -717,6 +717,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    foreign keys, uniqueness boundaries, route enablement, token expiry/revocation,
    and hash-only token storage.
 4. Implement event dedup registry and daily raw-event partition parent.
+   Completed in migration `0003_create_telemetry_events.sql` with an immutable
+   event identity registry, range-partitioned raw event parent, and bounded
+   environment/trace time indexes without a JSON GIN index.
 5. Implement business actions, traces, aliases, typed child projections.
 6. Implement diagnostics, evidence, recommendations, and disposition history.
 7. Implement jobs with lease fields and active dedupe keys.
