@@ -1039,6 +1039,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with a route-aware submission wrapper carrying stable attempt IDs,
    sequence, encoding, and preflight settings while preserving outcomes.
 8. Capture application confirmation-wait result.
+   Completed with monotonic wait-duration capture and explicit commitment,
+   timeout, cancellation, and failure classification.
 9. Build a controlled SOL-transfer or harmless-instruction example for local validator/devnet.
 10. Demonstrate success, simulation failure, client timeout/later success, and expiration fixtures.
 11. Document the integration and every captured field.

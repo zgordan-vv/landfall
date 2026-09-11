@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { captureLatestBlockhash, fingerprintSignedBytesInMemory, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation, submitWithRoute } from "../dist/index.js";
+import { captureLatestBlockhash, fingerprintSignedBytesInMemory, measureConfirmationWait, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation, submitWithRoute } from "../dist/index.js";
+
+test("confirmation wait capture records duration and timeout classification", async () => {
+  const successTicks = [50n, 80n];
+  const success = await measureConfirmationWait(async () => "confirmed", () => successTicks.shift());
+  assert.deepEqual(success, { result: "commitment_reached", durationNs: "30", value: "confirmed" });
+  const timeoutTicks = [100n, 145n];
+  const timeout = await measureConfirmationWait(async () => { throw new Error("deadline"); }, () => timeoutTicks.shift(), () => "timeout");
+  assert.equal(timeout.result, "timeout");
+  assert.equal(timeout.durationNs, "45");
+});
 
 test("submission wrapper preserves route configuration and original outcome", async () => {
   const config = { attemptId: "0198ef00-0000-7000-8000-000000000601", route: { routeId: "rpc-primary" }, attemptSequence: 1, encoding: "base64", skipPreflight: false };

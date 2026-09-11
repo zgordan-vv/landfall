@@ -35,6 +35,27 @@ export interface SigningMeasurement<T> {
   readonly error?: unknown;
 }
 
+export type ConfirmationWaitResult = "commitment_reached" | "timeout" | "cancelled" | "failed";
+
+export interface ConfirmationWaitMeasurement<T> {
+  readonly result: ConfirmationWaitResult;
+  readonly durationNs: string;
+  readonly value?: T;
+  readonly error?: unknown;
+}
+
+/** Measures confirmation waiting; callers may classify timeout/cancellation errors explicitly. */
+export async function measureConfirmationWait<T>(waitOperation: () => Promise<T>, clock: MonotonicClock, classifyError?: (error: unknown) => Exclude<ConfirmationWaitResult, "commitment_reached">): Promise<ConfirmationWaitMeasurement<T>> {
+  const started = clock();
+  try {
+    const value = await waitOperation();
+    return Object.freeze({ result: "commitment_reached" as const, durationNs: durationDelta(started, clock()), value });
+  } catch (error) {
+    const result = classifyError?.(error) ?? "failed";
+    return Object.freeze({ result, durationNs: durationDelta(started, clock()), error });
+  }
+}
+
 /** Measures application-owned signing without receiving or inspecting signer material. */
 export async function measureSigning<T>(signOperation: () => Promise<T>, clock: MonotonicClock): Promise<SigningMeasurement<T>> {
   const started = clock();
