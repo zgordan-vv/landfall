@@ -671,6 +671,8 @@ Produce the first end-to-end usable artifact before building continuous infrastr
    Implemented with `internal` and `shareable` profiles for JSON and HTML;
    shareable exports redact trace identifiers while preserving analytical data.
 9. Add example input and expected report snapshots.
+   Added deterministic offline snapshot coverage in `landfall-cli` and the
+   [`offline-golden-incidents`](offline-golden-incidents.md) runbook.
 10. Document how to inspect each golden incident.
 
 ### Tests
