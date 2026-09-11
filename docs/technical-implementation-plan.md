@@ -881,6 +881,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with a project/environment-scoped alias index for versioned
    fingerprints; cross-environment matches are intentionally unrelated.
 4. Load canonical raw events.
+   Completed with an environment/project-scoped bounded time-range query,
+   ordered deterministically by occurred/received timestamps and event ID.
 5. Run deterministic reducer.
 6. Replace/upsert typed child projections in one transaction.
 7. Preserve/supersede diagnosis history.

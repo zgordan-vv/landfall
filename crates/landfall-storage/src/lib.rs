@@ -9,6 +9,8 @@ pub use migrations::{
 };
 pub mod ingestion;
 pub use ingestion::{IngestEvent, IngestOutcome, ingest_atomically};
+pub mod trace_events;
+pub use trace_events::{RawEventRow, load_events_for_trace};
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;
