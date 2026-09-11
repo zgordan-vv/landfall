@@ -10,8 +10,15 @@ publish = false
 default = []
 
 [dependencies]
+async-trait.workspace = true
 landfall-core.workspace = true
 landfall-protocol.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
 
 [lints]
 workspace = true

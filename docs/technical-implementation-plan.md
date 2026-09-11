@@ -1089,6 +1089,8 @@ Observe network outcomes independently from the customer's submission path.
 ### Tasks
 
 1. Implement provider-neutral JSON-RPC client and normalized errors.
+   Completed with an injected Rust transport, JSON-RPC 2.0 request/response
+   handling, and normalized transport/provider/malformed-response errors.
 2. Implement route-specific pooled Reqwest client with Rustls.
 3. Implement `getBlockHeight` shared cache/worker.
 4. Implement durable observation schedule and in-memory priority queue.
