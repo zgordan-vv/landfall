@@ -960,6 +960,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with a generic FIFO buffer enforcing a fixed capacity and
    explicit overflow result for health/error accounting.
 9. Implement batch assembly and stable retries.
+   Completed with bounded batch assembly, generated batch IDs, and retry
+   objects preserving the original ID and event ordering.
 10. Implement HTTP/gzip transport and backoff with jitter.
 11. Implement drop/transport health counters and customer callback.
 12. Implement bounded shutdown flush.

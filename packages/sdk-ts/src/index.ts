@@ -4,6 +4,7 @@ export * from "./ids.js";
 export * from "./fingerprint.js";
 export * from "./privacy.js";
 export * from "./buffer.js";
+export * from "./batching.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;
