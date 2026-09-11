@@ -800,6 +800,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
 ### Tasks
 
 1. Build Axum application state and router composition.
+   Completed with typed application state, `/v1/ingest`, bounded batches, and
+   structured `400`/`413` validation responses.
 2. Add request IDs and structured tracing spans.
 3. Add liveness/readiness endpoints.
 4. Implement bearer-token hashing, lookup, scope, expiration, and revocation.
