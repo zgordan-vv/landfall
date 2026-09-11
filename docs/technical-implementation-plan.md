@@ -1048,6 +1048,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with four JSON lifecycle fixtures and a validation script covering
    late landing after client timeout and the exact post-validity expiration boundary.
 11. Document the integration and every captured field.
+   Completed with the lifecycle contract, field-level source/representation/
+   privacy table, and explicit Kit-versus-neutral-SDK responsibilities.
 12. After the Kit lane is stable, run a time-boxed `@solana/web3.js` v3 compatibility spike; defer production support and a legacy v1 adapter until evidence justifies them.
 
 ### Security constraints
