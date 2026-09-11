@@ -1098,6 +1098,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with a route-scoped TTL cache that shares fresh heights across
    observer jobs and refreshes through the provider-neutral JSON-RPC client.
 4. Implement durable observation schedule and in-memory priority queue.
+   Completed with a deterministic due-time/priority queue; durable job rows can
+   be re-enqueued after restart without changing ordering semantics.
 5. Batch `getSignatureStatuses` by route/options, default 100, maximum 256.
 6. Implement adaptive polling and per-route rate limits.
 7. Persist first null, state changes, periodic checkpoints, RPC error transitions, and terminal evidence.

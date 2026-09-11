@@ -4,9 +4,62 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use std::{cmp::Ordering, collections::BinaryHeap};
 
 mod http;
 pub use http::ReqwestRouteClient;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ObservationSchedule {
+    pub job_id: String,
+    pub trace_id: String,
+    pub due_at: Instant,
+    pub priority: u8,
+}
+
+impl Ord for ObservationSchedule {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other
+            .due_at
+            .cmp(&self.due_at)
+            .then_with(|| self.priority.cmp(&other.priority))
+            .then_with(|| other.job_id.cmp(&self.job_id))
+    }
+}
+impl PartialOrd for ObservationSchedule {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// In-memory due-time queue; durable jobs are re-enqueued after process restart.
+pub struct ObservationQueue {
+    entries: BinaryHeap<ObservationSchedule>,
+}
+
+impl ObservationQueue {
+    pub fn new() -> Self {
+        Self {
+            entries: BinaryHeap::new(),
+        }
+    }
+    pub fn push(&mut self, schedule: ObservationSchedule) {
+        self.entries.push(schedule);
+    }
+    pub fn pop_due(&mut self, now: Instant) -> Option<ObservationSchedule> {
+        self.entries.peek().filter(|entry| entry.due_at <= now)?;
+        self.entries.pop()
+    }
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+}
+
+impl Default for ObservationQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 struct CachedHeight {
@@ -203,5 +256,33 @@ mod tests {
             cache.get_or_refresh(&client).await.expect("cached height"),
             321
         );
+    }
+
+    #[test]
+    fn queue_returns_due_entries_by_time_then_priority() {
+        let now = Instant::now();
+        let mut queue = ObservationQueue::new();
+        queue.push(ObservationSchedule {
+            job_id: "late".into(),
+            trace_id: "t2".into(),
+            due_at: now + Duration::from_secs(5),
+            priority: 9,
+        });
+        queue.push(ObservationSchedule {
+            job_id: "low".into(),
+            trace_id: "t1".into(),
+            due_at: now,
+            priority: 1,
+        });
+        queue.push(ObservationSchedule {
+            job_id: "high".into(),
+            trace_id: "t3".into(),
+            due_at: now,
+            priority: 9,
+        });
+        assert_eq!(queue.pop_due(now).expect("high").job_id, "high");
+        assert_eq!(queue.pop_due(now).expect("low").job_id, "low");
+        assert!(queue.pop_due(now).is_none());
+        assert_eq!(queue.len(), 1);
     }
 }
