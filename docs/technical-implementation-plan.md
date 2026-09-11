@@ -1024,6 +1024,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    result/error-preserving customer-operation wrapper; the neutral SDK has no
    `@solana/kit` runtime import.
 3. Capture blockhash and `lastValidBlockHeight`.
+   Completed with boundary normalization preserving exact decimal block-height
+   precision (including Kit bigint values) and rejecting non-canonical input.
 4. Capture simulation result and compute units when available.
 5. Measure signing delay without accessing signer secrets.
 6. Fingerprint signed bytes in memory.

@@ -9,3 +9,7 @@ The boundary deliberately does not import `@solana/kit`, accept keypairs, or
 own customer retry policy. `preserveCustomerOperation()` demonstrates the
 failure-isolation contract: the wrapped operation's original value and error
 identity are returned unchanged.
+
+`captureLatestBlockhash()` normalizes the client result and preserves
+`lastValidBlockHeight` as an exact decimal string, so large Solana heights are
+never routed through lossy JavaScript numbers.
