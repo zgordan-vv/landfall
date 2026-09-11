@@ -8,12 +8,14 @@ publish = false
 
 [features]
 default = []
+test-support = []
 
 [dependencies]
 landfall-core.workspace = true
 landfall-protocol.workspace = true
 sqlx.workspace = true
 async-trait.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

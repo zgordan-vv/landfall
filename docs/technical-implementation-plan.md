@@ -743,6 +743,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    Completed with compile-time embedded SQLx migrations, an explicit runner,
    and a health result that detects failed, missing, or unexpected versions.
 11. Implement test database lifecycle and seed helpers.
+   Completed with explicit PostgreSQL reset and deterministic control-plane
+   seed helpers that preserve the SQLx migration ledger.
 12. Add partition creation/retention primitives.
 13. Inspect query plans for trace lookup and bounded time search.
 
