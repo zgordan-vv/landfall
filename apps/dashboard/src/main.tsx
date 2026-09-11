@@ -3,10 +3,11 @@ import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
-type Route = "overview" | "traces" | "comparison";
+type Route = "overview" | "traces" | "comparison" | "trace-detail";
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
+  if (value.startsWith("traces/")) return "trace-detail";
   return value === "traces" || value === "comparison" ? value : "overview";
 }
 
@@ -23,11 +24,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
   React.useEffect(() => { const onHash = () => setRoute(routeFromLocation()); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash); }, []);
-  const labels: Record<Route, string> = { overview: "Overview", traces: "Traces", comparison: "Comparison" };
+  const labels: Record<Route, string> = { overview: "Overview", traces: "Traces", comparison: "Comparison", "trace-detail": "Trace detail" };
   return <div className="app-shell">
     <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span></header>
     <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
-      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "traces" && <TraceList />}{route === "comparison" && <section className="state-card" aria-live="polite"><span className="status-dot" aria-hidden="true" />Fixture mode is ready</section>}</main>
+      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <section className="state-card" aria-live="polite"><span className="status-dot" aria-hidden="true" />Fixture mode is ready</section>}</main>
     </div>
   </div>;
 }
@@ -55,7 +56,12 @@ function TraceList() {
   const traces = [{ id: "tr_01HZX9", flow: "swap", status: "Landed", certainty: "confirmed", route: "primary-rpc", time: "2 min ago" }, { id: "tr_01HZX8", flow: "transfer", status: "Unknown", certainty: "incomplete", route: "backup-rpc", time: "8 min ago" }, { id: "tr_01HZX7", flow: "mint", status: "Failed", certainty: "confirmed", route: "primary-rpc", time: "14 min ago" }];
   const visible = traces.filter((trace) => !query || `${trace.id} ${trace.flow} ${trace.route}`.toLowerCase().includes(query.toLowerCase()));
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); window.location.hash = `traces${query ? `?q=${encodeURIComponent(query)}` : ""}`; }
-  return <section aria-labelledby="trace-list-title"><form className="search-bar" onSubmit={submit}><label htmlFor="trace-query">Search traces, signatures, or business actions</label><div><input id="trace-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. tr_01HZX9" /><button type="submit">Search</button></div></form><div className="list-heading"><h2 id="trace-list-title">Recent traces</h2><span className="muted">{visible.length} of {traces.length} fixture traces</span></div><div className="trace-table" role="table" aria-label="Trace list">{visible.map((trace) => <div className="trace-row" role="row" key={trace.id}><div role="cell"><strong>{trace.id}</strong><span>{trace.flow} · {trace.route}</span></div><span className={`status-label ${trace.certainty}`} role="cell">{trace.status}</span><time role="cell">{trace.time}</time></div>)}{visible.length === 0 && <div className="empty-state" role="status">No traces match this filter.</div>}</div><button className="secondary-button pagination" type="button">Load next page</button></section>;
+  return <section aria-labelledby="trace-list-title"><form className="search-bar" onSubmit={submit}><label htmlFor="trace-query">Search traces, signatures, or business actions</label><div><input id="trace-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. tr_01HZX9" /><button type="submit">Search</button></div></form><div className="list-heading"><h2 id="trace-list-title">Recent traces</h2><span className="muted">{visible.length} of {traces.length} fixture traces</span></div><div className="trace-table" role="table" aria-label="Trace list">{visible.map((trace) => <a className="trace-row" role="row" href={`#traces/${trace.id}`} key={trace.id}><div role="cell"><strong>{trace.id}</strong><span>{trace.flow} · {trace.route}</span></div><span className={`status-label ${trace.certainty}`} role="cell">{trace.status}</span><time role="cell">{trace.time}</time></a>)}{visible.length === 0 && <div className="empty-state" role="status">No traces match this filter.</div>}</div><button className="secondary-button pagination" type="button">Load next page</button></section>;
+}
+
+function TraceDetail() {
+  const traceId = window.location.hash.split("/")[1] ?? "tr_01HZX9";
+  return <section aria-labelledby="detail-title"><a className="back-link" href="#traces">← Back to traces</a><div className="detail-header"><div><p className="eyebrow">Trace</p><h2 id="detail-title">{traceId}</h2></div><span className="status-label confirmed">Landed · confirmed</span></div><div className="detail-grid"><section className="state-card"><h2>Lifecycle summary</h2><div className="lifecycle"><span>Created</span><span>Signed</span><span>Submitted</span><span className="current">Observed</span></div><p className="muted">Execution succeeded · finalized watermark 184,220,941</p></section><section className="state-card"><h2>Attempts & observations</h2><ul className="detail-list"><li>Attempt 1 · primary-rpc · accepted</li><li>Status · processed → confirmed → finalized</li><li>Execution · success · 185,420 compute units</li></ul></section><section className="state-card"><h2>Diagnoses & recommendations</h2><ul className="detail-list"><li>Low compute headroom <span className="status-label incomplete">probable</span></li><li>Increase compute headroom · pending disposition</li></ul></section><section className="state-card"><h2>Evidence checklist</h2><ul className="detail-list checklist"><li>✓ Trace created</li><li>✓ Signed identity</li><li>✓ Submission response</li><li>! Simulation evidence unavailable</li></ul></section></div></section>;
 }
 
 const rootElement = document.querySelector<HTMLDivElement>("#root");

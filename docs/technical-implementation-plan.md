@@ -1290,6 +1290,10 @@ empty-state handling, and bounded next-page control.
 - missing-evidence checklist;
 - related replacement traces.
 
+Completed with fixture trace detail navigation, lifecycle state summary,
+attempt/observation evidence, execution metadata, diagnosis and recommendation
+sections, and an explicit missing-evidence checklist.
+
 ### Step 12.6 — Comparison and data quality
 
 - cohort builder;
