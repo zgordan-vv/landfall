@@ -1036,6 +1036,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with a transient-copy fingerprint helper that passes exact bytes
    to the injected HMAC and wipes the copy immediately after hashing.
 7. Wrap submission attempts with route and configuration.
+   Completed with a route-aware submission wrapper carrying stable attempt IDs,
+   sequence, encoding, and preflight settings while preserving outcomes.
 8. Capture application confirmation-wait result.
 9. Build a controlled SOL-transfer or harmless-instruction example for local validator/devnet.
 10. Demonstrate success, simulation failure, client timeout/later success, and expiration fixtures.

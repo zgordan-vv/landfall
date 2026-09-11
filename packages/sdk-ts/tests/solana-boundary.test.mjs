@@ -1,6 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { captureLatestBlockhash, fingerprintSignedBytesInMemory, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation } from "../dist/index.js";
+import { captureLatestBlockhash, fingerprintSignedBytesInMemory, measureSigning, normalizeBlockhashSnapshot, normalizeSimulationResult, preserveCustomerOperation, submitWithRoute } from "../dist/index.js";
+
+test("submission wrapper preserves route configuration and original outcome", async () => {
+  const config = { attemptId: "0198ef00-0000-7000-8000-000000000601", route: { routeId: "rpc-primary" }, attemptSequence: 1, encoding: "base64", skipPreflight: false };
+  const accepted = await submitWithRoute(config, async () => "signature-1");
+  assert.equal(accepted.result, "accepted");
+  assert.equal(accepted.value, "signature-1");
+  assert.equal(accepted.config.route.routeId, "rpc-primary");
+  const error = new Error("timeout");
+  const failed = await submitWithRoute(config, async () => { throw error; });
+  assert.equal(failed.result, "failed");
+  assert.equal(failed.error, error);
+});
 
 test("signed-byte fingerprint uses exact bytes and wipes its transient copy", () => {
   const input = new Uint8Array([1, 2, 3]);

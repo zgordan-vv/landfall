@@ -86,6 +86,35 @@ export interface SolanaRoute {
   readonly endpoint?: string;
 }
 
+export interface SubmissionAttemptConfig {
+  readonly attemptId: string;
+  readonly route: SolanaRoute;
+  readonly attemptSequence: number;
+  readonly encoding: "base64" | "base58";
+  readonly skipPreflight: boolean;
+  readonly maxRetries?: number;
+}
+
+export interface SubmissionAttemptResult<T> {
+  readonly config: SubmissionAttemptConfig;
+  readonly result: "accepted" | "failed";
+  readonly value?: T;
+  readonly error?: unknown;
+}
+
+/** Executes one application submission attempt while retaining route metadata. */
+export async function submitWithRoute<T>(config: SubmissionAttemptConfig, submit: () => Promise<T>): Promise<SubmissionAttemptResult<T>> {
+  if (config.attemptId.trim().length === 0) throw new Error("attemptId must not be empty");
+  if (config.route.routeId.trim().length === 0) throw new Error("routeId must not be empty");
+  if (!Number.isInteger(config.attemptSequence) || config.attemptSequence < 1) throw new Error("attemptSequence must be positive");
+  try {
+    const value = await submit();
+    return Object.freeze({ config, result: "accepted" as const, value });
+  } catch (error) {
+    return Object.freeze({ config, result: "failed" as const, error });
+  }
+}
+
 export interface SolanaClientPort<TPrepared, TSigned, TSignature> {
   readonly getLatestBlockhash: () => Promise<SolanaBlockhashSnapshot>;
   readonly simulate: (transaction: TPrepared) => Promise<unknown>;
