@@ -749,6 +749,8 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    Completed with date-scoped daily partition creation and explicit retention
    cleanup that validates generated identifiers before executing DDL.
 13. Inspect query plans for trace lookup and bounded time search.
+   Completed with a Docker PostgreSQL smoke script covering trace and raw-event
+   bounded queries and asserting the intended composite indexes.
 
 ### Database engineering rules
 
