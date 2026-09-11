@@ -1051,6 +1051,8 @@ Instrument a real modern Solana transaction lifecycle with minimal application c
    Completed with the lifecycle contract, field-level source/representation/
    privacy table, and explicit Kit-versus-neutral-SDK responsibilities.
 12. After the Kit lane is stable, run a time-boxed `@solana/web3.js` v3 compatibility spike; defer production support and a legacy v1 adapter until evidence justifies them.
+   Completed as an 8-hour, evidence-driven spike plan. Production support and
+   a legacy v1 adapter remain explicitly deferred.
 
 ### Security constraints
 
