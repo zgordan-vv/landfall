@@ -1,6 +1,7 @@
 import type { TraceId } from "@landfall/protocol";
 export * from "./builders.js";
 export * from "./ids.js";
+export * from "./fingerprint.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;

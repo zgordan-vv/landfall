@@ -951,6 +951,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with a canonical lowercase UUIDv7 generator and format validator
    for SDK identities.
 6. Implement signed-byte fingerprinting according to ADR.
+   Completed with a bytes-only fingerprint helper using injected HMAC and
+   protocol-compatible 32-byte lowercase hex output.
 7. Implement endpoint redaction and metadata allowlist.
 8. Implement bounded in-memory buffer.
 9. Implement batch assembly and stable retries.
