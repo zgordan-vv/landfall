@@ -1177,6 +1177,8 @@ Expose the platform's read model through stable documented APIs.
    Completed with versioned summaries that exclude in-flight and unknown rows
    explicitly rather than silently treating them as failures or successes.
 7. Implement data-quality summary.
+   Completed with deterministic grade distribution, gap counts, explicit empty
+   selection semantics, and the scoring-rubric version.
 8. Implement descriptive cohort comparison.
 9. Implement recommendation disposition and history.
 10. Implement project/environment/route read configuration endpoints.
