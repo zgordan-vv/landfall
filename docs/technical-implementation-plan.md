@@ -884,6 +884,8 @@ Turn newly ingested events into queryable trace state and versioned diagnoses.
    Completed with an environment/project-scoped bounded time-range query,
    ordered deterministically by occurred/received timestamps and event ID.
 5. Run deterministic reducer.
+   Completed with a persisted-row adapter that deserializes `WireEvent`,
+   canonical-orders events, and invokes the existing pure reducer.
 6. Replace/upsert typed child projections in one transaction.
 7. Preserve/supersede diagnosis history.
 8. Persist recommendation and evidence links.

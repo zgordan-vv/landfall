@@ -8,6 +8,8 @@ pub mod projector_worker;
 pub use projector_worker::{ProjectTraceJob, project_trace_queue, run_project_trace_worker};
 pub mod alias_resolver;
 pub use alias_resolver::{AliasResolution, AliasResolver};
+pub mod projection;
+pub use projection::{ProjectionError, reduce_loaded_events};
 
 use axum::{
     Json, Router,
