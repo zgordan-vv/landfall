@@ -245,6 +245,61 @@ pub async fn get_transaction<T: RpcTransport>(
         .await
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NormalizedExecution {
+    pub slot: String,
+    pub block_time: Option<i64>,
+    pub fee_lamports: Option<String>,
+    pub compute_units_consumed: Option<String>,
+    pub transaction_version: String,
+    pub logs_present: bool,
+    pub execution_error: bool,
+}
+
+/// Converts provider-specific transaction JSON into bounded neutral evidence.
+pub fn normalize_execution(
+    value: &serde_json::Value,
+) -> Result<NormalizedExecution, RpcClientError> {
+    let object = value.as_object().ok_or(RpcClientError::MalformedResponse)?;
+    let slot = object
+        .get("slot")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or(RpcClientError::MalformedResponse)?
+        .to_string();
+    let meta = object.get("meta").and_then(serde_json::Value::as_object);
+    let fee_lamports = meta
+        .and_then(|m| m.get("fee"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|v| v.to_string());
+    let compute_units_consumed = meta
+        .and_then(|m| m.get("computeUnitsConsumed"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|v| v.to_string());
+    let logs_present = meta
+        .and_then(|m| m.get("logMessages"))
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|logs| !logs.is_empty());
+    let execution_error = meta
+        .and_then(|m| m.get("err"))
+        .is_some_and(|error| !error.is_null());
+    let transaction_version = match object.get("version") {
+        None => "legacy",
+        Some(value) if value.as_str() == Some("legacy") => "legacy",
+        Some(value) if value.as_str() == Some("0") || value.as_u64() == Some(0) => "v0",
+        Some(_) => "unsupported",
+    }
+    .to_owned();
+    Ok(NormalizedExecution {
+        slot,
+        block_time: object.get("blockTime").and_then(serde_json::Value::as_i64),
+        fee_lamports,
+        compute_units_consumed,
+        transaction_version,
+        logs_present,
+        execution_error,
+    })
+}
+
 impl ObservationQueue {
     pub fn new() -> Self {
         Self {
@@ -509,6 +564,17 @@ mod tests {
             .expect("transaction")
             .expect("details");
         assert_eq!(result["slot"], 42);
+    }
+
+    #[test]
+    fn execution_details_are_normalized_with_exact_integer_fields() {
+        let value = serde_json::json!({ "slot": 42, "blockTime": 1_700_000_000_i64, "version": "0", "meta": { "fee": 5000, "computeUnitsConsumed": 900, "logMessages": ["ok"], "err": null } });
+        let normalized = normalize_execution(&value).expect("execution");
+        assert_eq!(normalized.slot, "42");
+        assert_eq!(normalized.fee_lamports.as_deref(), Some("5000"));
+        assert_eq!(normalized.compute_units_consumed.as_deref(), Some("900"));
+        assert_eq!(normalized.transaction_version, "v0");
+        assert!(!normalized.execution_error);
     }
 
     #[test]

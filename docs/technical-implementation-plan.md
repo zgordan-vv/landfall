@@ -1116,6 +1116,8 @@ Observe network outcomes independently from the customer's submission path.
    Completed with a provider-neutral request that explicitly advertises
    `maxSupportedTransactionVersion: 0` and safely preserves a missing result.
 10. Normalize execution error, fee, compute units, slot, block time, and transaction version.
+   Completed with provider-neutral execution normalization, exact decimal
+   integer fields, version mapping, log-presence signal, and error flag.
 11. Implement observer route health and data-quality gaps.
 12. Detect durable-nonce/unsupported validity cases without false expiration.
 13. Support clean cancellation and restart recovery.
