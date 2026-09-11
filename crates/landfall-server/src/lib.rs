@@ -15,6 +15,9 @@ use landfall_protocol::check_event_compatibility;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
+use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
 use uuid::Uuid;
@@ -22,6 +25,8 @@ use uuid::Uuid;
 pub const MAX_EVENTS_PER_BATCH: usize = 1_000;
 pub const MAX_COMPRESSED_BODY_BYTES: usize = 256 * 1024;
 pub const MAX_DECOMPRESSED_BODY_BYTES: usize = 2 * 1024 * 1024;
+pub const MAX_REQUESTS_PER_SECOND: u32 = 100;
+pub const MAX_CONCURRENT_REQUESTS: usize = 64;
 const PROHIBITED_PRIVACY_KEYS: &[&str] = &[
     "private_key",
     "seed_phrase",
@@ -106,9 +111,39 @@ pub fn router(state: AppState) -> Router {
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .layer(RequestBodyLimitLayer::new(MAX_DECOMPRESSED_BODY_BYTES))
+        .layer(ConcurrencyLimitLayer::new(MAX_CONCURRENT_REQUESTS))
+        .layer(middleware::from_fn(request_rate_limit))
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
         .with_state(Arc::new(state))
+}
+
+static RATE_WINDOW: OnceLock<Mutex<(Instant, u32)>> = OnceLock::new();
+
+async fn request_rate_limit(request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
+    let limiter = RATE_WINDOW.get_or_init(|| Mutex::new((Instant::now(), 0)));
+    let allowed = limiter.lock().is_ok_and(|mut window| {
+        if window.0.elapsed() >= Duration::from_secs(1) {
+            *window = (Instant::now(), 0);
+        }
+        if window.1 >= MAX_REQUESTS_PER_SECOND {
+            false
+        } else {
+            window.1 += 1;
+            true
+        }
+    });
+    if !allowed {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            Json(ApiError {
+                code: "rate_limited",
+                message: "request rate limit exceeded",
+            }),
+        )
+            .into_response();
+    }
+    next.run(request).await
 }
 
 async fn compressed_body_limit(
@@ -335,6 +370,13 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    #[allow(clippy::assertions_on_constants)]
+    fn limits_are_positive_and_bounded() {
+        assert!(super::MAX_REQUESTS_PER_SECOND > 0);
+        assert!(super::MAX_CONCURRENT_REQUESTS <= super::MAX_REQUESTS_PER_SECOND as usize);
     }
 
     #[test]

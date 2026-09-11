@@ -832,6 +832,8 @@ Accept authenticated, validated, idempotent event batches and durably enqueue pr
    `202`, fully duplicate batches return `200`, and validation failures retain
    stable structured error codes.
 10. Implement token/request rate and concurrency limits.
+   Completed with a bounded process-wide request window (`429` on exhaustion)
+   and Axum/Tower concurrency limiting before handler execution.
 11. Generate OpenAPI route and schema snapshot.
 12. Add disposable health-check event endpoint.
 
