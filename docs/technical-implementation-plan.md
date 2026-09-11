@@ -733,6 +733,9 @@ Create the durable foundation for continuous ingestion and asynchronous processi
    states, `locked_by`/`locked_until` leases, retry counters, and a partial
    unique index for ready/running dedupe keys.
 8. Implement report metadata/artifact tables.
+   Completed in migration `0007_create_report_artifacts.sql` with scoped report
+   metadata and immutable JSON/HTML artifact manifests containing privacy,
+   storage-key, hash, and byte-size attributes.
 9. Build repository traits at service boundaries and SQLx implementations.
 10. Implement migration runner and version health check.
 11. Implement test database lifecycle and seed helpers.
