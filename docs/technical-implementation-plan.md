@@ -954,6 +954,8 @@ Provide a safe, pleasant producer library without putting Landfall on the custom
    Completed with a bytes-only fingerprint helper using injected HMAC and
    protocol-compatible 32-byte lowercase hex output.
 7. Implement endpoint redaction and metadata allowlist.
+   Completed with endpoint credential/query redaction and bounded scalar
+   metadata allowlisting for explicitly approved keys.
 8. Implement bounded in-memory buffer.
 9. Implement batch assembly and stable retries.
 10. Implement HTTP/gzip transport and backoff with jitter.
