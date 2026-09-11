@@ -7,7 +7,7 @@ type Route = "overview" | "traces" | "comparison" | "trace-detail";
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
-  if (value.startsWith("traces/")) return "trace-detail";
+  if (value.startsWith("traces/") || value === "trace-detail") return "trace-detail";
   return value === "traces" || value === "comparison" ? value : "overview";
 }
 
@@ -27,7 +27,7 @@ function Dashboard() {
   const labels: Record<Route, string> = { overview: "Overview", traces: "Traces", comparison: "Comparison", "trace-detail": "Trace detail" };
   return <div className="app-shell">
     <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span></header>
-    <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
+    <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).filter((key) => key !== "trace-detail").map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
       <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <section className="state-card" aria-live="polite"><span className="status-dot" aria-hidden="true" />Fixture mode is ready</section>}</main>
     </div>
   </div>;
