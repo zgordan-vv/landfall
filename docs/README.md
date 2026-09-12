@@ -16,6 +16,6 @@ Use the section that matches your goal:
 - [Operations](operations/) — database, workers, retention, reports, runbooks,
   and troubleshooting.
 - [Security](security/) — threat model, privacy classification, TLS, and
-  resilience checks.
+  resilience checks; start with the [privacy field matrix](security/privacy-field-matrix.md).
 - [Benchmarks](benchmarks/) — workload, throughput, latency, and size methods.
 - [ADRs](adr/) and [spikes](spikes/) — architectural decisions and experiments.

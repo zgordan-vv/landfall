@@ -1586,6 +1586,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [manual-sdk-guide.md](../sdk/manual-sdk-guide.md), including a
   typed event example, bounded buffering, and privacy rules.
 - privacy field matrix;
+  Completed with [privacy-field-matrix.md](../security/privacy-field-matrix.md),
+  a concise review sheet linked to the detailed registry.
 - metric definitions;
 - diagnostic rule catalog;
 - operational runbooks;
