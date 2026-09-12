@@ -201,6 +201,7 @@ For a structured review, read the documents in this order:
 
 1. [Idea Validation Strategy](docs/idea-validation-strategy.md) — who may buy
    this and how demand should be tested.
+   For an immediate local run, use the [Quick Start](docs/quick-start.md).
 2. [Product Requirements Document](docs/product-requirements-document.md) —
    product scope, users, terminology, requirements, and acceptance criteria.
 3. [System Design](docs/system-design.md) — functional and non-functional

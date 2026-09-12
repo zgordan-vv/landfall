@@ -1577,6 +1577,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [architecture-overview.md](architecture-overview.md), a
   concise data-flow diagram and boundary summary linked from the README.
 - quick start;
+  Completed with [quick-start.md](quick-start.md), including prerequisites,
+  run, stop, and explicitly destructive reset commands.
 - Kit integration guide;
 - manual SDK guide;
 - privacy field matrix;
