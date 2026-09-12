@@ -13,3 +13,8 @@ Gaps are counted per assessment, not per duplicate evidence event. This keeps
 the summary useful for cohort analysis and prevents a noisy trace from
 dominating the result. Empty selections remain explicit and never imply good
 quality.
+
+## Verification
+
+Run `cargo test -p landfall-server data_quality_summary`. Grade buckets always
+include A–F and gap keys are deterministic, counted once per assessment.

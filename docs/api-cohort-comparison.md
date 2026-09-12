@@ -10,3 +10,8 @@ minimum completed observations. A separate `small_sample_warning` remains
 visible when a cohort is below the softer warning threshold. If the baseline
 rate is zero, relative change is `null` because it has no finite meaning;
 absolute change is still returned.
+
+## Verification
+
+Run `cargo test -p landfall-server cohort_comparison`. Statistical significance
+is not claimed; this is a descriptive P0 comparison with explicit sample warnings.

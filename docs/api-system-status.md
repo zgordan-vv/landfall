@@ -6,3 +6,8 @@ projection queue depth and lag, observer route health, retention, and the
 active schema/rule versions. Credentials, connection strings, and raw provider
 details are not included. Overall status is `degraded` when the database is
 unready or any observer route is unhealthy.
+
+## Verification
+
+Run `cargo test -p landfall-server system_status`. Missing `system:read` scope
+is rejected before details are returned.

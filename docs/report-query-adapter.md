@@ -6,3 +6,8 @@ their derived counts; the adapter reuses `TraceReport::from_state` so report
 tokens remain identical to the offline flow. The returned `ReportSnapshot`
 records the frozen projection watermark, making the exported report's freshness
 and reproducibility explicit.
+
+## Verification
+
+Run `cargo test -p landfall-report query_rows_build` to verify R0 mapping and
+watermark preservation.

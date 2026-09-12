@@ -6,3 +6,8 @@ the destructive set without dropping anything. A zero-day retention policy is
 rejected, preventing accidental full deletion; the executor can pass the plan
 to the existing storage partition-drop primitives only after explicit policy
 approval.
+
+## Verification
+
+Run `cargo test -p landfall-server retention` to verify cutoff boundaries and
+zero-retention rejection.
