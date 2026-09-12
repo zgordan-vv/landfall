@@ -536,6 +536,30 @@ pub struct NormalizedSignatureObservation {
     pub execution_error: Option<serde_json::Value>,
 }
 
+/// Builds the canonical wire payload for a status observation event.
+pub fn status_observed_event(
+    project_id: &str,
+    environment_id: &str,
+    trace_id: &str,
+    observer_source_id: &str,
+    event_id: &str,
+    occurred_at: &str,
+    observation: &NormalizedSignatureObservation,
+) -> serde_json::Value {
+    let mut attributes = serde_json::json!({
+        "observer_source_id": observer_source_id,
+        "source_result": observation.source_result,
+        "duration_ns": "0"
+    });
+    if let Some(commitment) = &observation.commitment {
+        attributes["commitment"] = serde_json::Value::String(commitment.clone());
+    }
+    if let Some(slot) = observation.slot {
+        attributes["slot"] = serde_json::Value::String(slot.to_string());
+    }
+    serde_json::json!({"schema_version":"1.0","event_type":"solana.status.observed","event_id":event_id,"occurred_at":occurred_at,"project_id":project_id,"environment_id":environment_id,"trace_id":trace_id,"source":{"kind":"observer","name":"landfall-observer","version":"0.1.0"},"privacy_mode":"standard","privacy_policy_version":"1.0","redaction_version":"1.0","attributes":attributes})
+}
+
 /// Maps a Solana RPC status to protocol-level observation fields.
 #[must_use]
 pub fn normalize_signature_status(
