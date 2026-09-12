@@ -1479,6 +1479,8 @@ route, and application-version cardinality.
    Step 15.2 completed with a repeatable Node harness reporting capture time and
    heap delta as JSON, including explicit runtime/benchmark limitations.
 2. Batch compression ratio and request size.
+   Step 15.3 completed with deterministic 100/1,000-event gzip measurements of
+   raw and compressed request sizes.
 3. Collector throughput and p95 latency.
 4. Database bytes/event and bytes/trace.
 5. Projection throughput and lag.
