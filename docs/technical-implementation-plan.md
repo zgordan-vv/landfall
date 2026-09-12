@@ -1494,6 +1494,8 @@ route, and application-version cardinality.
    Step 15.7 completed with lease-based claim, expiry recovery, attempt
    counting, and terminal completion semantics.
 7. Observer batch/RPC rate.
+   Step 15.8 completed with normalized calls/sec, calls-per-batch, and
+   rate-limited-ratio metrics plus invalid-counter safeguards.
 8. Trace-detail query p95.
 9. Overview and comparison p95.
 10. 100,000-trace report duration.
