@@ -1406,6 +1406,8 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with panic-free structural fuzz guards for nesting, arrays, and
    object/label cardinality, complementing existing compressed-body limits.
 4. Review authentication and constant-time token verification.
+   Completed with strict bearer parsing, SHA-256 hash-only records,
+   constant-time digest comparison, and negative lifecycle/scope tests.
 5. Add secure response headers and production CORS policy.
 6. Review TLS/reverse-proxy documentation.
 7. Add dependency, license, container, and secret scanning to release gate.

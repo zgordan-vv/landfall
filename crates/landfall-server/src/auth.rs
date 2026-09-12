@@ -108,11 +108,38 @@ mod tests {
             authorize(Some("Bearer secret"), &[revoked], "ingest:write", now),
             Err(AuthError::RevokedToken)
         );
-        let mut expired = valid;
+        let mut expired = valid.clone();
         expired.expires_at = Some(now);
         assert_eq!(
             authorize(Some("Bearer secret"), &[expired], "ingest:write", now),
             Err(AuthError::ExpiredToken)
+        );
+        assert_eq!(
+            authorize(
+                Some("Basic secret"),
+                std::slice::from_ref(&valid),
+                "ingest:write",
+                now
+            ),
+            Err(AuthError::InvalidBearer)
+        );
+        assert_eq!(
+            authorize(
+                Some("Bearer secret with-space"),
+                std::slice::from_ref(&valid),
+                "ingest:write",
+                now
+            ),
+            Err(AuthError::InvalidBearer)
+        );
+        assert_eq!(
+            authorize(
+                Some("Bearer other"),
+                std::slice::from_ref(&valid),
+                "ingest:write",
+                now
+            ),
+            Err(AuthError::UnknownToken)
         );
     }
 }
