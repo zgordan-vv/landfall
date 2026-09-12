@@ -11,14 +11,21 @@ const allowSubmission = process.env.ALLOW_SUBMISSION === "true";
 const lamports = 1_000;
 if (!new Set(["local", "devnet"]).has(cluster)) throw new Error("SOLANA_CLUSTER must be local or devnet");
 
-// This harness deliberately uses an injected fake client. Replace these methods
-// with the @solana/kit 8.2.0 adapter only after an operator opts in to sending.
+const rpcEndpoint = process.env.SOLANA_RPC_URL ?? (cluster === "devnet" ? "https://api.devnet.solana.com" : "http://127.0.0.1:8899");
+const signedTransaction = process.env.SIGNED_TRANSACTION_BASE64;
+async function rpc(method, params) {
+  const response = await fetch(rpcEndpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  if (!response.ok) throw new Error(`Solana RPC returned HTTP ${response.status}`);
+  const body = await response.json();
+  if (body.error) throw new Error(`Solana RPC ${body.error.code}: ${body.error.message}`);
+  return body.result;
+}
 const client = {
-  getLatestBlockhash: async () => ({ blockhash: "demo-blockhash", lastValidBlockHeight: 500n }),
-  simulate: async () => ({ err: null, unitsConsumed: 500n, logs: ["system transfer"] }),
-  sign: async () => ({ signed: true }),
-  submit: async () => "demo-signature",
-  confirm: async () => ({ commitment: "confirmed" }),
+  getLatestBlockhash: async () => { const result = await rpc("getLatestBlockhash", [{ commitment: "confirmed" }]); return { blockhash: result.value.blockhash, lastValidBlockHeight: BigInt(result.value.lastValidBlockHeight) }; },
+  simulate: async () => { if (!signedTransaction) throw new Error("SIGNED_TRANSACTION_BASE64 is required for simulation"); return (await rpc("simulateTransaction", [signedTransaction, { encoding: "base64", replaceRecentBlockhash: true, sigVerify: false }])).value; },
+  sign: async () => { if (!signedTransaction) throw new Error("SIGNED_TRANSACTION_BASE64 is required (the example never handles private keys)"); return signedTransaction; },
+  submit: async (signed) => { if (!allowSubmission) throw new Error("submission is disabled; set ALLOW_SUBMISSION=true explicitly"); return await rpc("sendTransaction", [signed, { encoding: "base64", skipPreflight: false }]); },
+  confirm: async (signature) => { const result = await rpc("getSignatureStatuses", [[signature], { searchTransactionHistory: true }]); const status = result.value[0]; if (!status) throw new Error("signature not observed yet"); if (status.err) throw new Error(`transaction execution failed: ${JSON.stringify(status.err)}`); return status; },
 };
 const clock = (() => { let tick = 0n; return () => (tick += 10n); })();
 const blockhash = await captureLatestBlockhash(client);
