@@ -1592,6 +1592,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [metrics-guide.md](../product/metrics-guide.md), which explains
   outcome/data-quality separation and denominator rules.
 - diagnostic rule catalog;
+  Completed with [diagnostics-guide.md](../product/diagnostics-guide.md), which
+  explains confirmed/probable/unknown findings and advisory recommendations.
 - operational runbooks;
 - troubleshooting;
 - benchmark methodology/results;
