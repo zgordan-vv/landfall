@@ -1,14 +1,12 @@
 # Local ingestion smoke test
 
 This verifies the first durable vertical slice without real Solana traffic.
-It requires the server and the default Compose PostgreSQL service.
+The Compose server waits for PostgreSQL health and runs migrations before
+opening port 8080.
 
 ```bash
-bash scripts/compose.sh up -d --wait postgres
+bash scripts/compose.sh up -d --wait server postgres
 bash scripts/seed-demo-control-plane.sh
-DATABASE_URL='postgres://landfall:landfall-local-development-only@localhost:5432/landfall' \
-LANDFALL_BIND=127.0.0.1:8080 \
-target/debug/landfall-server
 ```
 
 In another terminal, post a batch whose UUIDs match the seeded control plane:

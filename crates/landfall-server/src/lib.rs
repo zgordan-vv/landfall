@@ -22,7 +22,7 @@ use axum::{
     routing::post,
 };
 use landfall_protocol::check_event_compatibility;
-use landfall_storage::{IngestEvent, ingest_atomically};
+use landfall_storage::{IngestEvent, ensure_raw_event_partition, ingest_atomically};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -468,6 +468,21 @@ async fn ingest(
             payload: event,
             payload_hash: Sha256::digest(&payload_bytes).to_vec(),
         });
+    }
+    for event in &durable {
+        if ensure_raw_event_partition(pool, event.occurred_at.date())
+            .await
+            .is_err()
+        {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ApiError {
+                    code: "storage_unavailable",
+                    message: "durable ingestion failed",
+                }),
+            )
+                .into_response();
+        }
     }
     match ingest_atomically(pool, batch_id, &durable).await {
         Ok(outcome) => ingest_response(outcome.inserted, outcome.duplicates),

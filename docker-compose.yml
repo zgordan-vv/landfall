@@ -32,6 +32,24 @@ x-postgres-common: &postgres-common
       max-file: "3"
 
 services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: landfall-server:local
+    environment:
+      DATABASE_URL: postgres://${LANDFALL_POSTGRES_USER}:${LANDFALL_POSTGRES_PASSWORD}@postgres:5432/${LANDFALL_POSTGRES_DB}
+      LANDFALL_BIND: 0.0.0.0:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - data
+    restart: unless-stopped
+    stop_grace_period: 30s
+
   postgres:
     <<: *postgres-common
     volumes:
