@@ -3,7 +3,7 @@
 use std::net::SocketAddr;
 
 use landfall_server::{AppState, router};
-use landfall_storage::{DatabaseConfig, run_migrations};
+use landfall_storage::{DatabaseConfig, reclaim_expired_observation_jobs, run_migrations};
 use tokio::net::TcpListener;
 
 #[tokio::main]
@@ -14,6 +14,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database = DatabaseConfig::from_env()?;
     let pool = database.connect_lazy()?;
     run_migrations(&pool).await?;
+    let recovery_pool = pool.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        loop {
+            interval.tick().await;
+            if let Err(error) = reclaim_expired_observation_jobs(&recovery_pool).await {
+                eprintln!("observation lease recovery failed: {error}");
+            }
+        }
+    });
     let app = router(AppState {
         ready: true,
         pool: Some(pool),
