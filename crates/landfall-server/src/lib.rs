@@ -15,17 +15,18 @@ pub use projection_metrics::{ProjectionMetrics, ProjectionMetricsSnapshot};
 
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::post,
+    routing::{get, post},
 };
 use landfall_protocol::check_event_compatibility;
 use landfall_storage::{IngestEvent, ensure_raw_event_partition, ingest_atomically};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use sqlx::Row;
 use std::sync::Arc;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -174,6 +175,7 @@ fn contains_prohibited_key(value: &Value) -> bool {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/ingest", post(ingest))
+        .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -315,6 +317,47 @@ async fn readiness(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         StatusCode::SERVICE_UNAVAILABLE
     };
     (status, Json(serde_json::json!({ "ready": state.ready })))
+}
+
+async fn trace_detail(
+    State(state): State<Arc<AppState>>,
+    Path(trace_id): Path<String>,
+) -> impl IntoResponse {
+    let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_trace_id",
+                message: "trace_id must be a UUID",
+            }),
+        )
+            .into_response();
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                code: "trace_not_found",
+                message: "trace was not found",
+            }),
+        )
+            .into_response();
+    };
+    let row = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, application_state, observation_state, updated_at FROM reporting.traces WHERE trace_id = $1")
+        .bind(trace_uuid).fetch_optional(pool).await;
+    match row {
+        Ok(Some(row)) => (StatusCode::OK, Json(serde_json::json!({
+            "trace_id": row.get::<Uuid, _>("trace_id").to_string(),
+            "lifecycle_state": row.get::<String, _>("lifecycle_state"),
+            "landing_state": row.get::<String, _>("landing_state"),
+            "execution_state": row.get::<String, _>("execution_state"),
+            "application_state": row.get::<String, _>("application_state"),
+            "observation_state": row.get::<String, _>("observation_state"),
+            "updated_at": row.get::<time::OffsetDateTime, _>("updated_at").format(&time::format_description::well_known::Rfc3339).unwrap_or_default(),
+        }))).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiError { code: "trace_not_found", message: "trace was not found" })).into_response(),
+        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "trace query failed" })).into_response(),
+    }
 }
 
 async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
@@ -482,6 +525,15 @@ async fn ingest(
                 }),
             )
                 .into_response();
+        }
+    }
+    for event in &durable {
+        if let Some(trace_id) = event.trace_id {
+            if sqlx::query("INSERT INTO reporting.traces (trace_id, project_id, environment_id) VALUES ($1, $2, $3) ON CONFLICT (trace_id) DO NOTHING")
+                .bind(trace_id).bind(event.project_id).bind(event.environment_id)
+                .execute(pool).await.is_err() {
+                return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "durable ingestion failed" })).into_response();
+            }
         }
     }
     match ingest_atomically(pool, batch_id, &durable).await {
