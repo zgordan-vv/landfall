@@ -1,0 +1,32 @@
+# Include this file from an nginx `http { ... }` block.
+# Certificates and the public hostname are deployment-specific.
+limit_req_zone $binary_remote_addr zone=landfall_api:10m rate=20r/s;
+
+server {
+    listen 80;
+    server_name landfall.example.com;
+    return 308 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name landfall.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/landfall.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/landfall.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    client_max_body_size 2m;
+    limit_req zone=landfall_api burst=40 nodelay;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Connection "";
+    }
+}

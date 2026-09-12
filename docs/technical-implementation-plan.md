@@ -1558,6 +1558,9 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    and documents HTTP readiness plus worker cancellation semantics in
    [health-and-shutdown.md](health-and-shutdown.md).
 7. Example TLS reverse-proxy configuration.
+   Step 16.7 adds an nginx fragment with HTTPS redirect, TLS policy, HSTS,
+   request limits, and forwarded-header handling; the operator runbook is in
+   [tls-reverse-proxy-runbook.md](tls-reverse-proxy-runbook.md).
 8. Backup/restore scripts or documented commands.
 9. Release archive/checksums and image provenance where practical.
 
