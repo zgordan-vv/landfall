@@ -12,7 +12,7 @@ mapped to concrete code rather than treated as design-only claims.
 | Deletion auditability | `deletion::TraceTombstone` append-only ledger | Covered |
 | Safe retention | `retention::plan_retention` rejects zero-day policy and supports dry-run | Covered |
 | Object authorization and production CORS | full HTTP authorization middleware and production headers | Open — Phase 14.4/14.5 |
-| TLS/reverse-proxy and dependency/SBOM gates | deployment/release automation | Open — Phase 14.6/14.7 |
+| TLS/reverse-proxy and dependency/SBOM gates | `tls-reverse-proxy.md`; release automation remains open | Partial — Phase 14.7 remains |
 
 The open items are intentionally tracked as hardening work; this review does
 not claim that a pure library model replaces runtime authorization or release

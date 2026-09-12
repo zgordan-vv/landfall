@@ -1412,6 +1412,9 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with restrictive browser security headers and exact same-origin
    CORS validation that rejects wildcard/cross-site origins.
 6. Review TLS/reverse-proxy documentation.
+   Completed with a deployment review covering TLS termination, forwarded-header
+   trust, edge limits, log scrubbing, private upstream binding, and PostgreSQL
+   isolation.
 7. Add dependency, license, container, and secret scanning to release gate.
 8. Force failures:
    - collector down;
