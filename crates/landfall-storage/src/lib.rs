@@ -20,7 +20,10 @@ pub use recommendations::{RecommendationWrite, append_recommendations};
 pub mod watermarks;
 pub use watermarks::advance_projection_watermark;
 pub mod observation_jobs;
-pub use observation_jobs::enqueue_observation_if_eligible;
+pub use observation_jobs::{
+    ClaimedObservationJob, claim_observation_job, complete_observation_job,
+    enqueue_observation_if_eligible, retry_observation_job,
+};
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};
 pub mod partitions;
