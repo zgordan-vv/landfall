@@ -1476,6 +1476,8 @@ route, and application-version cardinality.
 ### Benchmarks
 
 1. SDK synchronous overhead and memory.
+   Step 15.2 completed with a repeatable Node harness reporting capture time and
+   heap delta as JSON, including explicit runtime/benchmark limitations.
 2. Batch compression ratio and request size.
 3. Collector throughput and p95 latency.
 4. Database bytes/event and bytes/trace.
