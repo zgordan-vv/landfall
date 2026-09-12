@@ -10,6 +10,7 @@ export interface CohortComparison { baseline_rate: number | null; candidate_rate
 export interface DetailedSystemStatus { status: "ok" | "degraded"; database_ready: boolean; queue_depth: number; projection_lag_seconds: number; observer_routes: number; unhealthy_observer_routes: number; schema_version: string; rule_set_version: string; retention_days: number; }
 export interface SystemHealthSummary { status: "ok" | "degraded"; database_ready: boolean; projects: number; environments: number; enabled_routes: number; queued_jobs: number; dead_letter_jobs: number; events_last_24h: number; }
 export interface ComparisonSummary { baseline_environment_id: string; candidate_environment_id: string; baseline_traces: number; candidate_traces: number; baseline_landed: number; candidate_landed: number; }
+export interface TraceDiagnostic { diagnostic_id: string; rule_id: string; claim_key: string; certainty: "confirmed" | "probable" | "unknown"; }
 export interface TraceDetail { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; application_state: string; observation_state: string; updated_at: string; }
 export interface TraceListItem { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; updated_at: string; }
 export interface OverviewSummary { window_hours: number; total_traces: number; landed_traces: number; successful_executions: number; unknown_executions: number; updated_at: string; }
@@ -31,6 +32,7 @@ export class LandfallApiClient {
   async getDataQualitySummary(): Promise<DataQualitySummary> { return this.get("/api/v1/data-quality/summary"); }
   async getSystemStatus(): Promise<SystemHealthSummary> { return this.get("/v1/system/status"); }
   async getComparison(): Promise<ComparisonSummary> { return this.get("/v1/comparison"); }
+  async getTraceDiagnostics(traceId: string): Promise<TraceDiagnostic[]> { return this.get(`/v1/traces/${encodeURIComponent(traceId)}/diagnostics`); }
   async getTraceDetail(traceId: string): Promise<TraceDetail> { return this.get(`/v1/traces/${encodeURIComponent(traceId)}`); }
   async getTraces(limit = 50): Promise<TraceListItem[]> { return this.get(`/v1/traces?limit=${Math.min(100, Math.max(1, limit))}`); }
   async getOverview(): Promise<OverviewSummary> { return this.get("/v1/overview"); }
