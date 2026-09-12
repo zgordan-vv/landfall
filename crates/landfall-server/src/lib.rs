@@ -53,6 +53,7 @@ pub mod recommendation_disposition;
 pub mod report_benchmark;
 pub mod report_jobs;
 pub mod retention;
+pub mod retention_benchmark;
 pub mod secret_matrix;
 pub mod signature_lookup;
 pub mod storage_benchmark;

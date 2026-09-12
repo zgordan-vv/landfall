@@ -1506,6 +1506,9 @@ route, and application-version cardinality.
    Step 15.11 completed with large-cohort duration normalization and required
    format/privacy/watermark benchmark metadata.
 11. Retention partition drop duration.
+   Step 15.12 completed with partitions/second normalization, explicit
+   dry-run/actual mode, and a runbook describing PostgreSQL/storage metadata
+   and the limitation that the helper does not execute destructive SQL.
 12. Container startup and memory.
 
 ### Optimization order
