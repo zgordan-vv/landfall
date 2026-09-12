@@ -33,6 +33,7 @@ pub mod artifact_store;
 pub mod backup;
 pub mod business_action;
 pub mod cohort_comparison;
+pub mod collector_benchmark;
 pub mod config_read_model;
 pub mod data_quality_summary;
 pub mod deletion;

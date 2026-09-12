@@ -1482,6 +1482,8 @@ route, and application-version cardinality.
    Step 15.3 completed with deterministic 100/1,000-event gzip measurements of
    raw and compressed request sizes.
 3. Collector throughput and p95 latency.
+   Step 15.4 completed with an in-process parser benchmark reporting events/sec
+   and p95 latency, with network/database limitations documented.
 4. Database bytes/event and bytes/trace.
 5. Projection throughput and lag.
 6. Job claim/recovery behavior.
