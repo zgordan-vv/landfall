@@ -1365,6 +1365,8 @@ Complete audit and operator workflows around the continuous platform.
    Completed with deterministic cutoff planning, sorted partition selection,
    safety validation, and explicit dry-run semantics.
 9. Add backup/restore and incident runbooks.
+   Completed with checksum- and schema-validated backup manifests plus a
+   documented isolated-restore and projection-replay procedure.
 
 ### Tests
 
