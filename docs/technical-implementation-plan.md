@@ -1536,6 +1536,9 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
 ### Deployment tasks
 
 1. Multi-stage Rust/server image.
+   Step 16.1 verified the existing pinned builder/runtime image, non-root
+   runtime user, locked release build, and Dockerfile lint command; details are
+   in [deployment-image.md](deployment-image.md).
 2. Dashboard static build embedded/mounted into server image.
 3. PostgreSQL 18 current-minor image pinned by digest for release.
 4. Docker Compose profiles for demo and production-like local use.
