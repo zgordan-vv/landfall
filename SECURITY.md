@@ -1,5 +1,16 @@
 # Security policy
 
+Landfall handles operational data about financial transactions. Please report
+suspected vulnerabilities privately and do not include secrets, private keys,
+seed phrases, production transaction bytes, customer telemetry, or working
+exploit payloads in a public issue.
+
+## Supported versions
+
+Landfall is pre-release software and does not make production-readiness claims.
+The current `main` branch receives best-effort security fixes; older commits
+and forks are not supported.
+
 ## Reporting a vulnerability
 
 Do not open a public issue for a suspected credential leak, authentication
@@ -20,6 +31,19 @@ The maintainer acknowledges receipt, confirms scope, reproduces the issue in an
 isolated fixture deployment, assigns severity, and prepares a fix or mitigation.
 Disclosure timing is coordinated with the reporter; no guaranteed SLA or bug
 bounty is offered for this portfolio project.
+
+Acknowledgement is targeted within five business days and initial assessment
+within ten business days. Remediation and disclosure timing depend on severity
+and release status.
+
+## Scope
+
+In scope are Landfall-owned authentication, authorization, ingestion, privacy,
+stored telemetry, report exports, secret handling, RPC egress, dependency
+integrity, and deployment isolation. Wallets, signers, Solana programs,
+providers, hosts, DBAs, and third-party dependencies should normally be
+reported to their respective owners unless Landfall introduces or amplifies the
+issue. See [`docs/threat-model.md`](docs/threat-model.md) for trust boundaries.
 
 ## Security limitations
 
