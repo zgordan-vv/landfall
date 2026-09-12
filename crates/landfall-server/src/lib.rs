@@ -126,6 +126,17 @@ pub struct OverviewSummary {
     pub updated_at: String,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SystemHealthSummary {
+    pub status: &'static str,
+    pub database_ready: bool,
+    pub projects: i64,
+    pub environments: i64,
+    pub enabled_routes: i64,
+    pub queued_jobs: i64,
+    pub events_last_24h: i64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TraceListQuery {
     pub limit: Option<u32>,
@@ -202,6 +213,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces", get(trace_list))
         .route("/v1/overview", get(overview))
+        .route("/v1/system/status", get(system_status))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -460,6 +472,56 @@ async fn overview(State(state): State<Arc<AppState>>) -> impl IntoResponse {
             Json(ApiError {
                 code: "storage_unavailable",
                 message: "overview query failed",
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "system status requires durable storage",
+            }),
+        )
+            .into_response();
+    };
+    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status IN ('ready', 'running')) AS queued_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h")
+        .fetch_one(pool).await;
+    match row {
+        Ok(row) => {
+            let projects = row.get::<i64, _>("projects");
+            let environments = row.get::<i64, _>("environments");
+            let enabled_routes = row.get::<i64, _>("enabled_routes");
+            let queued_jobs = row.get::<i64, _>("queued_jobs");
+            let events_last_24h = row.get::<i64, _>("events_last_24h");
+            let status = if projects > 0 && environments > 0 {
+                "ok"
+            } else {
+                "degraded"
+            };
+            (
+                StatusCode::OK,
+                Json(SystemHealthSummary {
+                    status,
+                    database_ready: true,
+                    projects,
+                    environments,
+                    enabled_routes,
+                    queued_jobs,
+                    events_last_24h,
+                }),
+            )
+                .into_response()
+        }
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "system status query failed",
             }),
         )
             .into_response(),

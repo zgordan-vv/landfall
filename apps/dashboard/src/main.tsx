@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type OverviewSummary, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
+import { LandfallApiClient, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "traces" | "comparison" | "trace-detail";
@@ -35,16 +35,14 @@ function Dashboard() {
 }
 
 function OnboardingHealth() {
-  const checks = [
-    ["Project", "Demo project connected", "ready"],
-    ["Environment", "Production · strict privacy", "ready"],
-    ["Collector", "Schema v1 · receiving events", "ready"],
-    ["Observer", "2 routes · one needs attention", "warning"],
-  ] as const;
-  return <>
-    <section className="health-card" aria-labelledby="health-title"><div className="section-heading"><div><p className="eyebrow">Onboarding</p><h2 id="health-title">System health</h2></div><span className="badge warning">1 warning</span></div><div className="check-list">{checks.map(([label, detail, state]) => <div className="check-row" key={label}><span className={`status-dot ${state}`} aria-label={state === "ready" ? "Ready" : "Warning"} /> <div><strong>{label}</strong><span>{detail}</span></div></div>)}</div></section>
-    <section className="state-card" aria-labelledby="next-title"><p className="eyebrow">First trace checklist</p><h2 id="next-title">Send one trace to validate the setup</h2><p className="muted">Use the CLI command below, then return here to see lifecycle evidence.</p><code className="command">landfall trace --environment production</code><div className="warning-box" role="status"><strong>Data-quality warning</strong><span>Observer coverage is incomplete; conclusions may remain unknown.</span></div></section>
-  </>;
+  const [health, setHealth] = React.useState<SystemHealthSummary | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getSystemStatus().then(setHealth).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "System status request failed")); }, []);
+  if (error) return <section className="state-card" role="alert"><h2>System health unavailable</h2><p className="muted">The dashboard could not read system status: {error}</p></section>;
+  if (health === null) return <section className="state-card" role="status"><h2>Loading system health…</h2><p className="muted">Checking durable dependencies.</p></section>;
+  const checks = [["Database", health.database_ready ? "PostgreSQL is reachable" : "PostgreSQL is unavailable", health.database_ready ? "ready" : "warning"], ["Projects", `${health.projects} configured`, health.projects > 0 ? "ready" : "warning"], ["Environments", `${health.environments} configured`, health.environments > 0 ? "ready" : "warning"], ["Routes", `${health.enabled_routes} enabled`, health.enabled_routes > 0 ? "ready" : "warning"], ["Events", `${health.events_last_24h} received in 24h`, health.events_last_24h > 0 ? "ready" : "warning"]] as const;
+  const warnings = checks.filter(([, , state]) => state === "warning").length;
+  return <section className="health-card" aria-labelledby="health-title"><div className="section-heading"><div><p className="eyebrow">Runtime</p><h2 id="health-title">System health</h2></div><span className={`badge ${warnings ? "warning" : "ready"}`}>{warnings ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "Ready"}</span></div><div className="check-list">{checks.map(([label, detail, state]) => <div className="check-row" key={label}><span className={`status-dot ${state}`} aria-label={state === "ready" ? "Ready" : "Warning"} /> <div><strong>{label}</strong><span>{detail}</span></div></div>)}</div>{health.queued_jobs > 0 && <p className="muted">Queued jobs: {health.queued_jobs}</p>}</section>;
 }
 
 function OverviewMetrics() {
