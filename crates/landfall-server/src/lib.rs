@@ -665,7 +665,7 @@ fn state_label<T: std::fmt::Debug>(value: T) -> String {
         })
 }
 
-async fn refresh_trace_projection(
+pub async fn refresh_trace_projection(
     pool: &sqlx::PgPool,
     project_id: Uuid,
     environment_id: Uuid,
