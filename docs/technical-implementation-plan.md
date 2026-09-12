@@ -1485,6 +1485,8 @@ route, and application-version cardinality.
    Step 15.4 completed with an in-process parser benchmark reporting events/sec
    and p95 latency, with network/database limitations documented.
 4. Database bytes/event and bytes/trace.
+   Step 15.5 completed with normalized storage-size measurement helpers and
+   explicit denominator/version/index-footprint recording requirements.
 5. Projection throughput and lag.
 6. Job claim/recovery behavior.
 7. Observer batch/RPC rate.
