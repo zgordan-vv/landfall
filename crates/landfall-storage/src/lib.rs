@@ -22,7 +22,7 @@ pub use watermarks::advance_projection_watermark;
 pub mod observation_jobs;
 pub use observation_jobs::{
     ClaimedObservationJob, claim_observation_job, complete_observation_job,
-    enqueue_observation_if_eligible, retry_observation_job,
+    enqueue_observation_if_eligible, reclaim_expired_observation_jobs, retry_observation_job,
 };
 pub mod repositories;
 pub use repositories::{PersistenceRepository, PgRepositories, RepositoryError};

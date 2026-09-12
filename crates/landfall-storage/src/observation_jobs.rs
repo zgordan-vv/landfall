@@ -75,3 +75,11 @@ pub async fn retry_observation_job(
     sqlx::query("UPDATE work.jobs SET status = 'ready', locked_by = NULL, locked_until = NULL, last_error = $2, available_at = now() + make_interval(secs => $3) WHERE job_id = $1 AND status = 'running'").bind(job_id).bind(error).bind(delay_seconds as f64).execute(pool).await?;
     Ok(())
 }
+
+/// Requeues observation jobs whose worker lease expired after a crash.
+pub async fn reclaim_expired_observation_jobs(pool: &PgPool) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query("UPDATE work.jobs SET status = 'ready', locked_by = NULL, locked_until = NULL, available_at = now() WHERE job_type = 'observe_trace' AND status = 'running' AND locked_until < now()")
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected())
+}
