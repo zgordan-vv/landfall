@@ -1580,6 +1580,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [quick-start.md](quick-start.md), including prerequisites,
   run, stop, and explicitly destructive reset commands.
 - Kit integration guide;
+  Completed with [kit-integration-guide.md](../solana/kit-integration-guide.md),
+  including the safe dry-run example and explicit submission boundary.
 - manual SDK guide;
 - privacy field matrix;
 - metric definitions;

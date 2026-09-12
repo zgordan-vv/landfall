@@ -38,5 +38,7 @@ P0 targets `@solana/kit` 8.2.0 on Node 24. No Kit plugin is required. The
 neutral SDK root remains free of Kit imports; the concrete adapter is the only
 place that maps Kit return types into this contract.
 
-See [`config/solana-kit-lane.json`](../config/solana-kit-lane.json) and the
-[P0 support matrix](support-matrix.md) for the frozen compatibility claim.
+See [`config/solana-kit-lane.json`](../../config/solana-kit-lane.json) and the
+[P0 support matrix](../architecture/support-matrix.md) for the frozen
+compatibility claim. For a developer-oriented walkthrough, see the
+[Kit integration guide](kit-integration-guide.md).
