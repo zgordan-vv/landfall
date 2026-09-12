@@ -1565,6 +1565,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    Step 16.8 adds guarded backup/restore scripts with SHA-256 manifests and
    updates the operational runbook.
 9. Release archive/checksums and image provenance where practical.
+   Step 16.9 adds `create-release-archive.sh`, SHA-256 verification, and a
+   provenance record; procedure is documented in [release-archive.md](release-archive.md).
 
 ### Documentation tasks
 
