@@ -22,8 +22,10 @@ use axum::{
     routing::post,
 };
 use landfall_protocol::check_event_compatibility;
+use landfall_storage::{IngestEvent, ingest_atomically};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -89,6 +91,8 @@ const PROHIBITED_PRIVACY_KEYS: &[&str] = &[
 pub struct AppState {
     /// Whether dependencies are ready for traffic.
     pub ready: bool,
+    /// Optional durable PostgreSQL pool; absent only for isolated unit tests.
+    pub pool: Option<sqlx::PgPool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -342,7 +346,7 @@ async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> 
     )
 )]
 async fn ingest(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<IngestRequest>,
 ) -> impl IntoResponse {
     if request.events.is_empty() {
@@ -389,7 +393,93 @@ async fn ingest(
         )
             .into_response();
     }
-    ingest_response(request.events.len(), 0)
+    let Some(pool) = state.pool.as_ref() else {
+        return ingest_response(request.events.len(), 0);
+    };
+    let batch_id = Uuid::now_v7();
+    let mut durable = Vec::with_capacity(request.events.len());
+    for event in request.events {
+        let object = event.as_object().expect("validated event object");
+        let parse_uuid = |key: &str| {
+            object
+                .get(key)
+                .and_then(Value::as_str)
+                .and_then(|v| Uuid::parse_str(v).ok())
+        };
+        let Some(event_id) = parse_uuid("event_id") else {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    code: "invalid_event_id",
+                    message: "event_id must be a UUID",
+                }),
+            )
+                .into_response();
+        };
+        let Some(project_id) = parse_uuid("project_id") else {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    code: "invalid_project_id",
+                    message: "project_id must be a UUID",
+                }),
+            )
+                .into_response();
+        };
+        let Some(environment_id) = parse_uuid("environment_id") else {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    code: "invalid_environment_id",
+                    message: "environment_id must be a UUID",
+                }),
+            )
+                .into_response();
+        };
+        let Some(occurred_at) = object
+            .get("occurred_at")
+            .and_then(Value::as_str)
+            .and_then(|v| {
+                time::OffsetDateTime::parse(v, &time::format_description::well_known::Rfc3339).ok()
+            })
+        else {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    code: "invalid_occurred_at",
+                    message: "occurred_at must be RFC3339",
+                }),
+            )
+                .into_response();
+        };
+        let event_type = object
+            .get("event_type")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+        let payload_bytes = serde_json::to_vec(&event).unwrap_or_default();
+        durable.push(IngestEvent {
+            event_id,
+            project_id,
+            environment_id,
+            trace_id: parse_uuid("trace_id"),
+            event_type,
+            occurred_at,
+            payload: event,
+            payload_hash: Sha256::digest(&payload_bytes).to_vec(),
+        });
+    }
+    match ingest_atomically(pool, batch_id, &durable).await {
+        Ok(outcome) => ingest_response(outcome.inserted, outcome.duplicates),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "durable ingestion failed",
+            }),
+        )
+            .into_response(),
+    }
 }
 
 #[cfg(test)]
@@ -458,7 +548,10 @@ mod tests {
 
     #[tokio::test]
     async fn liveness_and_readiness_are_distinct() {
-        let app = router(super::AppState { ready: false });
+        let app = router(super::AppState {
+            ready: false,
+            pool: None,
+        });
         let live = app
             .clone()
             .oneshot(Request::get("/health/live").body(Body::empty()).unwrap())
