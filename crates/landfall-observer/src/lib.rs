@@ -581,6 +581,27 @@ pub fn normalize_signature_status(
     }
 }
 
+#[cfg(test)]
+mod observation_tests {
+    use super::{SignatureStatus, normalize_signature_status};
+    #[test]
+    fn absent_signature_is_not_found() {
+        assert_eq!(normalize_signature_status(None).source_result, "not_found");
+    }
+    #[test]
+    fn status_is_preserved() {
+        let result = normalize_signature_status(Some(SignatureStatus {
+            slot: 42,
+            confirmations: Some(1),
+            err: None,
+            confirmation_status: Some("confirmed".into()),
+        }));
+        assert_eq!(result.source_result, "found");
+        assert_eq!(result.slot, Some(42));
+        assert_eq!(result.commitment.as_deref(), Some("confirmed"));
+    }
+}
+
 #[async_trait]
 pub trait RpcTransport: Send + Sync {
     async fn post(&self, endpoint: &str, body: Vec<u8>) -> Result<Vec<u8>, String>;
