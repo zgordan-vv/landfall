@@ -12,10 +12,12 @@ business intent—with RPC responses and observed on-chain outcomes. The result
 is a correlated transaction timeline, evidence-linked diagnoses, reliability
 metrics, and deterministic recommendations with explicit confidence.
 
-> **Implementation status:** the reproducible monorepo, event protocol,
-> dashboard fixtures, PostgreSQL environment, production-image foundation, and
-> CI pipeline are implemented. The project is a portfolio-quality P0 reference
-> implementation and is not production-ready yet.
+> **Implementation status:** the event protocol, durable PostgreSQL ingestion,
+> HTTP API, and dashboard read paths are implemented. The product currently
+> reports only evidence persisted by the running control plane; it does not
+> fabricate traces or metrics when the API is unavailable. Production rollout
+> still requires the deployment, authentication, and live Solana observer
+> hardening described in the operations documentation.
 
 ## Why Landfall
 
@@ -186,9 +188,11 @@ pnpm --filter @landfall/dashboard dev
 ```
 
 Open the Vite URL shown in the terminal and use the Overview, Traces, Trace
-detail, and Comparison views. The dashboard uses deterministic fixtures so the
-same screenshots and navigation work without external RPC credentials. For a
-full architecture walkthrough, follow the [portfolio demo script](docs/portfolio-demo-script.md).
+detail, and Comparison views. The dashboard reads from the local Landfall API;
+send an event with the documented ingestion command before opening the views.
+If the API or database is unavailable, the UI shows that error instead of
+rendering fabricated data. For a full architecture walkthrough, follow the
+[portfolio demo script](docs/portfolio-demo-script.md).
 
 Additional security, contract, database-reset, and development commands are
 documented in [CONTRIBUTING.md](CONTRIBUTING.md). The committed local database

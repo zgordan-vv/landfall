@@ -45,11 +45,11 @@ published accidentally. A later repository check validates their dependency
 fields and TypeScript project references; `just lint` runs that architecture
 check before CI treats the boundary as enforced.
 
-The dashboard skeleton contains only the React/Vite composition root and a
-placeholder landmark. Product routes, styling, server-state libraries, API
-calls, and business UI belong to Phase 12. Likewise, the three libraries expose
-empty entry points until their canonical contracts are implemented in their
-own phases.
+The dashboard package contains the React/Vite composition root and its
+production read views. It communicates with the Landfall HTTP API through the
+workspace API client; it does not ship a fixture-backed runtime mode. The
+protocol, SDK, and API-client packages expose their canonical public contracts
+through their package entry points.
 
 ## Runtime and package-manager contract
 
