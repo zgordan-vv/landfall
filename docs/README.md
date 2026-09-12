@@ -9,7 +9,8 @@ Use the section that matches your goal:
 - [Product](product/) — validation strategy, PRD, metrics, and diagnostic
   catalog.
 - [API](api/) — OpenAPI and query endpoint contracts.
-- [SDK](sdk/) — TypeScript SDK configuration, buffering, privacy, and events.
+- [SDK](sdk/) — TypeScript SDK configuration, buffering, privacy, and events;
+  start with the [manual SDK guide](sdk/manual-sdk-guide.md).
 - [Solana](solana/) — Kit integration, lifecycle capture, and observer-facing
   client boundaries.
 - [Operations](operations/) — database, workers, retention, reports, runbooks,

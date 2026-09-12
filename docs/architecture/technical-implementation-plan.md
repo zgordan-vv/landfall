@@ -1583,6 +1583,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [kit-integration-guide.md](../solana/kit-integration-guide.md),
   including the safe dry-run example and explicit submission boundary.
 - manual SDK guide;
+  Completed with [manual-sdk-guide.md](../sdk/manual-sdk-guide.md), including a
+  typed event example, bounded buffering, and privacy rules.
 - privacy field matrix;
 - metric definitions;
 - diagnostic rule catalog;
