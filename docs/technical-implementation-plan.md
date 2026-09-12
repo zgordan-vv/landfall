@@ -1497,6 +1497,8 @@ route, and application-version cardinality.
    Step 15.8 completed with normalized calls/sec, calls-per-batch, and
    rate-limited-ratio metrics plus invalid-counter safeguards.
 8. Trace-detail query p95.
+   Step 15.9 completed with deterministic p50/p95/max query-latency summaries
+   and explicit empty-run safeguards.
 9. Overview and comparison p95.
 10. 100,000-trace report duration.
 11. Retention partition drop duration.

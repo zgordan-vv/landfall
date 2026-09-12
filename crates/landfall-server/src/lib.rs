@@ -47,6 +47,7 @@ pub mod metrics_summary;
 pub mod observer_benchmark;
 pub mod pagination;
 pub mod projection_benchmark;
+pub mod query_benchmark;
 pub mod recommendation_disposition;
 pub mod report_jobs;
 pub mod retention;
