@@ -1427,6 +1427,8 @@ Verify that the product's observability does not become a risk to funds, credent
    - disk pressure;
    - report worker crash;
    - retention failure.
+   Completed with an explicit fault-injection scenario matrix and safe outcome
+   contract covering retry, halt, rehydrate, quarantine, and dry-run paths.
 9. Verify no acknowledged-event loss under supported failure boundary.
 10. Review logs for address/signature/privacy policy.
 11. Document vulnerability reporting and security limitations.

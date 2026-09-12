@@ -37,6 +37,7 @@ pub mod data_quality_summary;
 pub mod deletion;
 pub mod etag;
 pub mod export_safety;
+pub mod fault_injection;
 pub mod fuzz_guards;
 pub mod metrics_summary;
 pub mod pagination;
