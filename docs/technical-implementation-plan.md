@@ -1491,6 +1491,8 @@ route, and application-version cardinality.
    Step 15.6 completed with normalized events/sec and watermark-lag helpers,
    including empty-workload and non-negative lag safeguards.
 6. Job claim/recovery behavior.
+   Step 15.7 completed with lease-based claim, expiry recovery, attempt
+   counting, and terminal completion semantics.
 7. Observer batch/RPC rate.
 8. Trace-detail query p95.
 9. Overview and comparison p95.

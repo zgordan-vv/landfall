@@ -41,6 +41,7 @@ pub mod etag;
 pub mod export_safety;
 pub mod fault_injection;
 pub mod fuzz_guards;
+pub mod job_recovery;
 pub mod log_safety;
 pub mod metrics_summary;
 pub mod pagination;
