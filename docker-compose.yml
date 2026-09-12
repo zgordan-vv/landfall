@@ -47,6 +47,7 @@ services:
       - "8080:8080"
     networks:
       - data
+      - egress
     restart: unless-stopped
     stop_grace_period: 30s
 
@@ -75,3 +76,4 @@ volumes:
 networks:
   data:
     internal: true
+  egress:
