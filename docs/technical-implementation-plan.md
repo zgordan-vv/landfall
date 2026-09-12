@@ -1488,6 +1488,8 @@ route, and application-version cardinality.
    Step 15.5 completed with normalized storage-size measurement helpers and
    explicit denominator/version/index-footprint recording requirements.
 5. Projection throughput and lag.
+   Step 15.6 completed with normalized events/sec and watermark-lag helpers,
+   including empty-workload and non-negative lag safeguards.
 6. Job claim/recovery behavior.
 7. Observer batch/RPC rate.
 8. Trace-detail query p95.

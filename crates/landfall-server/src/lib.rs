@@ -44,6 +44,7 @@ pub mod fuzz_guards;
 pub mod log_safety;
 pub mod metrics_summary;
 pub mod pagination;
+pub mod projection_benchmark;
 pub mod recommendation_disposition;
 pub mod report_jobs;
 pub mod retention;
