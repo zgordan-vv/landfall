@@ -12,10 +12,10 @@ business intent—with RPC responses and observed on-chain outcomes. The result
 is a correlated transaction timeline, evidence-linked diagnoses, reliability
 metrics, and deterministic recommendations with explicit confidence.
 
-> **Implementation status:** the reproducible monorepo, architecture
-> boundaries, PostgreSQL environment, production-image foundation, and CI
-> pipeline are implemented. Product behavior begins in Phase 2 with the event
-> protocol and golden fixtures. Landfall is not production-ready yet.
+> **Implementation status:** the reproducible monorepo, event protocol,
+> dashboard fixtures, PostgreSQL environment, production-image foundation, and
+> CI pipeline are implemented. The project is a portfolio-quality P0 reference
+> implementation and is not production-ready yet.
 
 ## Why Landfall
 
@@ -172,6 +172,23 @@ Build and inspect the non-root server image:
 ```sh
 just container-build
 ```
+
+### Five-minute portfolio demo
+
+From a clean checkout, run:
+
+```sh
+cp .env.example .env
+just db-up
+just container-build
+pnpm install --frozen-lockfile
+pnpm --filter @landfall/dashboard dev
+```
+
+Open the Vite URL shown in the terminal and use the Overview, Traces, Trace
+detail, and Comparison views. The dashboard uses deterministic fixtures so the
+same screenshots and navigation work without external RPC credentials. For a
+full architecture walkthrough, follow the [portfolio demo script](docs/portfolio-demo-script.md).
 
 Additional security, contract, database-reset, and development commands are
 documented in [CONTRIBUTING.md](CONTRIBUTING.md). The committed local database

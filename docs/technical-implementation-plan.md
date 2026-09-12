@@ -1571,6 +1571,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
 ### Documentation tasks
 
 - root README focused on problem and five-minute demo;
+  Completed with a five-minute local workflow and explicit portfolio/demo
+  limitations in [README.md](../README.md) and [portfolio-demo-script.md](portfolio-demo-script.md).
 - architecture overview and diagrams;
 - quick start;
 - Kit integration guide;
