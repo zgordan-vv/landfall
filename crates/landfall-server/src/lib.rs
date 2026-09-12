@@ -166,7 +166,56 @@ pub fn router(state: AppState) -> Router {
         .layer(middleware::from_fn(request_rate_limit))
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
+        .layer(middleware::from_fn(security_headers_and_cors))
         .with_state(Arc::new(state))
+}
+
+async fn security_headers_and_cors(
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> impl IntoResponse {
+    let origin = request
+        .headers()
+        .get("origin")
+        .and_then(|value| value.to_str().ok());
+    let host = request
+        .headers()
+        .get("host")
+        .and_then(|value| value.to_str().ok());
+    if origin.is_some_and(|value| !cors_allows_origin(value, host)) {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(ApiError {
+                code: "origin_not_allowed",
+                message: "cross-origin request is not allowed",
+            }),
+        )
+            .into_response();
+    }
+    let mut response = next.run(request).await.into_response();
+    let headers = response.headers_mut();
+    headers.insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert("x-frame-options", HeaderValue::from_static("DENY"));
+    headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
+    headers.insert(
+        "content-security-policy",
+        HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
+    );
+    headers.insert(
+        "permissions-policy",
+        HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
+    );
+    response
+}
+
+fn cors_allows_origin(origin: &str, host: Option<&str>) -> bool {
+    origin
+        .strip_prefix("http://")
+        .or_else(|| origin.strip_prefix("https://"))
+        .is_some_and(|value| host.is_some_and(|expected| value == expected))
 }
 
 async fn openapi() -> impl IntoResponse {
@@ -465,6 +514,19 @@ mod tests {
         assert!(document.contains("/v1/ingest"));
         assert!(document.contains("IngestRequest"));
         assert!(document.contains("202"));
+    }
+
+    #[test]
+    fn cors_policy_allows_only_same_origin_host() {
+        assert!(super::cors_allows_origin(
+            "https://example.test",
+            Some("example.test")
+        ));
+        assert!(!super::cors_allows_origin(
+            "https://evil.test",
+            Some("example.test")
+        ));
+        assert!(!super::cors_allows_origin("null", Some("example.test")));
     }
 
     #[tokio::test]

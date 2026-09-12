@@ -1409,6 +1409,8 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with strict bearer parsing, SHA-256 hash-only records,
    constant-time digest comparison, and negative lifecycle/scope tests.
 5. Add secure response headers and production CORS policy.
+   Completed with restrictive browser security headers and exact same-origin
+   CORS validation that rejects wildcard/cross-site origins.
 6. Review TLS/reverse-proxy documentation.
 7. Add dependency, license, container, and secret scanning to release gate.
 8. Force failures:
