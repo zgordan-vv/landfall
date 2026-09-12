@@ -1554,6 +1554,9 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    `--read-only` plus constrained `/tmp` deployment profile in
    [container-hardening.md](container-hardening.md).
 6. Health checks and graceful shutdown.
+   Step 16.6 adds a PID liveness healthcheck, explicit `SIGTERM` stop signal,
+   and documents HTTP readiness plus worker cancellation semantics in
+   [health-and-shutdown.md](health-and-shutdown.md).
 7. Example TLS reverse-proxy configuration.
 8. Backup/restore scripts or documented commands.
 9. Release archive/checksums and image provenance where practical.

@@ -40,4 +40,11 @@ COPY LICENSE /licenses/LICENSE
 
 USER 65532:65532
 
+STOPSIGNAL SIGTERM
+
+# Debian slim has no curl/wget; this verifies that the PID 1 process is alive.
+# HTTP readiness is probed by the orchestrator against /health/ready.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/bin/kill", "-0", "1"]
+
 ENTRYPOINT ["/usr/local/bin/landfall-server"]
