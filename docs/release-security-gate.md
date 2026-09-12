@@ -1,8 +1,14 @@
 # Release security gate
 
-Run `scripts/release-security-gate.sh` before publishing. It requires both
-lockfiles, verifies the container license label, runs the pinned Gitleaks
-container scan, and checks approved Node dependency licenses. Missing Docker or
-pnpm is reported as a skipped check for local development; CI should provision
-both tools and treat skips as release failures. The repository currently uses
-the exact Node/pnpm versions declared in `package.json`.
+## Run
+
+From the repository root run `scripts/release-security-gate.sh`. A successful
+run prints checks for lockfiles/container metadata, Gitleaks, Node licenses,
+and finally `release security gate passed`.
+
+## Fail-closed expectations
+
+The script requires `Cargo.lock`, `pnpm-lock.yaml`, and the Dockerfile license
+label. In CI, Docker and pnpm must be installed; local skips are visible and
+must not be accepted as a release result. The Node license check also requires
+the exact runtime declared in `package.json` (Node 24.20.0 / pnpm 11.25.0).
