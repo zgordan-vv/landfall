@@ -10,7 +10,9 @@ pub use migrations::{
 pub mod ingestion;
 pub use ingestion::{IngestEvent, IngestOutcome, ingest_atomically};
 pub mod trace_events;
-pub use trace_events::{RawEventRow, load_events_for_trace};
+pub use trace_events::{
+    ObservationTarget, RawEventRow, load_events_for_trace, load_observation_target,
+};
 pub mod projections;
 pub use projections::{AttemptProjectionWrite, TraceProjectionWrite, replace_trace_projection};
 pub mod diagnostics;

@@ -19,6 +19,23 @@ pub struct RawEventRow {
     pub payload: Value,
 }
 
+/// RPC target extracted from durable submission evidence.
+#[derive(Debug, Clone, FromRow)]
+pub struct ObservationTarget {
+    pub trace_id: Uuid,
+    pub route_id: Uuid,
+    pub endpoint: String,
+    pub signature: String,
+}
+
+/// Loads the most recent accepted signature and its enabled route.
+pub async fn load_observation_target(
+    pool: &PgPool,
+    trace_id: Uuid,
+) -> Result<Option<ObservationTarget>, sqlx::Error> {
+    sqlx::query_as::<_, ObservationTarget>("SELECT e.trace_id, c.route_id, c.endpoint, e.payload #>> '{attributes,signature}' AS signature FROM telemetry.raw_events e JOIN control.routes c ON c.route_id = (e.payload #>> '{attributes,route_id}')::uuid WHERE e.trace_id = $1 AND e.event_type = 'solana.submission.completed' AND c.enabled AND e.payload #>> '{attributes,signature}' IS NOT NULL ORDER BY e.occurred_at DESC, e.received_at DESC LIMIT 1").bind(trace_id).fetch_optional(pool).await
+}
+
 /// Loads events for one trace within an explicit half-open time range.
 pub async fn load_events_for_trace(
     pool: &PgPool,
