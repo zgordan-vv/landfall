@@ -35,6 +35,7 @@ pub mod business_action;
 pub mod cohort_comparison;
 pub mod collector_benchmark;
 pub mod config_read_model;
+pub mod dashboard_query_benchmark;
 pub mod data_quality_summary;
 pub mod deletion;
 pub mod etag;

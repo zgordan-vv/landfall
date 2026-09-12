@@ -1500,6 +1500,8 @@ route, and application-version cardinality.
    Step 15.9 completed with deterministic p50/p95/max query-latency summaries
    and explicit empty-run safeguards.
 9. Overview and comparison p95.
+   Step 15.10 completed with independent percentile summaries for overview and
+   comparison query classes and workload metadata requirements.
 10. 100,000-trace report duration.
 11. Retention partition drop duration.
 12. Container startup and memory.
