@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
+import { LandfallApiClient, type ComparisonSummary, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "traces" | "comparison" | "trace-detail";
@@ -82,7 +82,15 @@ function TraceDetail() {
 }
 
 function ComparisonView() {
-  return <section aria-labelledby="comparison-title"><div className="cohort-builder"><p className="eyebrow">Cohort builder</p><h2 id="comparison-title">Compare application versions</h2><div className="select-grid"><label>Baseline<select defaultValue="v1.4.2"><option>v1.4.2 · 1,240 traces</option></select></label><label>Candidate<select defaultValue="v1.5.0"><option>v1.5.0 · 980 traces</option></select></label></div><p className="muted">Completed observation windows only · landing-rate-v1</p></div><div className="comparison-grid"><div className="state-card"><p className="eyebrow">Descriptive change</p><div className="comparison-number">+3.8 pp</div><p className="muted">92.4% → 96.2% landing rate</p><span className="status-label incomplete">Small-sample warning</span></div><div className="state-card"><p className="eyebrow">Data quality</p><div className="comparison-number">−2.1 pp</div><p className="muted">8.3% → 6.2% missing data</p><span className="status-label confirmed">Improving</span></div></div><div className="state-card"><h2>Instrumentation coverage</h2><div className="coverage-row"><span>SDK v1.5.0</span><b>96%</b></div><div className="coverage-row"><span>SDK v1.4.2</span><b>91%</b></div><div className="coverage-row"><span>Collector schema v1</span><b>100%</b></div></div></section>;
+  const [summary, setSummary] = React.useState<ComparisonSummary | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getComparison().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Comparison API request failed")); }, []);
+  if (error) return <section className="state-card" role="alert"><h2>Comparison unavailable</h2><p className="muted">{error}. Create traces in at least two environments to compare them.</p></section>;
+  if (summary === null) return <section className="state-card" role="status"><h2>Loading comparison…</h2><p className="muted">Reading cohort totals from durable traces.</p></section>;
+  const baselineRate = summary.baseline_traces ? summary.baseline_landed / summary.baseline_traces : 0;
+  const candidateRate = summary.candidate_traces ? summary.candidate_landed / summary.candidate_traces : 0;
+  const change = (candidateRate - baselineRate) * 100;
+  return <section aria-labelledby="comparison-title"><div className="cohort-builder"><p className="eyebrow">Environment cohorts</p><h2 id="comparison-title">Compare observed traces</h2><p className="muted">Baseline {summary.baseline_environment_id} · candidate {summary.candidate_environment_id}</p></div><div className="comparison-grid"><div className="state-card"><p className="eyebrow">Landing-rate change</p><div className="comparison-number">{change >= 0 ? "+" : ""}{change.toFixed(1)} pp</div><p className="muted">{(baselineRate * 100).toFixed(1)}% → {(candidateRate * 100).toFixed(1)}%</p></div><div className="state-card"><p className="eyebrow">Sample sizes</p><div className="comparison-number">{summary.baseline_traces} → {summary.candidate_traces}</div><p className="muted">Durable traces per environment</p></div></div></section>;
 }
 
 const rootElement = document.querySelector<HTMLDivElement>("#root");

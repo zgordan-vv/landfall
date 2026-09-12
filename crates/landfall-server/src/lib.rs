@@ -137,6 +137,16 @@ pub struct SystemHealthSummary {
     pub events_last_24h: i64,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ComparisonSummary {
+    pub baseline_environment_id: String,
+    pub candidate_environment_id: String,
+    pub baseline_traces: i64,
+    pub candidate_traces: i64,
+    pub baseline_landed: i64,
+    pub candidate_landed: i64,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TraceListQuery {
     pub limit: Option<u32>,
@@ -214,6 +224,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/traces", get(trace_list))
         .route("/v1/overview", get(overview))
         .route("/v1/system/status", get(system_status))
+        .route("/v1/comparison", get(comparison))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -522,6 +533,50 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
             Json(ApiError {
                 code: "storage_unavailable",
                 message: "system status query failed",
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn comparison(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "comparison requires durable storage",
+            }),
+        )
+            .into_response();
+    };
+    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed FROM reporting.traces GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").fetch_all(pool).await;
+    match rows {
+        Ok(rows) if rows.len() == 2 => (
+            StatusCode::OK,
+            Json(ComparisonSummary {
+                baseline_environment_id: rows[1].get::<Uuid, _>("environment_id").to_string(),
+                candidate_environment_id: rows[0].get::<Uuid, _>("environment_id").to_string(),
+                baseline_traces: rows[1].get("traces"),
+                candidate_traces: rows[0].get("traces"),
+                baseline_landed: rows[1].get("landed"),
+                candidate_landed: rows[0].get("landed"),
+            }),
+        )
+            .into_response(),
+        Ok(_) => (
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(ApiError {
+                code: "insufficient_cohorts",
+                message: "comparison requires traces in two environments",
+            }),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "comparison query failed",
             }),
         )
             .into_response(),
