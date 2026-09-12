@@ -23,8 +23,8 @@ use axum::{
 };
 use landfall_protocol::check_event_compatibility;
 use landfall_storage::{
-    IngestEvent, TraceProjectionWrite, ensure_raw_event_partition, ingest_atomically,
-    load_events_for_trace, replace_trace_projection,
+    IngestEvent, TraceProjectionWrite, enqueue_observation_if_eligible, ensure_raw_event_partition,
+    ingest_atomically, load_events_for_trace, replace_trace_projection,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -824,6 +824,12 @@ async fn ingest(
                         .is_err()
                     {
                         return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "projection_unavailable", message: "event was durable but its trace projection could not be refreshed" })).into_response();
+                    }
+                    if enqueue_observation_if_eligible(pool, trace_id, true)
+                        .await
+                        .is_err()
+                    {
+                        return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "observation_queue_unavailable", message: "trace was durable but could not be queued for observation" })).into_response();
                     }
                 }
             }
