@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
+import { LandfallApiClient, type OverviewSummary, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "traces" | "comparison" | "trace-detail";
@@ -48,8 +48,14 @@ function OnboardingHealth() {
 }
 
 function OverviewMetrics() {
-  const metrics = [["Landing rate", "92.4%", "+4.1% vs baseline"], ["Execution success", "89.7%", "−1.8% vs baseline"], ["Unknown / missing", "6.2%", "−0.9% vs baseline"]];
-  return <section aria-labelledby="metrics-title"><div className="section-heading"><div><p className="eyebrow">Last 24 hours</p><h2 id="metrics-title">Operational overview</h2></div><button className="secondary-button" type="button">Metric definitions</button></div><div className="metric-grid">{metrics.map(([name, value, change]) => <div className="metric-card" key={name}><span>{name}</span><strong>{value}</strong><small>{change}</small></div>)}</div><div className="trend-grid"><div className="state-card"><h2>Latency trend</h2><div className="bars" aria-label="Latency trend from 420 to 310 milliseconds">{[42, 55, 49, 64, 58, 46, 31].map((height, index) => <span style={{ height: `${height}%` }} key={index} />)}</div><small className="muted">p95 · 420 ms → 310 ms</small></div><div className="state-card"><h2>Coverage by route</h2><div className="breakdown"><span>primary-rpc <b>94%</b></span><span>backup-rpc <b>81%</b></span><span>local-sim <b>76%</b></span></div></div></div></section>;
+  const [summary, setSummary] = React.useState<OverviewSummary | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getOverview().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Overview API request failed")); }, []);
+  if (error) return <section className="state-card" role="alert"><h2>Overview unavailable</h2><p className="muted">The dashboard could not read overview data: {error}</p></section>;
+  if (summary === null) return <section className="state-card" role="status"><h2>Loading overview…</h2><p className="muted">Calculating metrics from durable traces.</p></section>;
+  const rate = (numerator: number, denominator: number) => denominator === 0 ? "—" : `${((numerator / denominator) * 100).toFixed(1)}%`;
+  const metrics = [["Traces", String(summary.total_traces), `last ${summary.window_hours} hours`], ["Landing rate", rate(summary.landed_traces, summary.total_traces), `${summary.landed_traces} landed`], ["Execution success", rate(summary.successful_executions, summary.total_traces), `${summary.successful_executions} successful`], ["Unknown execution", rate(summary.unknown_executions, summary.total_traces), `${summary.unknown_executions} unknown`]];
+  return <section aria-labelledby="metrics-title"><div className="section-heading"><div><p className="eyebrow">Last {summary.window_hours} hours</p><h2 id="metrics-title">Operational overview</h2></div></div><div className="metric-grid">{metrics.map(([name, value, change]) => <div className="metric-card" key={name}><span>{name}</span><strong>{value}</strong><small>{change}</small></div>)}</div><p className="muted">Updated {summary.updated_at}</p></section>;
 }
 
 function TraceList() {

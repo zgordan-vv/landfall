@@ -116,6 +116,16 @@ pub struct TraceListItem {
     pub updated_at: String,
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct OverviewSummary {
+    pub window_hours: u32,
+    pub total_traces: i64,
+    pub landed_traces: i64,
+    pub successful_executions: i64,
+    pub unknown_executions: i64,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TraceListQuery {
     pub limit: Option<u32>,
@@ -191,6 +201,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces", get(trace_list))
+        .route("/v1/overview", get(overview))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -409,6 +420,46 @@ async fn trace_list(
             Json(ApiError {
                 code: "storage_unavailable",
                 message: "trace list query failed",
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn overview(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "overview requires durable storage",
+            }),
+        )
+            .into_response();
+    };
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS total_traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed_traces, COUNT(*) FILTER (WHERE execution_state = 'success')::bigint AS successful_executions, COUNT(*) FILTER (WHERE execution_state = 'unknown')::bigint AS unknown_executions, COALESCE(MAX(updated_at), now()) AS updated_at FROM reporting.traces WHERE updated_at >= now() - interval '24 hours'")
+        .fetch_one(pool).await;
+    match row {
+        Ok(row) => (
+            StatusCode::OK,
+            Json(OverviewSummary {
+                window_hours: 24,
+                total_traces: row.get("total_traces"),
+                landed_traces: row.get("landed_traces"),
+                successful_executions: row.get("successful_executions"),
+                unknown_executions: row.get("unknown_executions"),
+                updated_at: row
+                    .get::<time::OffsetDateTime, _>("updated_at")
+                    .format(&time::format_description::well_known::Rfc3339)
+                    .unwrap_or_default(),
+            }),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "overview query failed",
             }),
         )
             .into_response(),

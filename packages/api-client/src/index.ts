@@ -10,6 +10,7 @@ export interface CohortComparison { baseline_rate: number | null; candidate_rate
 export interface DetailedSystemStatus { status: "ok" | "degraded"; database_ready: boolean; queue_depth: number; projection_lag_seconds: number; observer_routes: number; unhealthy_observer_routes: number; schema_version: string; rule_set_version: string; retention_days: number; }
 export interface TraceDetail { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; application_state: string; observation_state: string; updated_at: string; }
 export interface TraceListItem { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; updated_at: string; }
+export interface OverviewSummary { window_hours: number; total_traces: number; landed_traces: number; successful_executions: number; unknown_executions: number; updated_at: string; }
 
 export class LandfallApiClient {
   private readonly baseUrl: string;
@@ -29,6 +30,7 @@ export class LandfallApiClient {
   async getSystemStatus(): Promise<DetailedSystemStatus> { return this.get("/api/v1/system/status"); }
   async getTraceDetail(traceId: string): Promise<TraceDetail> { return this.get(`/v1/traces/${encodeURIComponent(traceId)}`); }
   async getTraces(limit = 50): Promise<TraceListItem[]> { return this.get(`/v1/traces?limit=${Math.min(100, Math.max(1, limit))}`); }
+  async getOverview(): Promise<OverviewSummary> { return this.get("/v1/overview"); }
 
   private async get<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { accept: "application/json" };
