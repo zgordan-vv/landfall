@@ -1544,6 +1544,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    Vite output into `/opt/landfall/dashboard`; runtime serving remains a
    separate integration concern documented in [dashboard-image.md](dashboard-image.md).
 3. PostgreSQL 18 current-minor image pinned by digest for release.
+   Step 16.3 verified the existing PostgreSQL 18.6 Bookworm digest pin and
+   documented the update/release procedure in [postgres-image.md](postgres-image.md).
 4. Docker Compose profiles for demo and production-like local use.
 5. Non-root server container and read-only filesystem where practical.
 6. Health checks and graceful shutdown.
