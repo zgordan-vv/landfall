@@ -4,7 +4,7 @@ Status: Draft; no implementation started
 Version: 0.1  
 Date: 2026-08-29  
 Working product name: **Landfall**  
-Related documents: [Product Requirements Document](./product-requirements-document.md), [System Design](./system-design.md), [P0 Support Matrix](./support-matrix.md), [Idea Validation Strategy](./idea-validation-strategy.md)
+Related documents: [Product Requirements Document](../product/product-requirements-document.md), [System Design](./system-design.md), [P0 Support Matrix](./support-matrix.md), [Idea Validation Strategy](../product/idea-validation-strategy.md)
 
 ## 1. Purpose
 
@@ -343,8 +343,8 @@ Resolve choices that would otherwise leak ambiguity into contracts and persisten
 7. Record ADR-006: Solana Kit first adapter and compatibility roadmap.
 8. Record ADR-007: PostgreSQL job queue instead of external broker.
 9. Record ADR-008: code-first OpenAPI via Utoipa.
-10. Select report renderer and artifact storage through a tiny documented spike. Completed: [Askama and PostgreSQL `BYTEA`](spikes/report-renderer-and-artifact-storage.md).
-11. Create an implementation threat model using the assets and threats in the PRD/system design. Completed: [P0 implementation threat model](threat-model.md).
+10. Select report renderer and artifact storage through a tiny documented spike. Completed: [Askama and PostgreSQL `BYTEA`](../spikes/report-renderer-and-artifact-storage.md).
+11. Create an implementation threat model using the assets and threats in the PRD/system design. Completed: [P0 implementation threat model](../security/threat-model.md).
 12. Freeze P0 support matrix: Node, PostgreSQL, Solana clusters, transaction versions, and privacy modes. Completed: [P0 support matrix](support-matrix.md).
 
 ### Key decisions recommended
@@ -383,7 +383,7 @@ Create a reproducible empty workspace where one command verifies all languages a
 3. Configure workspace lints, Rust Edition 2024, release profile, and minimal features. Completed: [shared Rust workspace policy](../crates/README.md#shared-workspace-policy).
 4. Initialize pnpm workspace, Node 24 pin, TypeScript base config, and package boundaries. Completed: [TypeScript workspace boundaries](../packages/README.md).
 5. Create dashboard and package skeletons without product logic. Completed: [TypeScript workspace boundaries](../packages/README.md).
-6. Add `.editorconfig`, ignore files, license placeholder/decision, security policy, and contribution basics. Completed: [contribution guide](../CONTRIBUTING.md), [security policy](../SECURITY.md), and [licensing decision](licensing.md).
+6. Add `.editorconfig`, ignore files, license placeholder/decision, security policy, and contribution basics. Completed: [contribution guide](../../CONTRIBUTING.md), [security policy](../../SECURITY.md), and [licensing decision](../operations/licensing.md).
 7. Create `just` commands: `bootstrap`, `fmt`, `lint`, `typecheck`, `test`, `test-integration`, `build`, `check`, `dev`, `db-up`, `db-reset`. Completed: [justfile](../justfile) and [contribution guide](../CONTRIBUTING.md).
 8. Add Docker Compose with PostgreSQL health check; server may be a placeholder health binary only when implementation begins. Completed: [Docker Compose configuration](../docker-compose.yml) and [local database workflow](../CONTRIBUTING.md#local-postgresql).
 9. Create GitHub Actions jobs. Completed: [CI workflow](../.github/workflows/ci.yml):

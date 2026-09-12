@@ -199,16 +199,16 @@ PostgreSQL does not publish a host port.
 
 For a structured review, read the documents in this order:
 
-1. [Idea Validation Strategy](docs/idea-validation-strategy.md) — who may buy
+1. [Idea Validation Strategy](docs/product/idea-validation-strategy.md) — who may buy
    this and how demand should be tested.
-   For an immediate local run, use the [Quick Start](docs/quick-start.md).
-2. [Product Requirements Document](docs/product-requirements-document.md) —
+   For an immediate local run, use the [Quick Start](docs/getting-started/quick-start.md).
+2. [Product Requirements Document](docs/product/product-requirements-document.md) —
    product scope, users, terminology, requirements, and acceptance criteria.
-3. [System Design](docs/system-design.md) — functional and non-functional
+3. [System Design](docs/architecture/system-design.md) — functional and non-functional
    requirements, capacity, APIs, database, and detailed component design.
-   Start with the concise [Architecture Overview](docs/architecture-overview.md)
+   Start with the concise [Architecture Overview](docs/architecture/architecture-overview.md)
    if you need the deployment/data-flow picture first.
-4. [Technical Implementation Plan](docs/technical-implementation-plan.md) —
+4. [Technical Implementation Plan](docs/architecture/technical-implementation-plan.md) —
    phased, task-level build sequence and technology choices.
 5. [Event Protocol Catalog](docs/event-protocol.md) — the P0 immutable event
    vocabulary, common envelope, and scope rules.
@@ -220,7 +220,7 @@ For a structured review, read the documents in this order:
    made.
 9. [Threat Model](docs/threat-model.md) — assets, trust boundaries, threats,
    and mitigations.
-10. [P0 Support Matrix](docs/support-matrix.md) — exact supported runtimes,
+10. [P0 Support Matrix](docs/architecture/support-matrix.md) — exact supported runtimes,
     database, Solana client, clusters, transaction versions, and privacy modes.
 
 ## Security and privacy
