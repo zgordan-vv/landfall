@@ -42,6 +42,7 @@ pub mod pagination;
 pub mod recommendation_disposition;
 pub mod report_jobs;
 pub mod retention;
+pub mod secret_matrix;
 pub mod signature_lookup;
 pub mod system_status;
 pub mod trace_detail;

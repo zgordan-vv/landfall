@@ -1400,6 +1400,8 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with a control-to-code matrix and explicit open runtime/release
    gaps tracked for later Phase 14 tasks.
 2. Run secret fixture matrix through SDK, API, raw DB, projections, logs, UI, and reports.
+   Completed with a reusable cross-surface scanner and clean/secret fixture
+   tests that report surface names without echoing secret values.
 3. Add malformed/compression/high-cardinality fuzzing.
 4. Review authentication and constant-time token verification.
 5. Add secure response headers and production CORS policy.
