@@ -1469,6 +1469,10 @@ Build deterministic synthetic generation for:
 - route and app-version cardinality;
 - observer RPC mock latency/rate limits.
 
+Step 15.1 completed with a seeded synthetic trace generator and explicit burst
+target helper. Generated workloads are deterministic and include mixed outcome,
+route, and application-version cardinality.
+
 ### Benchmarks
 
 1. SDK synchronous overhead and memory.

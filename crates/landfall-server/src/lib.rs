@@ -51,6 +51,7 @@ pub mod signature_lookup;
 pub mod system_status;
 pub mod trace_detail;
 pub mod trace_filters;
+pub mod workload;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
 use utoipa::{OpenApi, ToSchema};
