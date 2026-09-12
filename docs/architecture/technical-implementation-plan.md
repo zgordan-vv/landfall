@@ -1595,6 +1595,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [diagnostics-guide.md](../product/diagnostics-guide.md), which
   explains confirmed/probable/unknown findings and advisory recommendations.
 - operational runbooks;
+  Completed with the [operations runbooks index](../operations/README.md), which
+  orders startup, schema, health, backup, retention, replay, and incident work.
 - troubleshooting;
 - benchmark methodology/results;
 - security policy and limitations;

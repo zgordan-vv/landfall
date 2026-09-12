@@ -15,7 +15,7 @@ Use the section that matches your goal:
 - [Solana](solana/) — Kit integration, lifecycle capture, and observer-facing
   client boundaries.
 - [Operations](operations/) — database, workers, retention, reports, runbooks,
-  and troubleshooting.
+  and troubleshooting; start with the [runbooks index](operations/README.md).
 - [Security](security/) — threat model, privacy classification, TLS, and
   resilience checks; start with the [privacy field matrix](security/privacy-field-matrix.md).
 - [Benchmarks](benchmarks/) — workload, throughput, latency, and size methods.
