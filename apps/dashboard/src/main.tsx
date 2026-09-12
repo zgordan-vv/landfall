@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type TraceDetail as ApiTraceDetail } from "@landfall/api-client";
+import { LandfallApiClient, type TraceDetail as ApiTraceDetail, type TraceListItem } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "traces" | "comparison" | "trace-detail";
@@ -54,7 +54,9 @@ function OverviewMetrics() {
 
 function TraceList() {
   const [query, setQuery] = React.useState(() => new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("q") ?? "");
-  const traces = [{ id: "tr_01HZX9", flow: "swap", status: "Landed", certainty: "confirmed", route: "primary-rpc", time: "2 min ago" }, { id: "tr_01HZX8", flow: "transfer", status: "Unknown", certainty: "incomplete", route: "backup-rpc", time: "8 min ago" }, { id: "tr_01HZX7", flow: "mint", status: "Failed", certainty: "confirmed", route: "primary-rpc", time: "14 min ago" }];
+  const [apiTraces, setApiTraces] = React.useState<TraceListItem[] | null>(null);
+  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getTraces().then(setApiTraces).catch(() => setApiTraces(null)); }, []);
+  const traces = apiTraces?.map((trace) => ({ id: trace.trace_id, flow: "trace", status: trace.landing_state, certainty: trace.execution_state === "unknown" ? "incomplete" : "confirmed", route: "read-model", time: trace.updated_at })) ?? [{ id: "tr_01HZX9", flow: "swap", status: "Landed", certainty: "confirmed", route: "primary-rpc", time: "2 min ago" }, { id: "tr_01HZX8", flow: "transfer", status: "Unknown", certainty: "incomplete", route: "backup-rpc", time: "8 min ago" }, { id: "tr_01HZX7", flow: "mint", status: "Failed", certainty: "confirmed", route: "primary-rpc", time: "14 min ago" }];
   const visible = traces.filter((trace) => !query || `${trace.id} ${trace.flow} ${trace.route}`.toLowerCase().includes(query.toLowerCase()));
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); window.location.hash = `traces${query ? `?q=${encodeURIComponent(query)}` : ""}`; }
   return <section aria-labelledby="trace-list-title"><form className="search-bar" onSubmit={submit}><label htmlFor="trace-query">Search traces, signatures, or business actions</label><div><input id="trace-query" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. tr_01HZX9" /><button type="submit">Search</button></div></form><div className="list-heading"><h2 id="trace-list-title">Recent traces</h2><span className="muted">{visible.length} of {traces.length} fixture traces</span></div><div className="trace-table" role="table" aria-label="Trace list">{visible.map((trace) => <a className="trace-row" role="row" href={`#traces/${trace.id}`} key={trace.id}><div role="cell"><strong>{trace.id}</strong><span>{trace.flow} · {trace.route}</span></div><span className={`status-label ${trace.certainty}`} role="cell">{trace.status}</span><time role="cell">{trace.time}</time></a>)}{visible.length === 0 && <div className="empty-state" role="status">No traces match this filter.</div>}</div><button className="secondary-button pagination" type="button">Load next page</button></section>;

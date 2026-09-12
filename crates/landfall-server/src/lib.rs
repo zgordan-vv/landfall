@@ -15,7 +15,7 @@ pub use projection_metrics::{ProjectionMetrics, ProjectionMetricsSnapshot};
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::IntoResponse,
@@ -108,6 +108,20 @@ pub struct IngestAccepted {
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct TraceListItem {
+    pub trace_id: String,
+    pub lifecycle_state: String,
+    pub landing_state: String,
+    pub execution_state: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TraceListQuery {
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ApiError {
     pub code: &'static str,
     pub message: &'static str,
@@ -176,6 +190,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
+        .route("/v1/traces", get(trace_list))
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -357,6 +372,46 @@ async fn trace_detail(
         }))).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, Json(ApiError { code: "trace_not_found", message: "trace was not found" })).into_response(),
         Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "trace query failed" })).into_response(),
+    }
+}
+
+async fn trace_list(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<TraceListQuery>,
+) -> impl IntoResponse {
+    let Some(pool) = state.pool.as_ref() else {
+        return (StatusCode::OK, Json(Vec::<TraceListItem>::new())).into_response();
+    };
+    let limit = query.limit.unwrap_or(50).clamp(1, 100) as i64;
+    let rows = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, updated_at FROM reporting.traces ORDER BY updated_at DESC, trace_id DESC LIMIT $1")
+        .bind(limit).fetch_all(pool).await;
+    match rows {
+        Ok(rows) => (
+            StatusCode::OK,
+            Json(
+                rows.into_iter()
+                    .map(|row| TraceListItem {
+                        trace_id: row.get::<Uuid, _>("trace_id").to_string(),
+                        lifecycle_state: row.get("lifecycle_state"),
+                        landing_state: row.get("landing_state"),
+                        execution_state: row.get("execution_state"),
+                        updated_at: row
+                            .get::<time::OffsetDateTime, _>("updated_at")
+                            .format(&time::format_description::well_known::Rfc3339)
+                            .unwrap_or_default(),
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "trace list query failed",
+            }),
+        )
+            .into_response(),
     }
 }
 
