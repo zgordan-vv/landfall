@@ -226,6 +226,10 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces/{trace_id}/diagnostics", get(trace_diagnostics))
+        .route(
+            "/v1/traces/{trace_id}/recommendations",
+            get(trace_recommendations),
+        )
         .route("/v1/traces", get(trace_list))
         .route("/v1/overview", get(overview))
         .route("/v1/system/status", get(system_status))
@@ -571,6 +575,36 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
             }),
         )
             .into_response(),
+    }
+}
+
+async fn trace_recommendations(
+    State(state): State<Arc<AppState>>,
+    Path(trace_id): Path<String>,
+) -> impl IntoResponse {
+    let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_trace_id",
+                message: "trace_id must be a UUID",
+            }),
+        )
+            .into_response();
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "recommendations require durable storage",
+            }),
+        )
+            .into_response();
+    };
+    match sqlx::query("SELECT recommendation_id, recommendation_key, rule_set_version FROM reporting.recommendations WHERE trace_id = $1 ORDER BY created_at DESC").bind(trace_uuid).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"recommendation_id": row.get::<Uuid, _>("recommendation_id").to_string(), "recommendation_key": row.get::<String, _>("recommendation_key"), "rule_set_version": row.get::<String, _>("rule_set_version")})).collect::<Vec<_>>())).into_response(),
+        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "recommendations query failed" })).into_response(),
     }
 }
 
