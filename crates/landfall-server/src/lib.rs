@@ -22,7 +22,10 @@ use axum::{
     routing::{get, post},
 };
 use landfall_protocol::check_event_compatibility;
-use landfall_storage::{IngestEvent, ensure_raw_event_partition, ingest_atomically};
+use landfall_storage::{
+    IngestEvent, TraceProjectionWrite, ensure_raw_event_partition, ingest_atomically,
+    load_events_for_trace, replace_trace_projection,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -583,6 +586,52 @@ async fn comparison(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     }
 }
 
+fn state_label<T: std::fmt::Debug>(value: T) -> String {
+    format!("{value:?}")
+        .chars()
+        .enumerate()
+        .fold(String::new(), |mut out, (index, character)| {
+            if character.is_uppercase() && index > 0 {
+                out.push('_');
+            }
+            out.push(character.to_ascii_lowercase());
+            out
+        })
+}
+
+async fn refresh_trace_projection(
+    pool: &sqlx::PgPool,
+    project_id: Uuid,
+    environment_id: Uuid,
+    trace_id: Uuid,
+) -> Result<(), ()> {
+    let from = time::OffsetDateTime::UNIX_EPOCH;
+    let until = time::OffsetDateTime::now_utc() + time::Duration::days(1);
+    let rows = load_events_for_trace(pool, project_id, environment_id, trace_id, from, until)
+        .await
+        .map_err(|_| ())?;
+    let projection = reduce_loaded_events(rows).map_err(|_| ())?;
+    let trace = projection.trace();
+    let state = trace.state();
+    replace_trace_projection(
+        pool,
+        &TraceProjectionWrite {
+            trace_id: trace.id().into_uuid(),
+            project_id: projection.project_id().into_uuid(),
+            environment_id: trace.environment_id().into_uuid(),
+            lifecycle_state: state_label(state.lifecycle),
+            landing_state: state_label(state.landing),
+            execution_state: state_label(state.execution),
+            application_state: state_label(state.application),
+            observation_state: state_label(state.observation),
+            updated_at: time::OffsetDateTime::now_utc(),
+            attempts: Vec::new(),
+        },
+    )
+    .await
+    .map_err(|_| ())
+}
+
 async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
     let request_id = request
         .headers()
@@ -760,7 +809,26 @@ async fn ingest(
         }
     }
     match ingest_atomically(pool, batch_id, &durable).await {
-        Ok(outcome) => ingest_response(outcome.inserted, outcome.duplicates),
+        Ok(outcome) => {
+            let mut projected = std::collections::HashSet::new();
+            for event in &durable {
+                if let Some(trace_id) = event.trace_id {
+                    if projected.insert(trace_id)
+                        && refresh_trace_projection(
+                            pool,
+                            event.project_id,
+                            event.environment_id,
+                            trace_id,
+                        )
+                        .await
+                        .is_err()
+                    {
+                        return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "projection_unavailable", message: "event was durable but its trace projection could not be refreshed" })).into_response();
+                    }
+                }
+            }
+            ingest_response(outcome.inserted, outcome.duplicates)
+        }
         Err(_) => (
             StatusCode::SERVICE_UNAVAILABLE,
             Json(ApiError {
