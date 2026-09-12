@@ -1403,6 +1403,8 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with a reusable cross-surface scanner and clean/secret fixture
    tests that report surface names without echoing secret values.
 3. Add malformed/compression/high-cardinality fuzzing.
+   Completed with panic-free structural fuzz guards for nesting, arrays, and
+   object/label cardinality, complementing existing compressed-body limits.
 4. Review authentication and constant-time token verification.
 5. Add secure response headers and production CORS policy.
 6. Review TLS/reverse-proxy documentation.
