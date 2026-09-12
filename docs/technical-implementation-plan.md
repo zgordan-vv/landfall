@@ -1416,6 +1416,8 @@ Verify that the product's observability does not become a risk to funds, credent
    trust, edge limits, log scrubbing, private upstream binding, and PostgreSQL
    isolation.
 7. Add dependency, license, container, and secret scanning to release gate.
+   Completed with `scripts/release-security-gate.sh`, combining lockfile and
+   image metadata checks, Gitleaks, and approved Node license scanning.
 8. Force failures:
    - collector down;
    - database down;
