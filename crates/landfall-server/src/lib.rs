@@ -40,6 +40,7 @@ pub mod etag;
 pub mod export_safety;
 pub mod fault_injection;
 pub mod fuzz_guards;
+pub mod log_safety;
 pub mod metrics_summary;
 pub mod pagination;
 pub mod recommendation_disposition;

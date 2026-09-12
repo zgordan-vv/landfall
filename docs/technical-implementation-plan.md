@@ -1436,6 +1436,8 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with an explicit acknowledged-vs-durable ID comparison that
    reports sorted gaps and fails closed on any missing event.
 10. Review logs for address/signature/privacy policy.
+   Completed with a category-only log scanner, representative leak corpus, and
+   an operational review procedure that never copies sensitive values.
 11. Document vulnerability reporting and security limitations.
 
 ### Exit gate
