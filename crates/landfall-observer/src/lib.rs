@@ -527,6 +527,36 @@ pub struct SignatureStatus {
     pub confirmation_status: Option<String>,
 }
 
+/// Deterministic interpretation of one signature status response.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct NormalizedSignatureObservation {
+    pub source_result: &'static str,
+    pub commitment: Option<String>,
+    pub slot: Option<u64>,
+    pub execution_error: Option<serde_json::Value>,
+}
+
+/// Maps a Solana RPC status to protocol-level observation fields.
+#[must_use]
+pub fn normalize_signature_status(
+    status: Option<SignatureStatus>,
+) -> NormalizedSignatureObservation {
+    match status {
+        None => NormalizedSignatureObservation {
+            source_result: "not_found",
+            commitment: None,
+            slot: None,
+            execution_error: None,
+        },
+        Some(status) => NormalizedSignatureObservation {
+            source_result: "found",
+            commitment: status.confirmation_status,
+            slot: Some(status.slot),
+            execution_error: status.err,
+        },
+    }
+}
+
 #[async_trait]
 pub trait RpcTransport: Send + Sync {
     async fn post(&self, endpoint: &str, body: Vec<u8>) -> Result<Vec<u8>, String>;
