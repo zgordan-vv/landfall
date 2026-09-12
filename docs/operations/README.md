@@ -4,11 +4,13 @@ Use these runbooks in this order when operating a local or pilot deployment:
 
 1. [Quick start](../getting-started/quick-start.md) — provision the local
    environment.
-2. [PostgreSQL migrations](postgres-migrations.md) and [migration health](migration-health.md)
+2. [Local ingestion smoke test](local-ingestion-smoke.md) — seed control-plane
+   identifiers and verify durable `202`/duplicate behavior.
+3. [PostgreSQL migrations](postgres-migrations.md) and [migration health](migration-health.md)
    — apply and verify schema changes.
-3. [Health and shutdown](health-and-shutdown.md) — distinguish liveness,
+4. [Health and shutdown](health-and-shutdown.md) — distinguish liveness,
    readiness, and graceful worker termination.
-4. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
+5. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
    and perform a guarded restore.
 5. [Retention worker](retention-worker.md) and [partition retention](partition-retention.md)
    — preview and execute bounded cleanup.
