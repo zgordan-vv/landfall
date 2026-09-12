@@ -24,3 +24,5 @@ Use the section that matches your goal:
 - [Upwork case study](getting-started/upwork-case-study.md) — client problem,
   engineering decisions, evidence, and pilot metrics.
 - [ADRs](adr/) and [spikes](spikes/) — architectural decisions and experiments.
+- [Documentation standard](documentation-standard.md) and
+  [Phase 17 audit](phase-17-audit.md) — how docs are reviewed and maintained.

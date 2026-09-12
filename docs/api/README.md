@@ -1,5 +1,8 @@
 # API documentation guide
 
+Start with the [complete P0 API reference](reference.md), then use the
+endpoint-specific contracts below.
+
 The REST contract is generated from Rust handlers with Utoipa and is exposed as
 `GET /api/openapi.json` when the runtime server is wired. Endpoint-specific
 contracts are listed in this directory; the [OpenAPI document](openapi.md) is
