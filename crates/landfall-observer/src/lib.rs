@@ -517,6 +517,16 @@ pub enum RpcClientError {
     MalformedResponse,
 }
 
+/// Normalized subset of Solana `getSignatureStatuses` response.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SignatureStatus {
+    pub slot: u64,
+    pub confirmations: Option<u64>,
+    pub err: Option<serde_json::Value>,
+    #[serde(rename = "confirmationStatus")]
+    pub confirmation_status: Option<String>,
+}
+
 #[async_trait]
 pub trait RpcTransport: Send + Sync {
     async fn post(&self, endpoint: &str, body: Vec<u8>) -> Result<Vec<u8>, String>;
@@ -566,6 +576,29 @@ impl<T: RpcTransport> JsonRpcClient<T> {
             _ => Err(RpcClientError::MalformedResponse),
         }
     }
+
+    /// Reads one signature status from the configured RPC route.
+    pub async fn get_signature_status(
+        &self,
+        signature: &str,
+    ) -> Result<Option<SignatureStatus>, RpcClientError> {
+        let result: SignatureStatuses = self
+            .call(
+                1,
+                "getSignatureStatuses",
+                (
+                    vec![signature],
+                    serde_json::json!({"searchTransactionHistory": true}),
+                ),
+            )
+            .await?;
+        Ok(result.value.into_iter().next().flatten())
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct SignatureStatuses {
+    value: Vec<Option<SignatureStatus>>,
 }
 
 #[cfg(test)]
