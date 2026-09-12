@@ -1503,6 +1503,8 @@ route, and application-version cardinality.
    Step 15.10 completed with independent percentile summaries for overview and
    comparison query classes and workload metadata requirements.
 10. 100,000-trace report duration.
+   Step 15.11 completed with large-cohort duration normalization and required
+   format/privacy/watermark benchmark metadata.
 11. Retention partition drop duration.
 12. Container startup and memory.
 
