@@ -1562,6 +1562,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    request limits, and forwarded-header handling; the operator runbook is in
    [tls-reverse-proxy-runbook.md](tls-reverse-proxy-runbook.md).
 8. Backup/restore scripts or documented commands.
+   Step 16.8 adds guarded backup/restore scripts with SHA-256 manifests and
+   updates the operational runbook.
 9. Release archive/checksums and image provenance where practical.
 
 ### Documentation tasks
