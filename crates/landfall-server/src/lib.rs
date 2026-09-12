@@ -225,6 +225,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
+        .route("/v1/traces/{trace_id}/diagnostics", get(trace_diagnostics))
         .route("/v1/traces", get(trace_list))
         .route("/v1/overview", get(overview))
         .route("/v1/system/status", get(system_status))
@@ -411,6 +412,34 @@ async fn trace_detail(
         Ok(None) => (StatusCode::NOT_FOUND, Json(ApiError { code: "trace_not_found", message: "trace was not found" })).into_response(),
         Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "trace query failed" })).into_response(),
     }
+}
+
+async fn trace_diagnostics(
+    State(state): State<Arc<AppState>>,
+    Path(trace_id): Path<String>,
+) -> impl IntoResponse {
+    let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_trace_id",
+                message: "trace_id must be a UUID",
+            }),
+        )
+            .into_response();
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "diagnostics requires durable storage",
+            }),
+        )
+            .into_response();
+    };
+    let rows = sqlx::query("SELECT diagnostic_id, rule_id, claim_key, certainty FROM reporting.diagnostics WHERE trace_id = $1 ORDER BY created_at DESC").bind(trace_uuid).fetch_all(pool).await;
+    match rows { Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"diagnostic_id": row.get::<Uuid, _>("diagnostic_id").to_string(), "rule_id": row.get::<String, _>("rule_id"), "claim_key": row.get::<String, _>("claim_key"), "certainty": row.get::<String, _>("certainty")})).collect::<Vec<_>>())).into_response(), Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "diagnostics query failed" })).into_response() }
 }
 
 async fn trace_list(
