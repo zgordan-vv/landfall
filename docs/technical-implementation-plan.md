@@ -1550,6 +1550,9 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    Step 16.4 adds `demo` and `production` profiles with isolated named volumes;
    usage and validation are documented in [compose-profiles.md](compose-profiles.md).
 5. Non-root server container and read-only filesystem where practical.
+   Step 16.5 verifies the image's UID/GID 65532 runtime user and documents the
+   `--read-only` plus constrained `/tmp` deployment profile in
+   [container-hardening.md](container-hardening.md).
 6. Health checks and graceful shutdown.
 7. Example TLS reverse-proxy configuration.
 8. Backup/restore scripts or documented commands.
