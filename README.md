@@ -205,6 +205,8 @@ For a structured review, read the documents in this order:
    product scope, users, terminology, requirements, and acceptance criteria.
 3. [System Design](docs/system-design.md) — functional and non-functional
    requirements, capacity, APIs, database, and detailed component design.
+   Start with the concise [Architecture Overview](docs/architecture-overview.md)
+   if you need the deployment/data-flow picture first.
 4. [Technical Implementation Plan](docs/technical-implementation-plan.md) —
    phased, task-level build sequence and technology choices.
 5. [Event Protocol Catalog](docs/event-protocol.md) — the P0 immutable event
