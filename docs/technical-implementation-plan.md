@@ -1439,6 +1439,9 @@ Verify that the product's observability does not become a risk to funds, credent
    Completed with a category-only log scanner, representative leak corpus, and
    an operational review procedure that never copies sensitive values.
 11. Document vulnerability reporting and security limitations.
+   Completed with repository-level `SECURITY.md` covering private reporting,
+   triage evidence, disclosure expectations, threat-model scope, and explicit
+   non-goals/operational responsibilities.
 
 ### Exit gate
 
