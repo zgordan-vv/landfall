@@ -1628,6 +1628,10 @@ The demo must show:
 
 ### Upwork case study
 
+Completed with [upwork-case-study.md](../getting-started/upwork-case-study.md),
+covering client problem, architecture, decisions, evidence, technologies, and
+pilot measurements.
+
 Prepare a concise case study containing:
 
 - client problem archetype;

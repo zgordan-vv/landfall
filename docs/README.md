@@ -21,4 +21,6 @@ Use the section that matches your goal:
 - [Benchmarks](benchmarks/) — workload, throughput, latency, and size methods.
 - [Contributing](contributing.md) and [release notes](release-notes.md) — change
   workflow and current portfolio scope.
+- [Upwork case study](getting-started/upwork-case-study.md) — client problem,
+  engineering decisions, evidence, and pilot metrics.
 - [ADRs](adr/) and [spikes](spikes/) — architectural decisions and experiments.
