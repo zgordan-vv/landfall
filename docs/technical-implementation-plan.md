@@ -1325,6 +1325,9 @@ An engineer unfamiliar with the fixture can identify whether it landed, whether 
 
 Shows complex observability UX, typed API integration, accessibility, state management, and technical-information design.
 
+Manual startup and verification steps are documented in
+[`dashboard-runbook.md`](dashboard-runbook.md).
+
 ## 20. Phase 13 — Reports, CLI, deletion, and retention
 
 ### Goal
