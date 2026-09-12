@@ -514,7 +514,7 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
             let queued_jobs = row.get::<i64, _>("queued_jobs");
             let dead_letter_jobs = row.get::<i64, _>("dead_letter_jobs");
             let events_last_24h = row.get::<i64, _>("events_last_24h");
-            let status = if projects > 0 && environments > 0 {
+            let status = if projects > 0 && environments > 0 && dead_letter_jobs == 0 {
                 "ok"
             } else {
                 "degraded"
