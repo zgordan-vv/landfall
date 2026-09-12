@@ -137,6 +137,7 @@ pub struct SystemHealthSummary {
     pub environments: i64,
     pub enabled_routes: i64,
     pub queued_jobs: i64,
+    pub dead_letter_jobs: i64,
     pub events_last_24h: i64,
 }
 
@@ -503,7 +504,7 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status IN ('ready', 'running')) AS queued_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h")
+    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status IN ('ready', 'running')) AS queued_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'dead_letter') AS dead_letter_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h")
         .fetch_one(pool).await;
     match row {
         Ok(row) => {
@@ -511,6 +512,7 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
             let environments = row.get::<i64, _>("environments");
             let enabled_routes = row.get::<i64, _>("enabled_routes");
             let queued_jobs = row.get::<i64, _>("queued_jobs");
+            let dead_letter_jobs = row.get::<i64, _>("dead_letter_jobs");
             let events_last_24h = row.get::<i64, _>("events_last_24h");
             let status = if projects > 0 && environments > 0 {
                 "ok"
@@ -526,6 +528,7 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
                     environments,
                     enabled_routes,
                     queued_jobs,
+                    dead_letter_jobs,
                     events_last_24h,
                 }),
             )
