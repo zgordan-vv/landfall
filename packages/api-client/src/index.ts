@@ -8,6 +8,7 @@ export interface MetricSummary { numerator: number; denominator: number; exclude
 export interface DataQualitySummary { assessments: number; grades: Array<{ grade: string; count: number }>; gaps: Array<{ gap: string; count: number }>; average_score: number | null; definition_version: string; }
 export interface CohortComparison { baseline_rate: number | null; candidate_rate: number | null; absolute_change: number | null; relative_change: number | null; baseline_sample_size: number; candidate_sample_size: number; baseline_missing_data_rate: number; candidate_missing_data_rate: number; small_sample_warning: boolean; metric_definition: string; }
 export interface DetailedSystemStatus { status: "ok" | "degraded"; database_ready: boolean; queue_depth: number; projection_lag_seconds: number; observer_routes: number; unhealthy_observer_routes: number; schema_version: string; rule_set_version: string; retention_days: number; }
+export interface TraceDetail { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; application_state: string; observation_state: string; updated_at: string; }
 
 export class LandfallApiClient {
   private readonly baseUrl: string;
@@ -25,6 +26,7 @@ export class LandfallApiClient {
   async getMetricSummary(): Promise<MetricSummary> { return this.get("/api/v1/metrics/summary"); }
   async getDataQualitySummary(): Promise<DataQualitySummary> { return this.get("/api/v1/data-quality/summary"); }
   async getSystemStatus(): Promise<DetailedSystemStatus> { return this.get("/api/v1/system/status"); }
+  async getTraceDetail(traceId: string): Promise<TraceDetail> { return this.get(`/v1/traces/${encodeURIComponent(traceId)}`); }
 
   private async get<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { accept: "application/json" };

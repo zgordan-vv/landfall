@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { LandfallApiClient, type TraceDetail as ApiTraceDetail } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "traces" | "comparison" | "trace-detail";
@@ -61,7 +62,11 @@ function TraceList() {
 
 function TraceDetail() {
   const traceId = window.location.hash.split("/")[1] ?? "tr_01HZX9";
-  return <section aria-labelledby="detail-title"><a className="back-link" href="#traces">← Back to traces</a><div className="detail-header"><div><p className="eyebrow">Trace</p><h2 id="detail-title">{traceId}</h2></div><span className="status-label confirmed">Landed · confirmed</span></div><div className="detail-grid"><section className="state-card"><h2>Lifecycle summary</h2><div className="lifecycle"><span>Created</span><span>Signed</span><span>Submitted</span><span className="current">Observed</span></div><p className="muted">Execution succeeded · finalized watermark 184,220,941</p></section><section className="state-card"><h2>Attempts & observations</h2><ul className="detail-list"><li>Attempt 1 · primary-rpc · accepted</li><li>Status · processed → confirmed → finalized</li><li>Execution · success · 185,420 compute units</li></ul></section><section className="state-card"><h2>Diagnoses & recommendations</h2><ul className="detail-list"><li>Low compute headroom <span className="status-label incomplete">probable</span></li><li>Increase compute headroom · pending disposition</li></ul></section><section className="state-card"><h2>Evidence checklist</h2><ul className="detail-list checklist"><li>✓ Trace created</li><li>✓ Signed identity</li><li>✓ Submission response</li><li>! Simulation evidence unavailable</li></ul></section></div></section>;
+  const [apiTrace, setApiTrace] = React.useState<ApiTraceDetail | null>(null);
+  React.useEffect(() => { let active = true; const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getTraceDetail(traceId).then((value) => { if (active) setApiTrace(value); }).catch(() => { if (active) setApiTrace(null); }); return () => { active = false; }; }, [traceId]);
+  const lifecycle = apiTrace ? apiTrace.lifecycle_state : "observed";
+  const landing = apiTrace ? apiTrace.landing_state : "confirmed";
+  return <section aria-labelledby="detail-title"><a className="back-link" href="#traces">← Back to traces</a><div className="detail-header"><div><p className="eyebrow">Trace</p><h2 id="detail-title">{apiTrace?.trace_id ?? traceId}</h2></div><span className="status-label confirmed">{landing} · {apiTrace ? "API" : "fixture"}</span></div><div className="detail-grid"><section className="state-card"><h2>Lifecycle summary</h2><div className="lifecycle"><span>Created</span><span>Signed</span><span>Submitted</span><span className="current">{lifecycle}</span></div><p className="muted">Execution: {apiTrace?.execution_state ?? "success"} · Observation: {apiTrace?.observation_state ?? "complete"}</p></section><section className="state-card"><h2>Attempts & observations</h2><ul className="detail-list"><li>Read model source · {apiTrace ? "PostgreSQL API" : "local fixture"}</li><li>Landing · {landing}</li><li>Application · {apiTrace?.application_state ?? "success"}</li></ul></section><section className="state-card"><h2>Diagnoses & recommendations</h2><ul className="detail-list"><li>Low compute headroom <span className="status-label incomplete">probable</span></li><li>Increase compute headroom · pending disposition</li></ul></section><section className="state-card"><h2>Evidence checklist</h2><ul className="detail-list checklist"><li>✓ Trace created</li><li>{apiTrace ? "✓ Read from durable API" : "! API unavailable; fixture shown"}</li><li>! Simulation evidence unavailable</li></ul></section></div></section>;
 }
 
 function ComparisonView() {
