@@ -1589,6 +1589,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with [privacy-field-matrix.md](../security/privacy-field-matrix.md),
   a concise review sheet linked to the detailed registry.
 - metric definitions;
+  Completed with [metrics-guide.md](../product/metrics-guide.md), which explains
+  outcome/data-quality separation and denominator rules.
 - diagnostic rule catalog;
 - operational runbooks;
 - troubleshooting;
