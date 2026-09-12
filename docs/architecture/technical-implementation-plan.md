@@ -1598,11 +1598,18 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
   Completed with the [operations runbooks index](../operations/README.md), which
   orders startup, schema, health, backup, retention, replay, and incident work.
 - troubleshooting;
+  Completed with [troubleshooting.md](../operations/troubleshooting.md), which
+  covers database, dashboard, data-quality, and Docker failure paths.
 - benchmark methodology/results;
+  Completed with the [benchmark methodology index](../benchmarks/README.md).
 - security policy and limitations;
+  Completed with [security limitations](../security/limitations.md).
 - API documentation;
+  Completed with the [API documentation guide](../api/README.md).
 - contribution guide;
+  Completed with [contributing.md](../contributing.md).
 - changelog and release notes.
+  Completed with [release-notes.md](../release-notes.md).
 
 ### Portfolio demo script
 

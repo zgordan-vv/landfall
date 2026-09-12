@@ -19,4 +19,6 @@ Use the section that matches your goal:
 - [Security](security/) — threat model, privacy classification, TLS, and
   resilience checks; start with the [privacy field matrix](security/privacy-field-matrix.md).
 - [Benchmarks](benchmarks/) — workload, throughput, latency, and size methods.
+- [Contributing](contributing.md) and [release notes](release-notes.md) — change
+  workflow and current portfolio scope.
 - [ADRs](adr/) and [spikes](spikes/) — architectural decisions and experiments.
