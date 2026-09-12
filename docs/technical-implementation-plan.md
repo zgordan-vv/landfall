@@ -1547,6 +1547,8 @@ Make Landfall easy to evaluate, operate, and discuss with an Upwork client.
    Step 16.3 verified the existing PostgreSQL 18.6 Bookworm digest pin and
    documented the update/release procedure in [postgres-image.md](postgres-image.md).
 4. Docker Compose profiles for demo and production-like local use.
+   Step 16.4 adds `demo` and `production` profiles with isolated named volumes;
+   usage and validation are documented in [compose-profiles.md](compose-profiles.md).
 5. Non-root server container and read-only filesystem where practical.
 6. Health checks and graceful shutdown.
 7. Example TLS reverse-proxy configuration.
