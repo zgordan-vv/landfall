@@ -1397,6 +1397,8 @@ Verify that the product's observability does not become a risk to funds, credent
 ### Tasks
 
 1. Complete threat-model review against actual code.
+   Completed with a control-to-code matrix and explicit open runtime/release
+   gaps tracked for later Phase 14 tasks.
 2. Run secret fixture matrix through SDK, API, raw DB, projections, logs, UI, and reports.
 3. Add malformed/compression/high-cardinality fuzzing.
 4. Review authentication and constant-time token verification.
