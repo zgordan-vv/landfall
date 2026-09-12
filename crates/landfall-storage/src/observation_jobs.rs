@@ -72,7 +72,7 @@ pub async fn retry_observation_job(
     error: &str,
     delay_seconds: i64,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE work.jobs SET status = 'ready', locked_by = NULL, locked_until = NULL, last_error = $2, available_at = now() + make_interval(secs => $3) WHERE job_id = $1 AND status = 'running'").bind(job_id).bind(error).bind(delay_seconds as f64).execute(pool).await?;
+    sqlx::query("UPDATE work.jobs SET status = CASE WHEN attempts >= 10 THEN 'dead_letter' ELSE 'ready' END, locked_by = NULL, locked_until = NULL, last_error = $2, available_at = CASE WHEN attempts >= 10 THEN available_at ELSE now() + make_interval(secs => $3) END WHERE job_id = $1 AND status = 'running'").bind(job_id).bind(error).bind(delay_seconds as f64).execute(pool).await?;
     Ok(())
 }
 
