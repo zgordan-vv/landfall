@@ -6,6 +6,10 @@ registers these routes:
 | Method | Path | Purpose | Success |
 |---|---|---|---|
 | `POST` | `/v1/ingest` | Authenticate, validate, deduplicate, and durably accept an event batch | `202` new work, `200` fully duplicate batch |
+| `POST` | `/v1/control/projects` | Provision a project and its first administrator token | `201` |
+| `GET`, `POST` | `/v1/control/projects/{project_id}/environments` | List or create project environments | `200`, `201` |
+| `GET`, `POST` | `/v1/control/projects/{project_id}/tokens` | List token metadata or create a project token | `200`, `201` |
+| `POST` | `/v1/control/projects/{project_id}/tokens/{token_id}/revoke` | Revoke a token | `204` |
 | `GET` | `/health/live` | Process liveness | `200` |
 | `GET` | `/health/ready` | Dependency/read-model readiness | `200` or degraded status |
 | `GET` | `/openapi.json` | Generated OpenAPI document | `200` |
@@ -38,3 +42,10 @@ strings exactly, scope identifiers to project/environment, and treat unknown
 data-quality states as first-class values. Pagination, ETags, trace queries,
 reports, and cohort endpoints are represented by read-model modules and become
 public only when registered in the runtime router.
+
+## Control-plane access
+
+The first project is created with a deployment-level bootstrap credential. All
+subsequent project/environment/token operations require a token with
+`project:admin` for that project. See the [control-plane runbook](../operations/control-plane.md)
+for exact requests and safe token handling.

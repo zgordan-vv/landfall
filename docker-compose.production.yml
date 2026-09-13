@@ -10,11 +10,14 @@ services:
     environment:
       DATABASE_URL:
       DATABASE_URL_FILE: /run/secrets/database_url
+      LANDFALL_BOOTSTRAP_TOKEN:
+      LANDFALL_BOOTSTRAP_TOKEN_FILE: /run/secrets/bootstrap_token
     depends_on: !override
       postgres-production:
         condition: service_healthy
     secrets:
       - database_url
+      - bootstrap_token
 
   observer-worker:
     environment:
@@ -29,3 +32,5 @@ services:
 secrets:
   database_url:
     file: ${LANDFALL_DATABASE_URL_FILE:?LANDFALL_DATABASE_URL_FILE is required}
+  bootstrap_token:
+    file: ${LANDFALL_BOOTSTRAP_TOKEN_SECRET_FILE:?LANDFALL_BOOTSTRAP_TOKEN_SECRET_FILE is required}

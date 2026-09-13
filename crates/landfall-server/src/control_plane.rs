@@ -1,0 +1,451 @@
+//! Authenticated project, environment, and API-token provisioning endpoints.
+
+use axum::{
+    Json,
+    extract::{Extension, Path, State},
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+};
+use getrandom::fill;
+use serde::{Deserialize, Serialize};
+use sqlx::Row;
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use utoipa::ToSchema;
+use uuid::Uuid;
+
+use crate::{ApiError, AppState, AuthenticatedToken, auth};
+
+const ADMIN_SCOPE: &str = "project:admin";
+const ALLOWED_SCOPES: &[&str] = &[
+    "project:admin",
+    "ingest:write",
+    "traces:read",
+    "diagnostics:read",
+    "admin",
+];
+
+/// Request to provision a new customer project and its first administrator token.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateProjectRequest {
+    /// Human-readable project name.
+    pub name: String,
+    /// Label shown in token listings for the initial administrator token.
+    pub initial_token_name: String,
+}
+
+/// Project identity returned by the control plane.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ProjectResponse {
+    pub project_id: String,
+    pub name: String,
+}
+
+/// Response emitted when a plaintext token is created. The `token` value is not
+/// retrievable later; PostgreSQL stores only its SHA-256 digest.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CreatedTokenResponse {
+    pub token_id: String,
+    pub name: String,
+    pub token_prefix: String,
+    pub token: String,
+    pub scopes: Vec<String>,
+    pub expires_at: Option<String>,
+}
+
+/// Atomic bootstrap response containing a new project and its first token.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CreatedProjectResponse {
+    pub project: ProjectResponse,
+    pub initial_token: CreatedTokenResponse,
+}
+
+/// Request to add an environment to a project.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateEnvironmentRequest {
+    pub name: String,
+    pub cluster: String,
+}
+
+/// Durable environment metadata.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct EnvironmentResponse {
+    pub environment_id: String,
+    pub project_id: String,
+    pub name: String,
+    pub cluster: String,
+}
+
+/// Request to mint a scoped token for one project.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateTokenRequest {
+    pub name: String,
+    pub scopes: Vec<String>,
+    /// Optional RFC 3339 expiry; omitted tokens do not expire automatically.
+    pub expires_at: Option<String>,
+}
+
+/// Non-secret token metadata for token listing and revocation workflows.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TokenResponse {
+    pub token_id: String,
+    pub name: String,
+    pub token_prefix: String,
+    pub scopes: Vec<String>,
+    pub expires_at: Option<String>,
+    pub revoked_at: Option<String>,
+}
+
+fn error(
+    status: StatusCode,
+    code: &'static str,
+    message: &'static str,
+) -> axum::response::Response {
+    (status, Json(ApiError { code, message })).into_response()
+}
+
+fn valid_text(value: &str, maximum: usize) -> bool {
+    let length = value.chars().count();
+    (1..=maximum).contains(&length)
+}
+
+fn valid_scopes(scopes: &[String]) -> bool {
+    !scopes.is_empty()
+        && scopes.len() <= ALLOWED_SCOPES.len()
+        && scopes
+            .iter()
+            .all(|scope| ALLOWED_SCOPES.contains(&scope.as_str()))
+        && scopes
+            .iter()
+            .enumerate()
+            .all(|(index, scope)| !scopes[..index].iter().any(|previous| previous == scope))
+}
+
+fn format_time(value: Option<OffsetDateTime>) -> Option<String> {
+    value.and_then(|time| time.format(&Rfc3339).ok())
+}
+
+fn issue_token() -> Result<(String, String), ()> {
+    let mut random = [0_u8; 32];
+    fill(&mut random).map_err(|_| ())?;
+    let encoded = random
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let token = format!("lf_{encoded}");
+    let prefix = token[..11].to_owned();
+    Ok((token, prefix))
+}
+
+fn authorize_bootstrap(headers: &HeaderMap, state: &AppState) -> bool {
+    let Some(token_hash) = state.bootstrap_token_hash else {
+        return false;
+    };
+    let record = auth::ApiTokenRecord {
+        project_id: Uuid::nil(),
+        token_hash,
+        scopes: vec![ADMIN_SCOPE.to_owned()],
+        expires_at: None,
+        revoked_at: None,
+    };
+    auth::authorize(
+        headers
+            .get("authorization")
+            .and_then(|value| value.to_str().ok()),
+        &[record],
+        ADMIN_SCOPE,
+        OffsetDateTime::now_utc(),
+    )
+    .is_ok()
+}
+
+fn project_admin(principal: Option<Extension<AuthenticatedToken>>, project_id: Uuid) -> bool {
+    principal.is_some_and(|Extension(principal)| {
+        principal.project_id == project_id
+            && principal.scopes.iter().any(|scope| scope == ADMIN_SCOPE)
+    })
+}
+
+/// Creates a project and issues its first `project:admin` token in one transaction.
+#[utoipa::path(post, path = "/v1/control/projects", request_body = CreateProjectRequest, responses((status = 201, body = CreatedProjectResponse), (status = 401, body = ApiError), (status = 503, body = ApiError)))]
+pub async fn create_project(
+    State(state): State<std::sync::Arc<AppState>>,
+    headers: HeaderMap,
+    Json(request): Json<CreateProjectRequest>,
+) -> axum::response::Response {
+    if state.bootstrap_token_hash.is_none() {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "bootstrap_unavailable",
+            "bootstrap token is not configured",
+        );
+    }
+    if !authorize_bootstrap(&headers, &state) {
+        return error(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "valid bootstrap bearer authentication is required",
+        );
+    }
+    if !valid_text(&request.name, 200) || !valid_text(&request.initial_token_name, 120) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_control_input",
+            "project and token names must be non-empty and within their limits",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "project provisioning requires durable storage",
+        );
+    };
+    let Ok((token, token_prefix)) = issue_token() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "token_generation_failed",
+            "could not generate a secure API token",
+        );
+    };
+    let project_id = Uuid::now_v7();
+    let token_id = Uuid::now_v7();
+    let mut transaction = match pool.begin().await {
+        Ok(transaction) => transaction,
+        Err(_) => {
+            return error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "storage_unavailable",
+                "project provisioning failed",
+            );
+        }
+    };
+    let result = async {
+        sqlx::query("INSERT INTO control.projects (project_id, name) VALUES ($1, $2)")
+            .bind(project_id).bind(&request.name).execute(&mut *transaction).await?;
+        sqlx::query("INSERT INTO control.api_tokens (token_id, project_id, name, token_prefix, token_hash, scopes) VALUES ($1, $2, $3, $4, $5, $6)")
+            .bind(token_id).bind(project_id).bind(&request.initial_token_name).bind(&token_prefix).bind(auth::hash_token(&token).to_vec()).bind(vec![ADMIN_SCOPE]).execute(&mut *transaction).await
+    }.await;
+    if result.is_err() || transaction.commit().await.is_err() {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "project provisioning failed",
+        );
+    }
+    (
+        StatusCode::CREATED,
+        Json(CreatedProjectResponse {
+            project: ProjectResponse {
+                project_id: project_id.to_string(),
+                name: request.name,
+            },
+            initial_token: CreatedTokenResponse {
+                token_id: token_id.to_string(),
+                name: request.initial_token_name,
+                token_prefix,
+                token,
+                scopes: vec![ADMIN_SCOPE.to_owned()],
+                expires_at: None,
+            },
+        }),
+    )
+        .into_response()
+}
+
+/// Adds an environment to the caller's project.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/environments", params(("project_id" = String, Path)), request_body = CreateEnvironmentRequest, responses((status = 201, body = EnvironmentResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn create_environment(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+    Json(request): Json<CreateEnvironmentRequest>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    if !valid_text(&request.name, 120) || !valid_text(&request.cluster, 80) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_control_input",
+            "environment name and cluster must be non-empty and within their limits",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "environment provisioning requires durable storage",
+        );
+    };
+    let environment_id = Uuid::now_v7();
+    match sqlx::query("INSERT INTO control.environments (environment_id, project_id, name, cluster) VALUES ($1, $2, $3, $4)").bind(environment_id).bind(project_id).bind(&request.name).bind(&request.cluster).execute(pool).await {
+        Ok(_) => (StatusCode::CREATED, Json(EnvironmentResponse { environment_id: environment_id.to_string(), project_id: project_id.to_string(), name: request.name, cluster: request.cluster })).into_response(),
+        Err(_) => error(StatusCode::CONFLICT, "environment_conflict", "environment name already exists or project was not found"),
+    }
+}
+
+/// Lists environments owned by the caller's project.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/environments", params(("project_id" = String, Path)), responses((status = 200, body = [EnvironmentResponse]), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn list_environments(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "environment listing requires durable storage",
+        );
+    };
+    match sqlx::query("SELECT environment_id, project_id, name, cluster FROM control.environments WHERE project_id = $1 ORDER BY created_at, environment_id").bind(project_id).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| EnvironmentResponse { environment_id: row.get::<Uuid, _>("environment_id").to_string(), project_id: row.get::<Uuid, _>("project_id").to_string(), name: row.get("name"), cluster: row.get("cluster") }).collect::<Vec<_>>())).into_response(),
+        Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "environment listing failed"),
+    }
+}
+
+/// Mints a least-privilege token for the caller's project.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/tokens", params(("project_id" = String, Path)), request_body = CreateTokenRequest, responses((status = 201, body = CreatedTokenResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn create_token(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+    Json(request): Json<CreateTokenRequest>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    if !valid_text(&request.name, 120) || !valid_scopes(&request.scopes) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_token_request",
+            "token name or scopes are invalid",
+        );
+    }
+    let expires_at = match request.expires_at.as_deref() {
+        Some(value) => match OffsetDateTime::parse(value, &Rfc3339) {
+            Ok(value) if value > OffsetDateTime::now_utc() => Some(value),
+            _ => {
+                return error(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_token_expiry",
+                    "expires_at must be a future RFC 3339 timestamp",
+                );
+            }
+        },
+        None => None,
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "token provisioning requires durable storage",
+        );
+    };
+    let Ok((token, token_prefix)) = issue_token() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "token_generation_failed",
+            "could not generate a secure API token",
+        );
+    };
+    let token_id = Uuid::now_v7();
+    match sqlx::query("INSERT INTO control.api_tokens (token_id, project_id, name, token_prefix, token_hash, scopes, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)").bind(token_id).bind(project_id).bind(&request.name).bind(&token_prefix).bind(auth::hash_token(&token).to_vec()).bind(&request.scopes).bind(expires_at).execute(pool).await {
+        Ok(_) => (StatusCode::CREATED, Json(CreatedTokenResponse { token_id: token_id.to_string(), name: request.name, token_prefix, token, scopes: request.scopes, expires_at: format_time(expires_at) })).into_response(),
+        Err(_) => error(StatusCode::CONFLICT, "token_conflict", "token name already exists or project was not found"),
+    }
+}
+
+/// Lists token metadata without revealing hashes or plaintext credentials.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/tokens", params(("project_id" = String, Path)), responses((status = 200, body = [TokenResponse]), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn list_tokens(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "token listing requires durable storage",
+        );
+    };
+    match sqlx::query("SELECT token_id, name, token_prefix, scopes, expires_at, revoked_at FROM control.api_tokens WHERE project_id = $1 ORDER BY created_at, token_id").bind(project_id).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| TokenResponse { token_id: row.get::<Uuid, _>("token_id").to_string(), name: row.get("name"), token_prefix: row.get("token_prefix"), scopes: row.get("scopes"), expires_at: format_time(row.get("expires_at")), revoked_at: format_time(row.get("revoked_at")) }).collect::<Vec<_>>())).into_response(),
+        Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "token listing failed"),
+    }
+}
+
+/// Revokes a token immediately. Revocation is idempotent for a token in this project.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/tokens/{token_id}/revoke", params(("project_id" = String, Path), ("token_id" = String, Path)), responses((status = 204), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, body = ApiError)))]
+pub async fn revoke_token(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, token_id)): Path<(Uuid, Uuid)>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "token revocation requires durable storage",
+        );
+    };
+    match sqlx::query("UPDATE control.api_tokens SET revoked_at = COALESCE(revoked_at, now()) WHERE token_id = $1 AND project_id = $2").bind(token_id).bind(project_id).execute(pool).await {
+        Ok(result) if result.rows_affected() == 1 => StatusCode::NO_CONTENT.into_response(),
+        Ok(_) => error(StatusCode::NOT_FOUND, "token_not_found", "token was not found"),
+        Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "token revocation failed"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{issue_token, valid_scopes};
+
+    #[test]
+    fn issued_tokens_are_prefixed_and_have_256_random_bits() {
+        let (token, prefix) = issue_token().expect("system CSPRNG available");
+        assert!(token.starts_with("lf_"));
+        assert_eq!(token.len(), 67);
+        assert_eq!(prefix, token[..11]);
+    }
+
+    #[test]
+    fn token_scope_sets_must_be_known_and_unique() {
+        assert!(valid_scopes(&["ingest:write".into()]));
+        assert!(!valid_scopes(&[]));
+        assert!(!valid_scopes(&["nope".into()]));
+        assert!(!valid_scopes(&[
+            "ingest:write".into(),
+            "ingest:write".into()
+        ]));
+    }
+}

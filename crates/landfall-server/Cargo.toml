@@ -29,6 +29,7 @@ tower.workspace = true
 utoipa.workspace = true
 tokio-util.workspace = true
 sqlx.workspace = true
+getrandom.workspace = true
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

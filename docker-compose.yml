@@ -40,6 +40,7 @@ services:
     environment:
       DATABASE_URL: postgres://${LANDFALL_POSTGRES_USER}:${LANDFALL_POSTGRES_PASSWORD}@postgres:5432/${LANDFALL_POSTGRES_DB}
       LANDFALL_BIND: 0.0.0.0:8080
+      LANDFALL_BOOTSTRAP_TOKEN: ${LANDFALL_BOOTSTRAP_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -3,7 +3,8 @@
 use std::net::SocketAddr;
 
 use landfall_server::{
-    AppState, ObservationWorkerConfig, ObservationWorkerMetrics, router, run_observation_worker,
+    AppState, ObservationWorkerConfig, ObservationWorkerMetrics, auth::hash_token, router,
+    run_observation_worker,
 };
 use landfall_storage::{DatabaseConfig, run_migrations};
 use tokio::net::TcpListener;
@@ -23,12 +24,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = router(AppState {
         ready: true,
         pool: Some(pool),
+        bootstrap_token_hash: bootstrap_token_hash()?,
     });
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
+}
+
+fn bootstrap_token_hash() -> Result<Option<[u8; 32]>, std::io::Error> {
+    let token = match std::env::var("LANDFALL_BOOTSTRAP_TOKEN_FILE") {
+        Ok(path) => Some(std::fs::read_to_string(path)?),
+        Err(_) => std::env::var("LANDFALL_BOOTSTRAP_TOKEN").ok(),
+    };
+    Ok(token.and_then(|value| {
+        let trimmed = value.trim();
+        (!trimmed.is_empty()).then(|| hash_token(trimmed))
+    }))
 }
 
 async fn run_worker() -> Result<(), Box<dyn std::error::Error>> {

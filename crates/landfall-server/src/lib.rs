@@ -2,6 +2,7 @@
 #![allow(missing_docs)]
 
 pub mod auth;
+pub mod control_plane;
 pub mod workers;
 pub use workers::WorkerSupervisor;
 pub mod observation_worker;
@@ -73,6 +74,9 @@ pub mod trace_detail;
 pub mod trace_filters;
 pub mod workload;
 use crate::auth::AuthenticatedToken;
+use crate::control_plane::{
+    create_environment, create_project, create_token, list_environments, list_tokens, revoke_token,
+};
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
 use utoipa::{OpenApi, ToSchema};
@@ -103,6 +107,8 @@ pub struct AppState {
     pub ready: bool,
     /// Optional durable PostgreSQL pool; absent only for isolated unit tests.
     pub pool: Option<sqlx::PgPool>,
+    /// Hash of the deployment-local bootstrap credential for first-project provisioning.
+    pub bootstrap_token_hash: Option<[u8; 32]>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -172,7 +178,15 @@ pub struct ApiError {
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(ingest),
+    paths(
+        ingest,
+        control_plane::create_project,
+        control_plane::create_environment,
+        control_plane::list_environments,
+        control_plane::create_token,
+        control_plane::list_tokens,
+        control_plane::revoke_token
+    ),
     components(schemas(
         IngestRequest,
         IngestAccepted,
@@ -182,7 +196,14 @@ pub struct ApiError {
         crate::cohort_comparison::CohortComparison,
         crate::recommendation_disposition::DispositionRecord,
         crate::system_status::DetailedSystemStatus,
-        crate::config_read_model::ProjectConfig
+        crate::config_read_model::ProjectConfig,
+        crate::control_plane::CreateProjectRequest,
+        crate::control_plane::CreatedProjectResponse,
+        crate::control_plane::CreateEnvironmentRequest,
+        crate::control_plane::EnvironmentResponse,
+        crate::control_plane::CreateTokenRequest,
+        crate::control_plane::CreatedTokenResponse,
+        crate::control_plane::TokenResponse
     )),
     info(title = "Landfall Ingestion API", version = "0.1.0")
 )]
@@ -247,8 +268,28 @@ pub fn router(state: AppState) -> Router {
             Arc::clone(&state),
             authenticate_api,
         ));
+    let bootstrap = Router::new().route("/v1/control/projects", post(create_project));
+    let control = Router::new()
+        .route(
+            "/v1/control/projects/{project_id}/environments",
+            post(create_environment).get(list_environments),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/tokens",
+            post(create_token).get(list_tokens),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/tokens/{token_id}/revoke",
+            post(revoke_token),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            authenticate_api,
+        ));
     Router::new()
         .merge(api)
+        .merge(bootstrap)
+        .merge(control)
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -263,7 +304,9 @@ pub fn router(state: AppState) -> Router {
 }
 
 fn required_scope(path: &str) -> &'static str {
-    if path == "/v1/ingest" {
+    if path.starts_with("/v1/control/") {
+        "project:admin"
+    } else if path == "/v1/ingest" {
         "ingest:write"
     } else if path == "/v1/system/status" {
         "admin"
@@ -1092,6 +1135,7 @@ mod tests {
         let app = router(super::AppState {
             ready: false,
             pool: None,
+            bootstrap_token_hash: None,
         });
         let live = app
             .clone()
@@ -1159,6 +1203,7 @@ mod tests {
     fn openapi_snapshot_contains_ingest_contract() {
         let document = ApiDoc::openapi().to_pretty_json().unwrap();
         assert!(document.contains("/v1/ingest"));
+        assert!(document.contains("/v1/control/projects"));
         assert!(document.contains("IngestRequest"));
         assert!(document.contains("202"));
     }
@@ -1178,6 +1223,10 @@ mod tests {
 
     #[test]
     fn route_scope_classification_is_explicit() {
+        assert_eq!(
+            super::required_scope("/v1/control/projects/id/tokens"),
+            "project:admin"
+        );
         assert_eq!(super::required_scope("/v1/ingest"), "ingest:write");
         assert_eq!(super::required_scope("/v1/traces"), "traces:read");
         assert_eq!(
@@ -1195,6 +1244,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn project_bootstrap_is_disabled_without_a_deployment_secret() {
+        let request = Request::post("/v1/control/projects")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"name":"test","initial_token_name":"owner"}"#,
+            ))
+            .unwrap();
+        let response = router(super::AppState::default())
+            .oneshot(request)
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[test]
