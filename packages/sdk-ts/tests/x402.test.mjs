@@ -41,7 +41,7 @@ test("executes payment only after approval and never sends signature to Landfall
     parsed.accepts[0],
     { authorize: async () => ({ auditId: "0198ef00-0000-7000-8000-000000000402", decision: "approved", reasonCode: "approved", replayed: false }) },
     { createPaymentSignature: async () => { seen.signer += 1; return { paymentSignature: "signed-payment-payload", settlementReference: "facilitator-receipt-1" }; } },
-    { sendPaymentSignature: async (signature) => { seen.resourceSignature = signature; return { status: 200 }; } },
+    { sendPaymentSignature: async (signature) => { seen.resourceSignature = signature; return { ok: true, status: 200, response: { status: 200 } }; } },
     { recordSettlement: async (record) => { seen.settlement = record; } },
   );
   assert.equal(outcome.kind, "settled");
@@ -64,6 +64,35 @@ test("a denied policy never invokes wallet or merchant", async () => {
   );
   assert.equal(outcome.kind, "denied");
   assert.equal(walletUsed, false);
+});
+
+test("a settled idempotent replay never invokes wallet or merchant again", async () => {
+  const parsed = parsePaymentRequiredHeader(challenge());
+  const authorization = preAuthorizeX402Requirement(parsed, parsed.accepts[0], policyId, "agent", "request-4");
+  let called = false;
+  const outcome = await executeAuthorizedX402Payment(
+    authorization, parsed.accepts[0],
+    { authorize: async () => ({ auditId: "0198ef00-0000-7000-8000-000000000404", decision: "settled", reasonCode: "resource_response_received", replayed: true }) },
+    { createPaymentSignature: async () => { called = true; return { paymentSignature: "must-not-happen" }; } },
+    { sendPaymentSignature: async () => { called = true; return { ok: true, status: 200, response: {} }; } },
+    { recordSettlement: async () => { called = true; } },
+  );
+  assert.equal(outcome.kind, "already-settled");
+  assert.equal(called, false);
+});
+
+test("a non-success merchant response is recorded as failed", async () => {
+  const parsed = parsePaymentRequiredHeader(challenge());
+  const authorization = preAuthorizeX402Requirement(parsed, parsed.accepts[0], policyId, "agent", "request-5");
+  let settlement;
+  await assert.rejects(() => executeAuthorizedX402Payment(
+    authorization, parsed.accepts[0],
+    { authorize: async () => ({ auditId: "0198ef00-0000-7000-8000-000000000405", decision: "approved", reasonCode: "approved", replayed: false }) },
+    { createPaymentSignature: async () => ({ paymentSignature: "signed-payment-payload", settlementReference: "receipt-5" }) },
+    { sendPaymentSignature: async () => ({ ok: false, status: 402, response: {} }) },
+    { recordSettlement: async (input) => { settlement = input; } },
+  ));
+  assert.deepEqual(settlement, { auditId: "0198ef00-0000-7000-8000-000000000405", outcome: "failed", reasonCode: "external_payment_failed", settlementReference: "receipt-5" });
 });
 
 test("settlement reporter persists only outcome metadata", async () => {

@@ -109,11 +109,17 @@ pub async fn authorize(
             StatusCode::OK,
             Json(X402AuthorizeResponse {
                 audit_id: record.audit_id.to_string(),
-                decision: if record.decision == landfall_core::x402::PolicyDecision::Approved {
-                    "approved".into()
-                } else {
-                    "denied".into()
-                },
+                decision: record
+                    .terminal_outcome
+                    .map(X402SettlementOutcome::as_str)
+                    .unwrap_or_else(|| {
+                        if record.decision == landfall_core::x402::PolicyDecision::Approved {
+                            "approved"
+                        } else {
+                            "denied"
+                        }
+                    })
+                    .into(),
                 reason_code: record.reason_code,
                 replayed: record.replayed,
             }),

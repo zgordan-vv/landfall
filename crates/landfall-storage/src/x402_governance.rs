@@ -37,6 +37,8 @@ pub struct X402AuthorizationRecord {
     pub decision: PolicyDecision,
     /// Stable machine-readable decision reason.
     pub reason_code: String,
+    /// Existing terminal payment state, when this idempotency key was already settled or failed.
+    pub terminal_outcome: Option<X402SettlementOutcome>,
     /// Whether the result was a prior idempotent decision.
     pub replayed: bool,
 }
@@ -122,7 +124,14 @@ pub async fn authorize_x402_payment(
     if let Some(row) = sqlx::query("SELECT audit_id, decision, reason_code FROM telemetry.x402_payment_audit WHERE project_id = $1 AND idempotency_key_hash = $2")
         .bind(project_id).bind(idempotency_key_hash).fetch_optional(&mut *tx).await? {
         tx.commit().await?;
-        return Ok(X402AuthorizationRecord { audit_id: row.try_get("audit_id")?, decision: decision_from_db(&row.try_get::<String, _>("decision")?), reason_code: row.try_get("reason_code")?, replayed: true });
+        let stored_decision: String = row.try_get("decision")?;
+        return Ok(X402AuthorizationRecord {
+            audit_id: row.try_get("audit_id")?,
+            decision: decision_from_db(&stored_decision),
+            reason_code: row.try_get("reason_code")?,
+            terminal_outcome: X402SettlementOutcome::from_db(&stored_decision),
+            replayed: true,
+        });
     }
     let row = sqlx::query("SELECT agent_id, network, asset, max_per_request_atomic::text AS per_request, max_per_day_atomic::text AS per_day, enabled FROM control.x402_spend_policies WHERE policy_id = $1 AND project_id = $2 FOR UPDATE")
         .bind(policy_id).bind(project_id).fetch_optional(&mut *tx).await?;
@@ -132,6 +141,7 @@ pub async fn authorize_x402_payment(
             audit_id: Uuid::now_v7(),
             decision: PolicyDecision::PolicyDisabled,
             reason_code: "policy_not_found".into(),
+            terminal_outcome: None,
             replayed: false,
         });
     };
@@ -175,6 +185,7 @@ pub async fn authorize_x402_payment(
         audit_id,
         decision,
         reason_code,
+        terminal_outcome: None,
         replayed: false,
     })
 }
