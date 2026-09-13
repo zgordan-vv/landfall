@@ -10,15 +10,17 @@ Use these runbooks in this order when operating a local or pilot deployment:
    — apply and verify schema changes.
 4. [Health and shutdown](health-and-shutdown.md) — distinguish liveness,
    readiness, and graceful worker termination.
-5. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
+5. [Structured logging](structured-logging.md) — correlate JSON operational
+   events by request ID without exposing telemetry or credentials.
+6. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
    and perform a guarded restore.
-5. [Retention worker](retention-worker.md) and [partition retention](partition-retention.md)
+7. [Retention worker](retention-worker.md) and [partition retention](partition-retention.md)
    — preview and execute bounded cleanup.
-6. [Project/trace workers](project-trace-worker.md) and [reproject command](reproject-command.md)
+8. [Project/trace workers](project-trace-worker.md) and [reproject command](reproject-command.md)
    — inspect or replay durable jobs.
-7. [Report jobs](report-jobs.md) and [report artifacts](report-artifact-storage.md)
+9. [Report jobs](report-jobs.md) and [report artifacts](report-artifact-storage.md)
    — generate and safely serve exports.
-8. [Golden incident runbook](golden-incident-runbook.md) — reproduce known
+10. [Golden incident runbook](golden-incident-runbook.md) — reproduce known
    lifecycle failures and compare evidence.
 
 For security-specific response use the [security section](../security/). The

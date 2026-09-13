@@ -3,18 +3,39 @@
 use std::net::SocketAddr;
 
 use landfall_server::{
-    AppState, ObservationWorkerConfig, ObservationWorkerMetrics, auth::hash_token, router,
-    run_observation_worker,
+    AppState, ObservationWorkerConfig, ObservationWorkerMetrics,
+    auth::hash_token,
+    observability::{ProcessRole, init_logging},
+    router, run_observation_worker,
 };
 use landfall_storage::{DatabaseConfig, run_migrations};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     if std::env::args().nth(1).as_deref() == Some("worker") {
-        return run_worker().await;
+        init_logging(ProcessRole::ObserverWorker);
+        if run_worker().await.is_err() {
+            tracing::error!(
+                error_category = "worker_startup_failed",
+                "process_startup_failed"
+            );
+            std::process::exit(1);
+        }
+        return;
     }
+    init_logging(ProcessRole::Server);
+    if run_server().await.is_err() {
+        tracing::error!(
+            error_category = "server_startup_failed",
+            "process_startup_failed"
+        );
+        std::process::exit(1);
+    }
+}
+
+async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let bind = std::env::var("LANDFALL_BIND").unwrap_or_else(|_| "127.0.0.1:8080".to_owned());
     let address: SocketAddr = bind.parse()?;
     let listener = TcpListener::bind(address).await?;

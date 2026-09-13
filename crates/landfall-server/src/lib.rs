@@ -5,6 +5,7 @@ pub mod auth;
 pub mod control_plane;
 pub mod workers;
 pub use workers::WorkerSupervisor;
+pub mod observability;
 pub mod observation_worker;
 pub use observation_worker::{
     ObservationWorkerConfig, ObservationWorkerMetrics, ObservationWorkerMetricsSnapshot,
@@ -848,6 +849,10 @@ async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> 
     let _entered = span.enter();
     request.extensions_mut().insert(request_id.clone());
     let mut response = next.run(request).await;
+    tracing::info!(
+        status = response.status().as_u16(),
+        "http_request_completed"
+    );
     if let Ok(value) = HeaderValue::from_str(&request_id) {
         response.headers_mut().insert("x-request-id", value);
     }
