@@ -10,8 +10,9 @@ Use the section that matches your goal:
   catalog; start with the [metrics guide](product/metrics-guide.md) or
   [diagnostics guide](product/diagnostics-guide.md).
 - [API](api/) — OpenAPI and query endpoint contracts.
-- [SDK](sdk/) — TypeScript SDK configuration, buffering, privacy, and events;
-  start with the [manual SDK guide](sdk/manual-sdk-guide.md).
+- [SDK](sdk/) — TypeScript SDK configuration, buffering, privacy, events, and
+  x402 policy control; start with the [manual SDK guide](sdk/manual-sdk-guide.md)
+  or [x402 payment control](sdk/x402-payment-control.md).
 - [Solana](solana/) — Kit integration, lifecycle capture, and observer-facing
   client boundaries.
 - [Operations](operations/) — database, workers, retention, reports, runbooks,
