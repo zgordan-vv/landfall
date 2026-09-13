@@ -262,3 +262,25 @@ jobs:
 
       - name: Verify container metadata
         run: bash scripts/check-server-image.sh landfall-server:ci
+
+  deployment-contract:
+    name: Production deployment contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate production Compose with an immutable image reference
+        run: |
+          deployment_dir="$(mktemp -d)"
+          cp deploy/production.env.example "$deployment_dir/production.env"
+          sed -i 's/replace_with_64_hex_digest/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/' "$deployment_dir/production.env"
+          printf 'postgres://landfall:password@postgres-production:5432/landfall\n' > "$deployment_dir/database-url"
+          printf 'test-bootstrap-token\n' > "$deployment_dir/bootstrap-token"
+          LANDFALL_DEPLOY_ENV_FILE="$deployment_dir/production.env" \
+          LANDFALL_DATABASE_URL_FILE="$deployment_dir/database-url" \
+          LANDFALL_BOOTSTRAP_TOKEN_SECRET_FILE="$deployment_dir/bootstrap-token" \
+            bash scripts/check-production-deployment.sh

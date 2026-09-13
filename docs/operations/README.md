@@ -26,6 +26,8 @@ Use these runbooks in this order when operating a local or pilot deployment:
    — generate and safely serve exports.
 12. [Golden incident runbook](golden-incident-runbook.md) — reproduce known
    lifecycle failures and compare evidence.
+13. [Release and deployment](release-deployment.md) — publish an immutable
+   image, stage it, deploy it behind TLS, and roll it back safely.
 
 For security-specific response use the [security section](../security/). The
 current server entry point is a composition placeholder; pilot deployment must

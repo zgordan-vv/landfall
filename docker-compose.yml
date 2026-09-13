@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: landfall-server:local
+    image: ${LANDFALL_SERVER_IMAGE:-landfall-server:local}
     environment:
       DATABASE_URL: postgres://${LANDFALL_POSTGRES_USER}:${LANDFALL_POSTGRES_PASSWORD}@postgres:5432/${LANDFALL_POSTGRES_DB}
       LANDFALL_BIND: 0.0.0.0:8080
@@ -53,7 +53,7 @@ services:
     stop_grace_period: 30s
 
   observer-worker:
-    image: landfall-server:local
+    image: ${LANDFALL_SERVER_IMAGE:-landfall-server:local}
     command: ["worker"]
     environment:
       DATABASE_URL: postgres://${LANDFALL_POSTGRES_USER}:${LANDFALL_POSTGRES_PASSWORD}@postgres:5432/${LANDFALL_POSTGRES_DB}

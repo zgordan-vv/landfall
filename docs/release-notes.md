@@ -11,6 +11,6 @@
 - Documentation organized by architecture, product, API, SDK, Solana,
   operations, security, and benchmarks.
 
-This release is intended for portfolio review and controlled pilots. It is not
-production-ready until runtime wiring, migrations, authentication deployment,
-monitoring, and staging restore/load tests are completed.
+This release is intended for portfolio review and controlled pilots. Use the
+[release and deployment runbook](operations/release-deployment.md) for the
+immutable image, staging, production, backup, and rollback procedure.

@@ -7,6 +7,10 @@ services:
     profiles: [development]
 
   server:
+    # A production host must pull the release image, never build from its
+    # checkout during deployment.
+    build: !reset null
+    image: ${LANDFALL_SERVER_IMAGE:?LANDFALL_SERVER_IMAGE must be an immutable registry image digest}
     environment:
       DATABASE_URL:
       DATABASE_URL_FILE: /run/secrets/database_url
@@ -18,8 +22,16 @@ services:
     secrets:
       - database_url
       - bootstrap_token
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
+    # nginx on the host reaches this loopback-only listener. It is never
+    # directly reachable from the network.
+    ports: !override
+      - "127.0.0.1:8080:8080"
 
   observer-worker:
+    image: ${LANDFALL_SERVER_IMAGE:?LANDFALL_SERVER_IMAGE must be an immutable registry image digest}
     environment:
       DATABASE_URL:
       DATABASE_URL_FILE: /run/secrets/database_url
@@ -28,6 +40,9 @@ services:
         condition: service_healthy
     secrets:
       - database_url
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
 
 secrets:
   database_url:
