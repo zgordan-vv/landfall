@@ -15,7 +15,8 @@ pub use trace_events::{
 };
 pub mod x402_governance;
 pub use x402_governance::{
-    X402SpendPolicyRecord, list_x402_spend_policies, upsert_x402_spend_policy,
+    X402AuthorizationRecord, X402SpendPolicyRecord, authorize_x402_payment,
+    list_x402_spend_policies, upsert_x402_spend_policy,
 };
 pub mod projections;
 pub use projections::{AttemptProjectionWrite, TraceProjectionWrite, replace_trace_projection};

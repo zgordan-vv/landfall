@@ -23,6 +23,7 @@ const ALLOWED_SCOPES: &[&str] = &[
     "traces:read",
     "diagnostics:read",
     "admin",
+    "x402:pay",
 ];
 
 /// Request to provision a new customer project and its first administrator token.
