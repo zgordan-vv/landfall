@@ -26,8 +26,33 @@ export interface X402PreAuthorization {
 }
 
 export interface X402Authorizer {
-  authorize(request: X402PreAuthorization): Promise<{ readonly decision: "approved" | "denied"; readonly reasonCode: string }>;
+  authorize(request: X402PreAuthorization): Promise<X402AuthorizationDecision>;
 }
+
+export interface X402AuthorizationDecision {
+  readonly auditId: string;
+  readonly decision: "approved" | "denied";
+  readonly reasonCode: string;
+  readonly replayed: boolean;
+}
+
+/** Signs through the application's own wallet boundary; Landfall never implements this. */
+export interface X402PaymentSigner {
+  createPaymentSignature(requirement: X402PaymentRequirement): Promise<{ readonly paymentSignature: string; readonly settlementReference?: string }>;
+}
+
+/** Sends the signed x402 header directly to the merchant resource. */
+export interface X402PaidResourceClient<Response> {
+  sendPaymentSignature(paymentSignature: string): Promise<Response>;
+}
+
+export interface X402SettlementRecorder {
+  recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void>;
+}
+
+export type X402PaymentExecution<Response> =
+  | { readonly kind: "denied"; readonly authorization: X402AuthorizationDecision }
+  | { readonly kind: "settled"; readonly authorization: X402AuthorizationDecision; readonly response: Response };
 
 export interface X402AuthorizeFetchResponse { readonly status: number; json(): Promise<unknown>; }
 export type X402AuthorizeFetch = (input: string, init: { readonly method: "POST"; readonly headers: Readonly<Record<string, string>>; readonly body: string }) => Promise<X402AuthorizeFetchResponse>;
@@ -37,13 +62,57 @@ export function createHttpX402Authorizer(policyServiceUrl: string, bearerToken: 
   const endpoint = `${policyServiceUrl.replace(/\/$/, "")}/v1/x402/authorize`;
   if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "") throw new Error("x402 policy service requires HTTPS and a bearer token");
   return Object.freeze({
-    async authorize(request: X402PreAuthorization): Promise<{ readonly decision: "approved" | "denied"; readonly reasonCode: string }> {
+    async authorize(request: X402PreAuthorization): Promise<X402AuthorizationDecision> {
       const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ policy_id: request.policyId, agent_id: request.agentId, merchant_origin: request.merchantOrigin, network: request.network, asset: request.asset, amount_atomic: request.amountAtomic, idempotency_key: request.idempotencyKey }) });
       const body = await response.json();
-      if (!isRecord(body) || (body["decision"] !== "approved" && body["decision"] !== "denied") || typeof body["reason_code"] !== "string") throw new Error(`x402 policy service returned an invalid response (${response.status})`);
-      return Object.freeze({ decision: body["decision"], reasonCode: body["reason_code"] });
+      if (!isRecord(body) || typeof body["audit_id"] !== "string" || !isUuid(body["audit_id"]) || (body["decision"] !== "approved" && body["decision"] !== "denied") || typeof body["reason_code"] !== "string" || typeof body["replayed"] !== "boolean") throw new Error(`x402 policy service returned an invalid response (${response.status})`);
+      return Object.freeze({ auditId: body["audit_id"], decision: body["decision"], reasonCode: body["reason_code"], replayed: body["replayed"] });
     },
   });
+}
+
+/** Creates the HTTP reporter for terminal outcomes; it has no signature parameter. */
+export function createHttpX402SettlementRecorder(policyServiceUrl: string, bearerToken: string, fetcher: X402AuthorizeFetch): X402SettlementRecorder {
+  const endpoint = `${policyServiceUrl.replace(/\/$/, "")}/v1/x402/settlements`;
+  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "") throw new Error("x402 policy service requires HTTPS and a bearer token");
+  return Object.freeze({
+    async recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void> {
+      const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ audit_id: input.auditId, outcome: input.outcome, reason_code: input.reasonCode, settlement_reference: input.settlementReference }) });
+      if (response.status !== 200) throw new Error(`x402 settlement service returned ${response.status}`);
+    },
+  });
+}
+
+/**
+ * Runs the only permitted signing path: authorize, ask the external signer,
+ * send its opaque header to the merchant, then record a terminal audit state.
+ * The signature is deliberately not passed to `settlementRecorder`.
+ */
+export async function executeAuthorizedX402Payment<Response>(
+  authorization: X402PreAuthorization,
+  requirement: X402PaymentRequirement,
+  authorizer: X402Authorizer,
+  signer: X402PaymentSigner,
+  resourceClient: X402PaidResourceClient<Response>,
+  settlementRecorder: X402SettlementRecorder,
+): Promise<X402PaymentExecution<Response>> {
+  const decision = await authorizer.authorize(authorization);
+  if (decision.decision === "denied") return Object.freeze({ kind: "denied", authorization: decision });
+  let signed: { readonly paymentSignature: string; readonly settlementReference?: string } | undefined;
+  try {
+    signed = await signer.createPaymentSignature(requirement);
+    if (!validText(signed.paymentSignature, 16_384)) throw new Error("external x402 signer returned an invalid payment signature");
+    const response: Response = await resourceClient.sendPaymentSignature(signed.paymentSignature);
+    await settlementRecorder.recordSettlement(settlementInput(decision.auditId, "settled", "resource_response_received", signed.settlementReference));
+    return Object.freeze({ kind: "settled" as const, authorization: decision, response });
+  } catch (cause) {
+    await settlementRecorder.recordSettlement(settlementInput(decision.auditId, "failed", "external_payment_failed", signed?.settlementReference));
+    throw cause;
+  }
+}
+
+function settlementInput(auditId: string, outcome: "settled" | "failed", reasonCode: string, settlementReference: string | undefined): { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string } {
+  return settlementReference === undefined ? { auditId, outcome, reasonCode } : { auditId, outcome, reasonCode, settlementReference };
 }
 
 /** Decodes and validates the standard base64 `PAYMENT-REQUIRED` HTTP header. */

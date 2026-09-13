@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHttpX402Authorizer, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
+import { createHttpX402Authorizer, createHttpX402SettlementRecorder, executeAuthorizedX402Payment, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
 
 const policyId = "0198ef00-0000-7000-8000-000000000401";
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -25,9 +25,54 @@ test("sends only normalized pre-authorization data to Landfall before signing", 
   let call;
   const authorizer = createHttpX402Authorizer("https://policy.example", "token", async (url, init) => {
     call = { url, init };
-    return { status: 200, json: async () => ({ decision: "approved", reason_code: "approved" }) };
+    return { status: 200, json: async () => ({ audit_id: "0198ef00-0000-7000-8000-000000000402", decision: "approved", reason_code: "approved", replayed: false }) };
   });
-  assert.deepEqual(await authorizer.authorize(request), { decision: "approved", reasonCode: "approved" });
+  assert.deepEqual(await authorizer.authorize(request), { auditId: "0198ef00-0000-7000-8000-000000000402", decision: "approved", reasonCode: "approved", replayed: false });
   assert.equal(call.url, "https://policy.example/v1/x402/authorize");
   assert.equal(JSON.parse(call.init.body).merchant_origin, "https://api.example.com");
+});
+
+test("executes payment only after approval and never sends signature to Landfall", async () => {
+  const parsed = parsePaymentRequiredHeader(challenge());
+  const authorization = preAuthorizeX402Requirement(parsed, parsed.accepts[0], policyId, "agent", "request-2");
+  const seen = { signer: 0, resourceSignature: "", settlement: undefined };
+  const outcome = await executeAuthorizedX402Payment(
+    authorization,
+    parsed.accepts[0],
+    { authorize: async () => ({ auditId: "0198ef00-0000-7000-8000-000000000402", decision: "approved", reasonCode: "approved", replayed: false }) },
+    { createPaymentSignature: async () => { seen.signer += 1; return { paymentSignature: "signed-payment-payload", settlementReference: "facilitator-receipt-1" }; } },
+    { sendPaymentSignature: async (signature) => { seen.resourceSignature = signature; return { status: 200 }; } },
+    { recordSettlement: async (record) => { seen.settlement = record; } },
+  );
+  assert.equal(outcome.kind, "settled");
+  assert.equal(seen.signer, 1);
+  assert.equal(seen.resourceSignature, "signed-payment-payload");
+  assert.deepEqual(seen.settlement, { auditId: "0198ef00-0000-7000-8000-000000000402", outcome: "settled", reasonCode: "resource_response_received", settlementReference: "facilitator-receipt-1" });
+  assert.notEqual(JSON.stringify(seen.settlement).includes("signed-payment-payload"), true);
+});
+
+test("a denied policy never invokes wallet or merchant", async () => {
+  const parsed = parsePaymentRequiredHeader(challenge());
+  const authorization = preAuthorizeX402Requirement(parsed, parsed.accepts[0], policyId, "agent", "request-3");
+  let walletUsed = false;
+  const outcome = await executeAuthorizedX402Payment(
+    authorization, parsed.accepts[0],
+    { authorize: async () => ({ auditId: "0198ef00-0000-7000-8000-000000000403", decision: "denied", reasonCode: "daily_limit_exceeded", replayed: false }) },
+    { createPaymentSignature: async () => { walletUsed = true; return { paymentSignature: "must-not-happen" }; } },
+    { sendPaymentSignature: async () => { throw new Error("must not call merchant"); } },
+    { recordSettlement: async () => { throw new Error("must not record"); } },
+  );
+  assert.equal(outcome.kind, "denied");
+  assert.equal(walletUsed, false);
+});
+
+test("settlement reporter persists only outcome metadata", async () => {
+  let call;
+  const recorder = createHttpX402SettlementRecorder("https://policy.example", "token", async (url, init) => {
+    call = { url, init };
+    return { status: 200, json: async () => ({}) };
+  });
+  await recorder.recordSettlement({ auditId: "0198ef00-0000-7000-8000-000000000402", outcome: "settled", reasonCode: "resource_response_received", settlementReference: "receipt" });
+  assert.equal(call.url, "https://policy.example/v1/x402/settlements");
+  assert.equal(JSON.stringify(call.init.body).includes("paymentSignature"), false);
 });

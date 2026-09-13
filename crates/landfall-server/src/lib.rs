@@ -197,7 +197,8 @@ pub struct ApiError {
         control_plane::create_x402_spend_policy,
         control_plane::list_x402_spend_policy,
         control_plane::update_x402_spend_policy,
-        crate::x402_payments::authorize
+        crate::x402_payments::authorize,
+        crate::x402_payments::record_settlement
     ),
     components(schemas(
         IngestRequest,
@@ -221,7 +222,9 @@ pub struct ApiError {
         crate::control_plane::UpsertX402SpendPolicyRequest,
         crate::control_plane::X402SpendPolicyResponse,
         crate::x402_payments::X402AuthorizeRequest,
-        crate::x402_payments::X402AuthorizeResponse
+        crate::x402_payments::X402AuthorizeResponse,
+        crate::x402_payments::X402SettlementRequest,
+        crate::x402_payments::X402SettlementResponse
     )),
     info(title = "Landfall Ingestion API", version = "0.1.0")
 )]
@@ -272,6 +275,10 @@ pub fn router(state: AppState) -> Router {
     let state = Arc::new(state);
     let api = Router::new()
         .route("/v1/x402/authorize", post(x402_payments::authorize))
+        .route(
+            "/v1/x402/settlements",
+            post(x402_payments::record_settlement),
+        )
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces/{trace_id}/diagnostics", get(trace_diagnostics))
@@ -342,7 +349,7 @@ pub fn router(state: AppState) -> Router {
 fn required_scope(path: &str) -> &'static str {
     if path.starts_with("/v1/control/") {
         "project:admin"
-    } else if path == "/v1/x402/authorize" {
+    } else if path == "/v1/x402/authorize" || path == "/v1/x402/settlements" {
         "x402:pay"
     } else if path == "/v1/ingest" {
         "ingest:write"

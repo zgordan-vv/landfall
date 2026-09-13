@@ -41,6 +41,44 @@ pub struct X402AuthorizationRecord {
     pub replayed: bool,
 }
 
+/// Durable result of recording a non-custodial payment outcome.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct X402SettlementRecord {
+    /// The pre-payment audit record whose state changed.
+    pub audit_id: Uuid,
+    /// Final terminal state, either `settled` or `failed`.
+    pub outcome: X402SettlementOutcome,
+    /// Whether this was an idempotent repeat of a terminal outcome.
+    pub replayed: bool,
+}
+
+/// The only terminal outcomes an external wallet/facilitator may report.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum X402SettlementOutcome {
+    /// The merchant/facilitator completed the approved payment.
+    Settled,
+    /// Signing, delivery, or facilitator settlement failed.
+    Failed,
+}
+
+impl X402SettlementOutcome {
+    /// Stable API/database spelling for the terminal state.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Settled => "settled",
+            Self::Failed => "failed",
+        }
+    }
+
+    fn from_db(value: &str) -> Option<Self> {
+        match value {
+            "settled" => Some(Self::Settled),
+            "failed" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
+
 /// Evaluates and durably records an idempotent x402 pre-payment decision.
 pub async fn authorize_x402_payment(
     pool: &PgPool,
@@ -112,6 +150,61 @@ pub async fn authorize_x402_payment(
         reason_code,
         replayed: false,
     })
+}
+
+/// Records a terminal outcome after an external signer/facilitator has acted.
+///
+/// This accepts only an opaque settlement reference. It intentionally has no
+/// parameter for a payment signature, wallet key, or serialized transaction.
+pub async fn record_x402_settlement(
+    pool: &PgPool,
+    project_id: Uuid,
+    audit_id: Uuid,
+    outcome: X402SettlementOutcome,
+    reason_code: &str,
+    settlement_reference: Option<&str>,
+) -> Result<Option<X402SettlementRecord>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let row = sqlx::query(
+        "SELECT decision FROM telemetry.x402_payment_audit WHERE audit_id = $1 AND project_id = $2 FOR UPDATE",
+    )
+    .bind(audit_id)
+    .bind(project_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some(row) = row else {
+        tx.commit().await?;
+        return Ok(None);
+    };
+    let current: String = row.try_get("decision")?;
+    if let Some(existing) = X402SettlementOutcome::from_db(&current) {
+        tx.commit().await?;
+        return Ok(Some(X402SettlementRecord {
+            audit_id,
+            outcome: existing,
+            replayed: true,
+        }));
+    }
+    if current != "approved" {
+        tx.commit().await?;
+        return Ok(None);
+    }
+    sqlx::query(
+        "UPDATE telemetry.x402_payment_audit SET decision = $3, reason_code = $4, settlement_reference = $5 WHERE audit_id = $1 AND project_id = $2",
+    )
+    .bind(audit_id)
+    .bind(project_id)
+    .bind(outcome.as_str())
+    .bind(reason_code)
+    .bind(settlement_reference)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(Some(X402SettlementRecord {
+        audit_id,
+        outcome,
+        replayed: false,
+    }))
 }
 
 fn decision_to_db(decision: PolicyDecision) -> &'static str {
