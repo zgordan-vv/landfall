@@ -129,6 +129,42 @@ jobs:
         if: always()
         run: bash scripts/compose.sh down --volumes --remove-orphans
 
+  coverage:
+    name: Test coverage reports
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          run_install: false
+
+      - name: Install pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install locked JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rust coverage prerequisites
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --version 0.8.3 --locked
+
+      - name: Generate TypeScript coverage
+        run: pnpm run coverage:typescript
+
+      - name: Generate Rust coverage
+        run: pnpm run coverage:rust
+
   contracts:
     name: Schema and OpenAPI drift
     runs-on: ubuntu-24.04

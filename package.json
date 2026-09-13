@@ -26,6 +26,9 @@
     "check:solana-kit-lane": "node scripts/check-solana-kit-lane.mjs",
     "check:solana-lifecycle-fixtures": "node scripts/check-solana-lifecycle-fixtures.mjs",
     "check:web3js-v3-spike": "node scripts/check-web3js-v3-spike.mjs",
+    "coverage": "pnpm run coverage:typescript && pnpm run coverage:rust",
+    "coverage:rust": "bash scripts/coverage-rust.sh",
+    "coverage:typescript": "c8 --all --extension .js --include 'packages/sdk-ts/dist/**' --exclude '**/tests/**' --reporter=text --reporter=lcov --reports-dir coverage/typescript node --test packages/sdk-ts/tests/*.test.mjs",
     "dev:dashboard": "pnpm --filter @landfall/dashboard dev",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
@@ -38,6 +41,7 @@
   "devDependencies": {
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "c8": "10.1.3",
     "json-schema-to-typescript": "16.0.0",
     "prettier": "3.9.6",
     "typescript": "7.0.2"
