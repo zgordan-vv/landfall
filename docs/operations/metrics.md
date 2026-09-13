@@ -26,3 +26,8 @@ scrape_configs:
     static_configs:
       - targets: ["server:8080"]
 ```
+
+The repository already provides this configuration and operational alert rules
+under [`deploy/monitoring/`](../../deploy/monitoring/). See
+[monitoring and alerts](monitoring-and-alerts.md) for startup, routing, and
+incident response.

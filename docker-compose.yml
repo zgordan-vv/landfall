@@ -71,6 +71,28 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
 
+  prometheus:
+    image: prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+    profiles: [monitoring]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+    volumes:
+      - ./deploy/monitoring:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      server:
+        condition: service_started
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - data
+      - monitoring
+    restart: unless-stopped
+    stop_grace_period: 30s
+
   postgres:
     <<: *postgres-common
     volumes:
@@ -92,8 +114,10 @@ volumes:
   postgres-data:
   postgres-demo-data:
   postgres-production-data:
+  prometheus-data:
 
 networks:
   data:
     internal: true
   egress:
+  monitoring:

@@ -14,15 +14,17 @@ Use these runbooks in this order when operating a local or pilot deployment:
    events by request ID without exposing telemetry or credentials.
 6. [Prometheus metrics](metrics.md) — scrape aggregate readiness, job, and
    ingestion gauges from the private network.
-7. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
+7. [Monitoring and alerts](monitoring-and-alerts.md) — start Prometheus,
+   configure notifications, and respond to operational alerts.
+8. [Backup and restore](backup-restore-runbook.md) — create checksummed dumps
    and perform a guarded restore.
-8. [Retention worker](retention-worker.md) and [partition retention](partition-retention.md)
+9. [Retention worker](retention-worker.md) and [partition retention](partition-retention.md)
    — preview and execute bounded cleanup.
-9. [Project/trace workers](project-trace-worker.md) and [reproject command](reproject-command.md)
+10. [Project/trace workers](project-trace-worker.md) and [reproject command](reproject-command.md)
    — inspect or replay durable jobs.
-10. [Report jobs](report-jobs.md) and [report artifacts](report-artifact-storage.md)
+11. [Report jobs](report-jobs.md) and [report artifacts](report-artifact-storage.md)
    — generate and safely serve exports.
-11. [Golden incident runbook](golden-incident-runbook.md) — reproduce known
+12. [Golden incident runbook](golden-incident-runbook.md) — reproduce known
    lifecycle failures and compare evidence.
 
 For security-specific response use the [security section](../security/). The

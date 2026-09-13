@@ -1,0 +1,56 @@
+groups:
+  - name: landfall-service
+    rules:
+      - alert: LandfallDatabaseUnavailable
+        expr: landfall_database_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Landfall cannot read its PostgreSQL operational state
+          runbook: docs/operations/monitoring-and-alerts.md#landfalldatabaseunavailable
+
+      - alert: LandfallProcessNotReady
+        expr: landfall_process_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Landfall server is alive but not ready to accept traffic
+          runbook: docs/operations/monitoring-and-alerts.md#landfallprocessnotready
+
+      - alert: LandfallDeadLetterJobs
+        expr: landfall_jobs{state="dead_letter"} > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Landfall has jobs that exhausted their retry budget
+          runbook: docs/operations/monitoring-and-alerts.md#landfalldeadletterjobs
+
+      - alert: LandfallReadyQueueBacklog
+        expr: landfall_jobs{state="ready"} >= 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Landfall has at least 100 jobs waiting for 15 minutes
+          runbook: docs/operations/monitoring-and-alerts.md#landfallreadyqueuebacklog
+
+      - alert: LandfallWorkerStoppedWithPendingJobs
+        expr: landfall_jobs{state="ready"} > 0 unless on (job, instance) landfall_jobs{state="running"} > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Landfall has pending jobs but none are running
+          runbook: docs/operations/monitoring-and-alerts.md#landfallworkerstoppedwithpendingjobs
+
+      - alert: LandfallExpectedIngestionSilent
+        expr: landfall_events_received_24h == 0 and on (job, instance) landfall_enabled_rpc_routes > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: An enabled RPC route has produced no telemetry in 24 hours
+          runbook: docs/operations/monitoring-and-alerts.md#landfallexpectedingestionsilent
