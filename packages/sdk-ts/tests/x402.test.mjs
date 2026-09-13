@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHttpX402Authorizer, createHttpX402ResourceClient, createHttpX402SettlementRecorder, executeAuthorizedX402Payment, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
+import { createHttpX402Authorizer, createHttpX402ResourceClient, createHttpX402SettlementRecorder, createOfficialSvmExactSigner, executeAuthorizedX402Payment, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
 
 const policyId = "0198ef00-0000-7000-8000-000000000401";
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -119,4 +119,11 @@ test("HTTP resource adapter sends PAYMENT-SIGNATURE only to the merchant", async
   assert.equal(call.init.body, "request-body");
   assert.throws(() => createHttpX402ResourceClient({ url: "http://merchant.example" }, async () => ({ ok: true, status: 200 })));
   assert.throws(() => createHttpX402ResourceClient({ url: "https://merchant.example", headers: { "PAYMENT-SIGNATURE": "caller-must-not-set" } }, async () => ({ ok: true, status: 200 })));
+});
+
+test("official SVM adapter rejects a requirement not advertised by merchant", async () => {
+  const offered = { scheme: "exact", network: "solana:mainnet", amount: "100", asset: "USDC", payTo: "merchant", maxTimeoutSeconds: 60 };
+  const signer = createOfficialSvmExactSigner({ createPaymentPayload: async () => ({ signed: true }), encodePaymentSignatureHeader: () => ({ "PAYMENT-SIGNATURE": "official-signed-payload" }) }, { x402Version: 2, resource: { url: "https://merchant.example/data" }, accepts: [offered] });
+  await assert.rejects(() => signer.createPaymentSignature({ ...offered, amount: "101" }));
+  assert.deepEqual(await signer.createPaymentSignature(offered), { paymentSignature: "official-signed-payload" });
 });
