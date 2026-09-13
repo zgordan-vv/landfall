@@ -75,6 +75,23 @@ pub struct EnvironmentResponse {
     pub cluster: String,
 }
 
+/// Request to register one customer-controlled Solana JSON-RPC route.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreateRouteRequest {
+    pub name: String,
+    /// HTTPS URL used only by the observer worker; it is never returned by listing APIs.
+    pub endpoint: String,
+}
+
+/// Non-secret route metadata. Endpoint URLs are intentionally omitted.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RouteResponse {
+    pub route_id: String,
+    pub environment_id: String,
+    pub name: String,
+    pub enabled: bool,
+}
+
 /// Request to mint a scoped token for one project.
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateTokenRequest {
@@ -118,6 +135,13 @@ fn valid_scopes(scopes: &[String]) -> bool {
             .iter()
             .enumerate()
             .all(|(index, scope)| !scopes[..index].iter().any(|previous| previous == scope))
+}
+
+fn valid_rpc_endpoint(endpoint: &str) -> bool {
+    endpoint.len() <= 2048
+        && endpoint.starts_with("https://")
+        && !endpoint.contains('@')
+        && !endpoint.chars().any(char::is_whitespace)
 }
 
 fn format_time(value: Option<OffsetDateTime>) -> Option<String> {
@@ -315,6 +339,101 @@ pub async fn list_environments(
     }
 }
 
+/// Registers an HTTPS RPC endpoint for an environment in the caller's project.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/environments/{environment_id}/routes", params(("project_id" = String, Path), ("environment_id" = String, Path)), request_body = CreateRouteRequest, responses((status = 201, body = RouteResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn create_route(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, environment_id)): Path<(Uuid, Uuid)>,
+    Json(request): Json<CreateRouteRequest>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    if !valid_text(&request.name, 120) || !valid_rpc_endpoint(&request.endpoint) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_route_request",
+            "route name or HTTPS endpoint is invalid",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "route provisioning requires durable storage",
+        );
+    };
+    let route_id = Uuid::now_v7();
+    match sqlx::query("INSERT INTO control.routes (route_id, environment_id, name, endpoint) SELECT $1, environment_id, $3, $4 FROM control.environments WHERE environment_id = $2 AND project_id = $5")
+        .bind(route_id).bind(environment_id).bind(&request.name).bind(&request.endpoint).bind(project_id).execute(pool).await {
+        Ok(result) if result.rows_affected() == 1 => (StatusCode::CREATED, Json(RouteResponse { route_id: route_id.to_string(), environment_id: environment_id.to_string(), name: request.name, enabled: true })).into_response(),
+        Ok(_) => error(StatusCode::NOT_FOUND, "environment_not_found", "environment was not found in this project"),
+        Err(_) => error(StatusCode::CONFLICT, "route_conflict", "route name already exists"),
+    }
+}
+
+/// Lists safe route metadata for an environment. It never includes endpoint URLs.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/environments/{environment_id}/routes", params(("project_id" = String, Path), ("environment_id" = String, Path)), responses((status = 200, body = [RouteResponse]), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn list_routes(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, environment_id)): Path<(Uuid, Uuid)>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "route listing requires durable storage",
+        );
+    };
+    match sqlx::query("SELECT r.route_id, r.environment_id, r.name, r.enabled FROM control.routes r JOIN control.environments e ON e.environment_id = r.environment_id WHERE r.environment_id = $1 AND e.project_id = $2 ORDER BY r.created_at, r.route_id")
+        .bind(environment_id).bind(project_id).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| RouteResponse { route_id: row.get::<Uuid, _>("route_id").to_string(), environment_id: row.get::<Uuid, _>("environment_id").to_string(), name: row.get("name"), enabled: row.get("enabled") }).collect::<Vec<_>>())).into_response(),
+        Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "route listing failed"),
+    }
+}
+
+/// Disables an RPC route so future observation jobs do not use it.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/disable", params(("project_id" = String, Path), ("environment_id" = String, Path), ("route_id" = String, Path)), responses((status = 204), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, body = ApiError)))]
+pub async fn disable_route(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, environment_id, route_id)): Path<(Uuid, Uuid, Uuid)>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "route management requires durable storage",
+        );
+    };
+    match sqlx::query("UPDATE control.routes r SET enabled = false FROM control.environments e WHERE r.route_id = $1 AND r.environment_id = $2 AND e.environment_id = r.environment_id AND e.project_id = $3")
+        .bind(route_id).bind(environment_id).bind(project_id).execute(pool).await {
+        Ok(result) if result.rows_affected() == 1 => StatusCode::NO_CONTENT.into_response(),
+        Ok(_) => error(StatusCode::NOT_FOUND, "route_not_found", "route was not found"),
+        Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "route disable failed"),
+    }
+}
+
 /// Mints a least-privilege token for the caller's project.
 #[utoipa::path(post, path = "/v1/control/projects/{project_id}/tokens", params(("project_id" = String, Path)), request_body = CreateTokenRequest, responses((status = 201, body = CreatedTokenResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
 pub async fn create_token(
@@ -428,7 +547,7 @@ pub async fn revoke_token(
 
 #[cfg(test)]
 mod tests {
-    use super::{issue_token, valid_scopes};
+    use super::{issue_token, valid_rpc_endpoint, valid_scopes};
 
     #[test]
     fn issued_tokens_are_prefixed_and_have_256_random_bits() {
@@ -447,5 +566,12 @@ mod tests {
             "ingest:write".into(),
             "ingest:write".into()
         ]));
+    }
+
+    #[test]
+    fn rpc_endpoint_must_be_https_and_never_embed_credentials() {
+        assert!(valid_rpc_endpoint("https://api.mainnet-beta.solana.com"));
+        assert!(!valid_rpc_endpoint("http://localhost:8899"));
+        assert!(!valid_rpc_endpoint("https://key@rpc.example"));
     }
 }

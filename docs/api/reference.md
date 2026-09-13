@@ -8,6 +8,8 @@ registers these routes:
 | `POST` | `/v1/ingest` | Authenticate, validate, deduplicate, and durably accept an event batch | `202` new work, `200` fully duplicate batch |
 | `POST` | `/v1/control/projects` | Provision a project and its first administrator token | `201` |
 | `GET`, `POST` | `/v1/control/projects/{project_id}/environments` | List or create project environments | `200`, `201` |
+| `GET`, `POST` | `/v1/control/projects/{project_id}/environments/{environment_id}/routes` | List or register a private HTTPS RPC route | `200`, `201` |
+| `POST` | `/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/disable` | Disable an RPC route | `204` |
 | `GET`, `POST` | `/v1/control/projects/{project_id}/tokens` | List token metadata or create a project token | `200`, `201` |
 | `POST` | `/v1/control/projects/{project_id}/tokens/{token_id}/revoke` | Revoke a token | `204` |
 | `GET` | `/health/live` | Process liveness | `200` |

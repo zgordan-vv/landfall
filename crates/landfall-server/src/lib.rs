@@ -75,7 +75,8 @@ pub mod trace_filters;
 pub mod workload;
 use crate::auth::AuthenticatedToken;
 use crate::control_plane::{
-    create_environment, create_project, create_token, list_environments, list_tokens, revoke_token,
+    create_environment, create_project, create_route, create_token, disable_route,
+    list_environments, list_routes, list_tokens, revoke_token,
 };
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
@@ -183,6 +184,9 @@ pub struct ApiError {
         control_plane::create_project,
         control_plane::create_environment,
         control_plane::list_environments,
+        control_plane::create_route,
+        control_plane::list_routes,
+        control_plane::disable_route,
         control_plane::create_token,
         control_plane::list_tokens,
         control_plane::revoke_token
@@ -201,6 +205,8 @@ pub struct ApiError {
         crate::control_plane::CreatedProjectResponse,
         crate::control_plane::CreateEnvironmentRequest,
         crate::control_plane::EnvironmentResponse,
+        crate::control_plane::CreateRouteRequest,
+        crate::control_plane::RouteResponse,
         crate::control_plane::CreateTokenRequest,
         crate::control_plane::CreatedTokenResponse,
         crate::control_plane::TokenResponse
@@ -273,6 +279,14 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/environments",
             post(create_environment).get(list_environments),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/environments/{environment_id}/routes",
+            post(create_route).get(list_routes),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/disable",
+            post(disable_route),
         )
         .route(
             "/v1/control/projects/{project_id}/tokens",

@@ -38,6 +38,24 @@ curl -sS -X POST "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments" \
 
 List environments with `GET /v1/control/projects/$PROJECT_ID/environments`.
 
+## Register an RPC route
+
+Register the customer-controlled HTTPS Solana RPC URL under the environment.
+Landfall stores it for the observer worker but never returns it through a list
+endpoint or embeds it in diagnostics/exports. URLs with embedded credentials are
+rejected; use an RPC provider URL without userinfo.
+
+```sh
+curl -sS -X POST "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments/$ENVIRONMENT_ID/routes" \
+  -H "Authorization: Bearer $LANDFALL_PROJECT_ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"name":"mainnet-primary","endpoint":"https://api.mainnet-beta.solana.com"}'
+```
+
+List safe metadata with `GET .../routes`. To prevent new observation work from
+using a route, call `POST .../routes/$ROUTE_ID/disable`. Disabling is immediate
+for future target lookup; it does not delete prior evidence.
+
 ## Create and revoke service tokens
 
 Issue the smallest scope set needed by an integration:
