@@ -57,6 +57,7 @@ pub mod fault_injection;
 pub mod fuzz_guards;
 pub mod job_recovery;
 pub mod log_safety;
+pub mod metrics_endpoint;
 pub mod metrics_summary;
 pub mod observer_benchmark;
 pub mod pagination;
@@ -307,6 +308,7 @@ pub fn router(state: AppState) -> Router {
         .merge(control)
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
+        .route("/metrics", axum::routing::get(metrics))
         .route("/openapi.json", axum::routing::get(openapi))
         .route("/health/event", axum::routing::post(health_event))
         .layer(RequestBodyLimitLayer::new(MAX_DECOMPRESSED_BODY_BYTES))
@@ -501,6 +503,27 @@ async fn readiness(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         StatusCode::SERVICE_UNAVAILABLE
     };
     (status, Json(serde_json::json!({ "ready": state.ready })))
+}
+
+async fn metrics(State(state): State<Arc<AppState>>) -> axum::response::Response {
+    let durable = match state.pool.as_ref() {
+        Some(pool) => metrics_endpoint::load(pool).await.ok(),
+        None => None,
+    };
+    let status = if durable.is_some() {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (
+        status,
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        metrics_endpoint::render(state.ready, durable),
+    )
+        .into_response()
 }
 
 async fn trace_detail(
@@ -1263,6 +1286,19 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn metrics_report_database_unavailability_without_authentication() {
+        let response = router(super::AppState::default())
+            .oneshot(Request::get("/metrics").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(
+            response.headers().get("content-type").unwrap(),
+            "text/plain; version=0.0.4; charset=utf-8"
+        );
     }
 
     #[tokio::test]
