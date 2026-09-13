@@ -36,6 +36,7 @@
     "generate:protocol": "node scripts/generate-protocol-ts.mjs",
     "test": "pnpm --recursive --if-present test",
     "test:integration": "pnpm --recursive --if-present test:integration",
+    "test:x402-testnet": "node scripts/x402-testnet-e2e.mjs",
     "typecheck": "tsc -b --pretty false"
   },
   "devDependencies": {
