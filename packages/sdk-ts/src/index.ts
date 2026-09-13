@@ -10,6 +10,7 @@ export * from "./batching.js";
 export * from "./transport.js";
 export * from "./flush.js";
 export * from "./solana-boundary.js";
+export * from "./x402.js";
 import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
 import { BatchAssembler, type OutboundBatch } from "./batching.js";
 import { EventBuffer } from "./buffer.js";
