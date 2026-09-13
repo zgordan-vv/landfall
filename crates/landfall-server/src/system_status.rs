@@ -40,14 +40,14 @@ pub enum Status {
     Degraded,
 }
 
-/// Authorizes and builds detailed status. Requires the `system:read` scope.
+/// Authorizes and builds detailed status. Requires the `admin` scope.
 pub fn authenticated_status(
     authorization: Option<&str>,
     records: &[ApiTokenRecord],
     now: OffsetDateTime,
     snapshot: SystemStatusSnapshot,
 ) -> Result<DetailedSystemStatus, AuthError> {
-    authorize(authorization, records, "system:read", now)?;
+    authorize(authorization, records, "admin", now)?;
     let degraded = !snapshot.database_ready || snapshot.unhealthy_observer_routes > 0;
     Ok(DetailedSystemStatus {
         status: if degraded {
@@ -87,8 +87,9 @@ mod tests {
     #[test]
     fn requires_admin_scope_and_marks_degraded_dependencies() {
         let token = ApiTokenRecord {
+            project_id: uuid::Uuid::nil(),
             token_hash: hash_token("admin"),
-            scopes: vec!["system:read".into()],
+            scopes: vec!["admin".into()],
             expires_at: None,
             revoked_at: None,
         };

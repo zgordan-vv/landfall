@@ -20,7 +20,7 @@ pub use projection_metrics::{ProjectionMetrics, ProjectionMetricsSnapshot};
 
 use axum::{
     Json, Router,
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::IntoResponse,
@@ -72,6 +72,7 @@ pub mod system_status;
 pub mod trace_detail;
 pub mod trace_filters;
 pub mod workload;
+use crate::auth::AuthenticatedToken;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
 use utoipa::{OpenApi, ToSchema};
@@ -229,7 +230,8 @@ fn contains_prohibited_key(value: &Value) -> bool {
 }
 
 pub fn router(state: AppState) -> Router {
-    Router::new()
+    let state = Arc::new(state);
+    let api = Router::new()
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces/{trace_id}/diagnostics", get(trace_diagnostics))
@@ -241,6 +243,12 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/overview", get(overview))
         .route("/v1/system/status", get(system_status))
         .route("/v1/comparison", get(comparison))
+        .route_layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            authenticate_api,
+        ));
+    Router::new()
+        .merge(api)
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/openapi.json", axum::routing::get(openapi))
@@ -251,7 +259,60 @@ pub fn router(state: AppState) -> Router {
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
         .layer(middleware::from_fn(security_headers_and_cors))
-        .with_state(Arc::new(state))
+        .with_state(state)
+}
+
+fn required_scope(path: &str) -> &'static str {
+    if path == "/v1/ingest" {
+        "ingest:write"
+    } else if path == "/v1/system/status" {
+        "admin"
+    } else if path.contains("diagnostics") || path.contains("recommendations") {
+        "diagnostics:read"
+    } else {
+        "traces:read"
+    }
+}
+
+async fn authenticate_api(
+    State(state): State<Arc<AppState>>,
+    mut request: Request<axum::body::Body>,
+    next: Next,
+) -> axum::response::Response {
+    let Some(pool) = state.pool.as_ref() else {
+        return next.run(request).await;
+    };
+    match auth::authenticate_database(
+        pool,
+        request
+            .headers()
+            .get("authorization")
+            .and_then(|value| value.to_str().ok()),
+        required_scope(request.uri().path()),
+    )
+    .await
+    {
+        Ok(principal) => {
+            request.extensions_mut().insert(principal);
+            next.run(request).await
+        }
+        Err(auth::AuthError::MissingScope) => (
+            StatusCode::FORBIDDEN,
+            Json(ApiError {
+                code: "insufficient_scope",
+                message: "token does not grant this operation",
+            }),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiError {
+                code: "unauthorized",
+                message: "valid bearer authentication is required",
+            }),
+        )
+            .into_response(),
+    }
 }
 
 async fn security_headers_and_cors(
@@ -386,6 +447,7 @@ async fn readiness(State(state): State<Arc<AppState>>) -> impl IntoResponse {
 
 async fn trace_detail(
     State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
     Path(trace_id): Path<String>,
 ) -> impl IntoResponse {
     let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
@@ -408,8 +470,8 @@ async fn trace_detail(
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, application_state, observation_state, updated_at FROM reporting.traces WHERE trace_id = $1")
-        .bind(trace_uuid).fetch_optional(pool).await;
+    let row = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, application_state, observation_state, updated_at FROM reporting.traces WHERE trace_id = $1 AND ($2::uuid IS NULL OR project_id = $2)")
+        .bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_optional(pool).await;
     match row {
         Ok(Some(row)) => (StatusCode::OK, Json(serde_json::json!({
             "trace_id": row.get::<Uuid, _>("trace_id").to_string(),
@@ -427,6 +489,7 @@ async fn trace_detail(
 
 async fn trace_diagnostics(
     State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
     Path(trace_id): Path<String>,
 ) -> impl IntoResponse {
     let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
@@ -449,20 +512,21 @@ async fn trace_diagnostics(
         )
             .into_response();
     };
-    let rows = sqlx::query("SELECT diagnostic_id, rule_id, claim_key, certainty FROM reporting.diagnostics WHERE trace_id = $1 ORDER BY created_at DESC").bind(trace_uuid).fetch_all(pool).await;
+    let rows = sqlx::query("SELECT d.diagnostic_id, d.rule_id, d.claim_key, d.certainty FROM reporting.diagnostics d JOIN reporting.traces t ON t.trace_id = d.trace_id WHERE d.trace_id = $1 AND ($2::uuid IS NULL OR t.project_id = $2) ORDER BY d.created_at DESC").bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
     match rows { Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"diagnostic_id": row.get::<Uuid, _>("diagnostic_id").to_string(), "rule_id": row.get::<String, _>("rule_id"), "claim_key": row.get::<String, _>("claim_key"), "certainty": row.get::<String, _>("certainty")})).collect::<Vec<_>>())).into_response(), Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "diagnostics query failed" })).into_response() }
 }
 
 async fn trace_list(
     State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
     Query(query): Query<TraceListQuery>,
 ) -> impl IntoResponse {
     let Some(pool) = state.pool.as_ref() else {
         return (StatusCode::OK, Json(Vec::<TraceListItem>::new())).into_response();
     };
     let limit = query.limit.unwrap_or(50).clamp(1, 100) as i64;
-    let rows = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, updated_at FROM reporting.traces ORDER BY updated_at DESC, trace_id DESC LIMIT $1")
-        .bind(limit).fetch_all(pool).await;
+    let rows = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, updated_at FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) ORDER BY updated_at DESC, trace_id DESC LIMIT $2")
+        .bind(principal.as_ref().map(|Extension(value)| value.project_id)).bind(limit).fetch_all(pool).await;
     match rows {
         Ok(rows) => (
             StatusCode::OK,
@@ -493,7 +557,10 @@ async fn trace_list(
     }
 }
 
-async fn overview(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn overview(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+) -> impl IntoResponse {
     let Some(pool) = state.pool.as_ref() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -504,8 +571,8 @@ async fn overview(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT COUNT(*)::bigint AS total_traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed_traces, COUNT(*) FILTER (WHERE execution_state = 'success')::bigint AS successful_executions, COUNT(*) FILTER (WHERE execution_state = 'unknown')::bigint AS unknown_executions, COALESCE(MAX(updated_at), now()) AS updated_at FROM reporting.traces WHERE updated_at >= now() - interval '24 hours'")
-        .fetch_one(pool).await;
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS total_traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed_traces, COUNT(*) FILTER (WHERE execution_state = 'success')::bigint AS successful_executions, COUNT(*) FILTER (WHERE execution_state = 'unknown')::bigint AS unknown_executions, COALESCE(MAX(updated_at), now()) AS updated_at FROM reporting.traces WHERE updated_at >= now() - interval '24 hours' AND ($1::uuid IS NULL OR project_id = $1)")
+        .bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_one(pool).await;
     match row {
         Ok(row) => (
             StatusCode::OK,
@@ -533,7 +600,10 @@ async fn overview(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     }
 }
 
-async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn system_status(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+) -> impl IntoResponse {
     let Some(pool) = state.pool.as_ref() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -544,8 +614,9 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status IN ('ready', 'running')) AS queued_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'dead_letter') AS dead_letter_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h")
-        .fetch_one(pool).await;
+    let project_id = principal.as_ref().map(|Extension(value)| value.project_id);
+    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects WHERE project_id = $1) AS projects, (SELECT COUNT(*)::bigint FROM control.environments WHERE project_id = $1) AS environments, (SELECT COUNT(*)::bigint FROM control.routes r JOIN control.environments e ON e.environment_id = r.environment_id WHERE r.enabled AND e.project_id = $1) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs j JOIN reporting.traces t ON t.trace_id = (j.payload ->> 'trace_id')::uuid WHERE j.status IN ('ready', 'running') AND t.project_id = $1) AS queued_jobs, (SELECT COUNT(*)::bigint FROM work.jobs j JOIN reporting.traces t ON t.trace_id = (j.payload ->> 'trace_id')::uuid WHERE j.status = 'dead_letter' AND t.project_id = $1) AS dead_letter_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours' AND project_id = $1) AS events_last_24h")
+        .bind(project_id).fetch_one(pool).await;
     match row {
         Ok(row) => {
             let projects = row.get::<i64, _>("projects");
@@ -587,6 +658,7 @@ async fn system_status(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 
 async fn trace_recommendations(
     State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
     Path(trace_id): Path<String>,
 ) -> impl IntoResponse {
     let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
@@ -609,13 +681,16 @@ async fn trace_recommendations(
         )
             .into_response();
     };
-    match sqlx::query("SELECT recommendation_id, recommendation_key, rule_set_version FROM reporting.recommendations WHERE trace_id = $1 ORDER BY created_at DESC").bind(trace_uuid).fetch_all(pool).await {
+    match sqlx::query("SELECT r.recommendation_id, r.recommendation_key, r.rule_set_version FROM reporting.recommendations r JOIN reporting.traces t ON t.trace_id = r.trace_id WHERE r.trace_id = $1 AND ($2::uuid IS NULL OR t.project_id = $2) ORDER BY r.created_at DESC").bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await {
         Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"recommendation_id": row.get::<Uuid, _>("recommendation_id").to_string(), "recommendation_key": row.get::<String, _>("recommendation_key"), "rule_set_version": row.get::<String, _>("rule_set_version")})).collect::<Vec<_>>())).into_response(),
         Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "recommendations query failed" })).into_response(),
     }
 }
 
-async fn comparison(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn comparison(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+) -> impl IntoResponse {
     let Some(pool) = state.pool.as_ref() else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -626,7 +701,7 @@ async fn comparison(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         )
             .into_response();
     };
-    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed FROM reporting.traces GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").fetch_all(pool).await;
+    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
     match rows {
         Ok(rows) if rows.len() == 2 => (
             StatusCode::OK,
@@ -735,6 +810,7 @@ async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> 
 )]
 async fn ingest(
     State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
     Json(request): Json<IngestRequest>,
 ) -> impl IntoResponse {
     if request.events.is_empty() {
@@ -787,7 +863,16 @@ async fn ingest(
     let batch_id = match request.batch_id {
         Some(value) => match Uuid::parse_str(&value) {
             Ok(value) => value,
-            Err(_) => return (StatusCode::BAD_REQUEST, Json(ApiError { code: "invalid_batch_id", message: "batch_id must be a UUID" })).into_response(),
+            Err(_) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiError {
+                        code: "invalid_batch_id",
+                        message: "batch_id must be a UUID",
+                    }),
+                )
+                    .into_response();
+            }
         },
         None => Uuid::now_v7(),
     };
@@ -820,6 +905,19 @@ async fn ingest(
             )
                 .into_response();
         };
+        if principal
+            .as_ref()
+            .is_some_and(|Extension(token)| token.project_id != project_id)
+        {
+            return (
+                StatusCode::FORBIDDEN,
+                Json(ApiError {
+                    code: "project_forbidden",
+                    message: "token cannot ingest for this project",
+                }),
+            )
+                .into_response();
+        }
         let Some(environment_id) = parse_uuid("environment_id") else {
             return (
                 StatusCode::BAD_REQUEST,
@@ -1076,6 +1174,17 @@ mod tests {
             Some("example.test")
         ));
         assert!(!super::cors_allows_origin("null", Some("example.test")));
+    }
+
+    #[test]
+    fn route_scope_classification_is_explicit() {
+        assert_eq!(super::required_scope("/v1/ingest"), "ingest:write");
+        assert_eq!(super::required_scope("/v1/traces"), "traces:read");
+        assert_eq!(
+            super::required_scope("/v1/traces/id/diagnostics"),
+            "diagnostics:read"
+        );
+        assert_eq!(super::required_scope("/v1/system/status"), "admin");
     }
 
     #[tokio::test]

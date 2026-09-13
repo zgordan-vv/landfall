@@ -1,14 +1,24 @@
 //! Hash-only bearer-token authentication policy.
 
 use sha2::{Digest, Sha256};
+use sqlx::{PgPool, Row};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ApiTokenRecord {
+    pub project_id: Uuid,
     pub token_hash: [u8; 32],
     pub scopes: Vec<String>,
     pub expires_at: Option<OffsetDateTime>,
     pub revoked_at: Option<OffsetDateTime>,
+}
+
+/// Authenticated identity attached to every production API request.
+#[derive(Debug, Clone)]
+pub struct AuthenticatedToken {
+    pub project_id: Uuid,
+    pub scopes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -56,6 +66,45 @@ pub fn authorize<'a>(
     Ok(record)
 }
 
+/// Loads hash-only credentials and verifies a request without exposing token
+/// existence through the public HTTP response.
+pub async fn authenticate_database(
+    pool: &PgPool,
+    authorization: Option<&str>,
+    required_scope: &str,
+) -> Result<AuthenticatedToken, AuthError> {
+    let rows = sqlx::query(
+        "SELECT project_id, token_hash, scopes, expires_at, revoked_at FROM control.api_tokens",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| AuthError::UnknownToken)?;
+    let records = rows
+        .into_iter()
+        .filter_map(|row| {
+            let bytes: Vec<u8> = row.get("token_hash");
+            let token_hash: [u8; 32] = bytes.try_into().ok()?;
+            Some(ApiTokenRecord {
+                project_id: row.get("project_id"),
+                token_hash,
+                scopes: row.get("scopes"),
+                expires_at: row.get("expires_at"),
+                revoked_at: row.get("revoked_at"),
+            })
+        })
+        .collect::<Vec<_>>();
+    let record = authorize(
+        authorization,
+        &records,
+        required_scope,
+        OffsetDateTime::now_utc(),
+    )?;
+    Ok(AuthenticatedToken {
+        project_id: record.project_id,
+        scopes: record.scopes.clone(),
+    })
+}
+
 fn constant_time_eq(left: &[u8; 32], right: &[u8; 32]) -> bool {
     left.iter()
         .zip(right)
@@ -69,6 +118,7 @@ mod tests {
 
     fn record(token: &str) -> ApiTokenRecord {
         ApiTokenRecord {
+            project_id: Uuid::nil(),
             token_hash: hash_token(token),
             scopes: vec!["ingest:write".into()],
             expires_at: None,
