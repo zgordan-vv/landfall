@@ -15,10 +15,18 @@ pub struct DatabaseConfig {
 }
 
 impl DatabaseConfig {
-    /// Loads configuration from `DATABASE_URL` and optional `DB_MAX_CONNECTIONS`.
+    /// Loads configuration from `DATABASE_URL_FILE` (preferred) or `DATABASE_URL`.
     pub fn from_env() -> Result<Self, ConfigError> {
-        let database_url =
-            std::env::var("DATABASE_URL").map_err(|_| ConfigError::MissingDatabaseUrl)?;
+        let database_url = match std::env::var("DATABASE_URL_FILE") {
+            Ok(path) => std::fs::read_to_string(path)
+                .map_err(|_| ConfigError::MissingDatabaseUrl)?
+                .trim()
+                .to_owned(),
+            Err(_) => std::env::var("DATABASE_URL").map_err(|_| ConfigError::MissingDatabaseUrl)?,
+        };
+        if database_url.is_empty() {
+            return Err(ConfigError::MissingDatabaseUrl);
+        }
         let max_connections = std::env::var("DB_MAX_CONNECTIONS")
             .ok()
             .map(|value| value.parse())

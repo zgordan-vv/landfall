@@ -1,0 +1,31 @@
+# Production overlay. Start it with the production profile; do not use this
+# file with the repository's development .env.example.
+services:
+  # Prevent the development database service from being started by a
+  # production invocation of Compose.
+  postgres:
+    profiles: [development]
+
+  server:
+    environment:
+      DATABASE_URL:
+      DATABASE_URL_FILE: /run/secrets/database_url
+    depends_on: !override
+      postgres-production:
+        condition: service_healthy
+    secrets:
+      - database_url
+
+  observer-worker:
+    environment:
+      DATABASE_URL:
+      DATABASE_URL_FILE: /run/secrets/database_url
+    depends_on: !override
+      postgres-production:
+        condition: service_healthy
+    secrets:
+      - database_url
+
+secrets:
+  database_url:
+    file: ${LANDFALL_DATABASE_URL_FILE:?LANDFALL_DATABASE_URL_FILE is required}

@@ -12,6 +12,8 @@ const SENSITIVE_KEYS: &[&str] = &[
     "set_cookie",
     "rpc_url",
     "endpoint_url",
+    "endpoint",
+    "log_messages",
 ];
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -71,6 +73,13 @@ mod tests {
         redact_export(&mut value);
         assert_eq!(value["trace"]["rpc_url"], "[redacted]");
         assert_eq!(value["authorization"], "[redacted]");
+        assert_eq!(scan_export(&value), SecretScanResult::Clean);
+    }
+
+    #[test]
+    fn observer_and_diagnostic_payloads_cannot_retain_rpc_or_log_content() {
+        let mut value = serde_json::json!({"observer": {"endpoint": "https://user:secret@rpc.example", "log_messages": ["private detail"]}, "diagnostic": {"authorization": "Bearer canary"}});
+        redact_export(&mut value);
         assert_eq!(scan_export(&value), SecretScanResult::Clean);
     }
 }
