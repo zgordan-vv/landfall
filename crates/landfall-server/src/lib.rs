@@ -101,6 +101,8 @@ pub struct AppState {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct IngestRequest {
+    /// Optional stable client batch identity used to make transport retries idempotent.
+    pub batch_id: Option<String>,
     pub events: Vec<Value>,
 }
 
@@ -777,7 +779,13 @@ async fn ingest(
     let Some(pool) = state.pool.as_ref() else {
         return ingest_response(request.events.len(), 0);
     };
-    let batch_id = Uuid::now_v7();
+    let batch_id = match request.batch_id {
+        Some(value) => match Uuid::parse_str(&value) {
+            Ok(value) => value,
+            Err(_) => return (StatusCode::BAD_REQUEST, Json(ApiError { code: "invalid_batch_id", message: "batch_id must be a UUID" })).into_response(),
+        },
+        None => Uuid::now_v7(),
+    };
     let mut durable = Vec::with_capacity(request.events.len());
     for event in request.events {
         let object = event.as_object().expect("validated event object");

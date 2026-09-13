@@ -1,4 +1,4 @@
-import type { TraceId } from "@landfall/protocol";
+import type { TraceId, WireEvent } from "@landfall/protocol";
 import { HealthCounters, type HealthChangeCallback, type SdkHealth } from "./diagnostics.js";
 export * from "./diagnostics.js";
 export * from "./builders.js";
@@ -11,6 +11,9 @@ export * from "./transport.js";
 export * from "./flush.js";
 export * from "./solana-boundary.js";
 import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
+import { BatchAssembler, type OutboundBatch } from "./batching.js";
+import { EventBuffer } from "./buffer.js";
+import { createHttpBatchTransport, sendWithRetry, type FetchLike, type RetryOptions } from "./transport.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;
@@ -18,6 +21,9 @@ export interface SdkOptions {
   readonly onHealthChange?: HealthChangeCallback;
   readonly maxBatchEvents?: number;
   readonly maxBufferEvents?: number;
+  /** Injectable only for tests or runtimes that wrap the standard Fetch API. */
+  readonly fetch?: FetchLike;
+  readonly retry?: RetryOptions;
 }
 
 export interface SdkConfig {
@@ -58,7 +64,8 @@ export function createBusinessActionContext(businessActionId: string, name?: str
 export interface TraceContext {
   readonly traceId: TraceId;
   readonly businessAction?: BusinessActionContext;
-  emit(event: unknown): void;
+  /** Captures a complete protocol event without blocking the customer operation. */
+  emit(event: WireEvent): boolean;
 }
 
 /** Minimal non-blocking instrumentation facade. Telemetry failures are reported, never thrown. */
@@ -66,21 +73,37 @@ export class LandfallSdk {
   readonly #options: SdkOptions;
   readonly #config: SdkConfig;
   readonly #health: HealthCounters;
+  readonly #buffer: EventBuffer<WireEvent>;
+  readonly #assembler: BatchAssembler<WireEvent>;
+  readonly #transport;
+  readonly #retry: RetryOptions;
+  #inFlight: OutboundBatch<WireEvent> | undefined;
 
   constructor(options: SdkOptions) {
     this.#config = validateConfig(options);
     this.#options = options;
     this.#health = new HealthCounters(options.onHealthChange);
+    this.#buffer = new EventBuffer<WireEvent>(this.#config.maxBufferEvents);
+    this.#assembler = new BatchAssembler<WireEvent>(this.#config.maxBatchEvents);
+    const runtimeFetch = (globalThis as unknown as { fetch?: FetchLike }).fetch;
+    const fetcher = options.fetch ?? runtimeFetch?.bind(globalThis);
+    if (fetcher === undefined) throw new Error("Fetch API is required to send telemetry");
+    this.#transport = createHttpBatchTransport(this.#config.collectorUrl, fetcher);
+    this.#retry = options.retry ?? {};
   }
 
   get config(): SdkConfig { return this.#config; }
   get health(): SdkHealth { return this.#health.snapshot; }
 
+  get bufferedEventCount(): number { return this.#buffer.size + (this.#inFlight?.events.length ?? 0); }
+
   recordDroppedEvents(count = 1): void { this.#health.recordDropped(count); }
   recordTransportFailure(count = 1): void { this.#health.recordTransportFailure(count); }
 
-  async flush(flushOperation: () => Promise<void>, options: FlushOptions = {}): Promise<FlushResult> {
-    const result = await boundedFlush(flushOperation, options);
+  /** Delivers buffered telemetry. An optional operation is retained for backward compatibility. */
+  async flush(flushOperation?: () => Promise<void>, options: FlushOptions = {}): Promise<FlushResult> {
+    const operation = flushOperation ?? (() => this.#flushBuffered());
+    const result = await boundedFlush(operation, options);
     if (result.status === "failed") {
       this.recordTransportFailure();
       this.reportTelemetryError({ code: "transport", message: "shutdown flush failed", cause: result.error });
@@ -91,10 +114,7 @@ export class LandfallSdk {
   startTrace(traceId: TraceId, businessAction?: BusinessActionContext): TraceContext {
     const context: TraceContext = {
       traceId,
-      emit: (event: unknown): void => {
-        void event;
-        // Transport/buffering is intentionally deferred to later SDK tasks.
-      },
+      emit: (event: WireEvent): boolean => this.capture(event, traceId),
     };
     if (businessAction !== undefined) return { ...context, businessAction };
     return context;
@@ -102,5 +122,45 @@ export class LandfallSdk {
 
   reportTelemetryError(error: TelemetryError): void {
     this.#options.onTelemetryError?.(error);
+  }
+
+  /** Queues one event. It never throws into the customer transaction path. */
+  capture(event: WireEvent, expectedTraceId?: TraceId): boolean {
+    if (expectedTraceId !== undefined && event.trace_id !== expectedTraceId) {
+      this.reportTelemetryError({ code: "validation", message: "event trace_id does not match its trace context" });
+      return false;
+    }
+    if (!this.#buffer.push(event)) {
+      this.recordDroppedEvents();
+      this.reportTelemetryError({ code: "buffer_overflow", message: "telemetry buffer is full" });
+      return false;
+    }
+    return true;
+  }
+
+  async #flushBuffered(): Promise<void> {
+    const batch = this.#inFlight ?? this.#assembler.assemble(this.#buffer);
+    if (batch === undefined) return;
+    this.#inFlight = batch;
+    let response;
+    try {
+      response = await sendWithRetry(batch, this.#transport, this.#retry);
+    } catch (cause) {
+      this.#restoreInFlight();
+      throw cause;
+    }
+    if (response.status >= 200 && response.status < 300) {
+      this.#inFlight = undefined;
+      return;
+    }
+    this.#restoreInFlight();
+    throw new Error(`collector rejected telemetry batch with HTTP ${response.status}`);
+  }
+
+  #restoreInFlight(): void {
+    const batch = this.#inFlight;
+    if (batch === undefined) return;
+    this.#buffer.restoreFront(batch.events);
+    this.#inFlight = undefined;
   }
 }

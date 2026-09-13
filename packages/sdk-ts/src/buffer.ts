@@ -23,4 +23,12 @@ export class EventBuffer<T> {
     if (!Number.isInteger(limit) || limit < 1) throw new Error("drain limit must be a positive integer");
     return this.#items.splice(0, limit);
   }
+
+  /** Restores an unsent batch ahead of events captured while it was in flight. */
+  restoreFront(items: readonly T[]): void {
+    if (items.length + this.#items.length > this.#capacity) {
+      throw new Error("restored items exceed buffer capacity");
+    }
+    this.#items.unshift(...items);
+  }
 }

@@ -32,7 +32,7 @@ pub async fn ingest_atomically(
     events: &[IngestEvent],
 ) -> Result<IngestOutcome, sqlx::Error> {
     let mut tx: Transaction<'_, Postgres> = pool.begin().await?;
-    sqlx::query("INSERT INTO telemetry.ingest_batches (batch_id, event_count) VALUES ($1, $2)")
+    sqlx::query("INSERT INTO telemetry.ingest_batches (batch_id, event_count) VALUES ($1, $2) ON CONFLICT (batch_id) DO NOTHING")
         .bind(batch_id)
         .bind(events.len() as i32)
         .execute(&mut *tx)

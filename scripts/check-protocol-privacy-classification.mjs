@@ -22,14 +22,14 @@ function assertExactFields(scope, schemaProperties, classifications) {
   );
 }
 
-const registry = await readJson("docs/event-privacy-classification.json");
+const registry = await readJson("docs/security/event-privacy-classification.json");
 const protocolManifest = await readJson("schemas/events/v1/manifest.json");
 
 assert.equal(registry.schema_version, "1.0");
 assert.match(registry.classification_version, /^\d+\.\d+$/u);
 assert.deepEqual(protocolManifest.privacy_classification, {
   version: registry.classification_version,
-  registry: "docs/event-privacy-classification.json",
+  registry: "docs/security/event-privacy-classification.json",
 });
 
 const allowedSensitivities = new Set(["structural", "low", "moderate", "high"]);

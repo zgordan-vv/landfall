@@ -37,7 +37,7 @@
   },
   "privacy_classification": {
     "version": "1.0",
-    "registry": "docs/event-privacy-classification.json"
+    "registry": "docs/security/event-privacy-classification.json"
   },
   "typescript_generation": {
     "generator": "json-schema-to-typescript",
