@@ -4,6 +4,11 @@
 pub mod auth;
 pub mod workers;
 pub use workers::WorkerSupervisor;
+pub mod observation_worker;
+pub use observation_worker::{
+    ObservationWorkerConfig, ObservationWorkerMetrics, ObservationWorkerMetricsSnapshot,
+    run_observation_worker,
+};
 pub mod projector_worker;
 pub use projector_worker::{ProjectTraceJob, project_trace_queue, run_project_trace_worker};
 pub mod alias_resolver;

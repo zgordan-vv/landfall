@@ -51,6 +51,25 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
 
+  observer-worker:
+    image: landfall-server:local
+    command: ["worker"]
+    environment:
+      DATABASE_URL: postgres://${LANDFALL_POSTGRES_USER}:${LANDFALL_POSTGRES_PASSWORD}@postgres:5432/${LANDFALL_POSTGRES_DB}
+      LANDFALL_OBSERVER_CONCURRENCY: ${LANDFALL_OBSERVER_CONCURRENCY:-4}
+      LANDFALL_OBSERVER_POLL_INTERVAL_MS: ${LANDFALL_OBSERVER_POLL_INTERVAL_MS:-500}
+      LANDFALL_OBSERVER_RETRY_DELAY_SECONDS: ${LANDFALL_OBSERVER_RETRY_DELAY_SECONDS:-5}
+      LANDFALL_OBSERVER_LEASE_SECONDS: ${LANDFALL_OBSERVER_LEASE_SECONDS:-60}
+      LANDFALL_OBSERVER_RECOVERY_INTERVAL_SECONDS: ${LANDFALL_OBSERVER_RECOVERY_INTERVAL_SECONDS:-30}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data
+      - egress
+    restart: unless-stopped
+    stop_grace_period: 30s
+
   postgres:
     <<: *postgres-common
     volumes:

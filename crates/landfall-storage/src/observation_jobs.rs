@@ -15,6 +15,15 @@ pub struct ClaimedObservationJob {
     pub attempts: i32,
 }
 
+/// Durable result of a failed observation attempt.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ObservationRetryOutcome {
+    /// The job remains eligible for a later attempt.
+    RetryScheduled,
+    /// The retry budget was exhausted and the job requires operator attention.
+    DeadLettered,
+}
+
 /// Enqueues one deduplicated observation job only for an eligible trace.
 pub async fn enqueue_observation_if_eligible(
     pool: &PgPool,
@@ -71,9 +80,17 @@ pub async fn retry_observation_job(
     job_id: Uuid,
     error: &str,
     delay_seconds: i64,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE work.jobs SET status = CASE WHEN attempts >= 10 THEN 'dead_letter' ELSE 'ready' END, locked_by = NULL, locked_until = NULL, last_error = $2, available_at = CASE WHEN attempts >= 10 THEN available_at ELSE now() + make_interval(secs => $3) END WHERE job_id = $1 AND status = 'running'").bind(job_id).bind(error).bind(delay_seconds as f64).execute(pool).await?;
-    Ok(())
+) -> Result<ObservationRetryOutcome, sqlx::Error> {
+    let outcome = sqlx::query_scalar::<_, String>("UPDATE work.jobs SET status = CASE WHEN attempts >= 10 THEN 'dead_letter' ELSE 'ready' END, locked_by = NULL, locked_until = NULL, last_error = $2, available_at = CASE WHEN attempts >= 10 THEN available_at ELSE now() + make_interval(secs => $3) END WHERE job_id = $1 AND status = 'running' RETURNING status")
+        .bind(job_id)
+        .bind(error)
+        .bind(delay_seconds as f64)
+        .fetch_optional(pool)
+        .await?;
+    Ok(match outcome.as_deref() {
+        Some("dead_letter") => ObservationRetryOutcome::DeadLettered,
+        _ => ObservationRetryOutcome::RetryScheduled,
+    })
 }
 
 /// Requeues observation jobs whose worker lease expired after a crash.
