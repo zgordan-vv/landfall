@@ -53,6 +53,25 @@ export interface X402PaidResourceResponse<Response> {
   readonly response: Response;
 }
 
+/** Minimal HTTP surface used only to resend the merchant request with its signed header. */
+export interface X402ResourceFetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+}
+
+export type X402ResourceFetch = (input: string, init: {
+  readonly method: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly body?: string;
+}) => Promise<X402ResourceFetchResponse>;
+
+export interface X402ResourceRequest {
+  readonly url: string;
+  readonly method?: string;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly body?: string;
+}
+
 export interface X402SettlementRecorder {
   recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void>;
 }
@@ -87,6 +106,32 @@ export function createHttpX402SettlementRecorder(policyServiceUrl: string, beare
     async recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void> {
       const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ audit_id: input.auditId, outcome: input.outcome, reason_code: input.reasonCode, settlement_reference: input.settlementReference }) });
       if (response.status !== 200) throw new Error(`x402 settlement service returned ${response.status}`);
+    },
+  });
+}
+
+/**
+ * Creates a direct merchant client for the second x402 request. The signer
+ * output is sent exclusively as `PAYMENT-SIGNATURE` to `request.url`.
+ */
+export function createHttpX402ResourceClient(
+  request: X402ResourceRequest,
+  fetcher: X402ResourceFetch,
+): X402PaidResourceClient<X402ResourceFetchResponse> {
+  if (!isHttpsUrl(request.url) || !validHttpMethod(request.method) || !validRequestHeaders(request.headers) || (request.body !== undefined && request.body.length > 1_000_000)) {
+    throw new Error("x402 merchant request is invalid");
+  }
+  const method = request.method ?? "GET";
+  const headers = request.headers ?? {};
+  return Object.freeze({
+    async sendPaymentSignature(paymentSignature: string): Promise<X402PaidResourceResponse<X402ResourceFetchResponse>> {
+      if (!validText(paymentSignature, 16_384)) throw new Error("external x402 signer returned an invalid payment signature");
+      const response = await fetcher(request.url, {
+        method,
+        headers: Object.freeze({ ...headers, "PAYMENT-SIGNATURE": paymentSignature }),
+        ...(request.body === undefined ? {} : { body: request.body }),
+      });
+      return Object.freeze({ ok: response.ok, status: response.status, response });
     },
   });
 }
@@ -158,6 +203,12 @@ function normalizeHttpsOrigin(resourceUrl: string): string {
   const host = match?.[1];
   if (host === undefined || host === "") throw new Error("x402 resource must use a credential-free HTTPS origin");
   return `https://${host.toLowerCase()}`;
+}
+
+function isHttpsUrl(value: string): boolean { return /^https:\/\/[^/?#@\s]+(?:[/?#].*)?$/i.test(value); }
+function validHttpMethod(value: string | undefined): boolean { return value === undefined || /^(GET|POST|PUT|PATCH|DELETE)$/i.test(value); }
+function validRequestHeaders(headers: Readonly<Record<string, string>> | undefined): boolean {
+  return headers === undefined || Object.entries(headers).every(([name, value]) => /^[A-Za-z0-9-]{1,64}$/.test(name) && typeof value === "string" && value.length <= 8_192 && name.toLowerCase() !== "payment-signature");
 }
 
 function decodeBase64UrlUtf8(value: string): string {

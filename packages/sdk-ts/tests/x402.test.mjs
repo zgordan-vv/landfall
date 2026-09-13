@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createHttpX402Authorizer, createHttpX402SettlementRecorder, executeAuthorizedX402Payment, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
+import { createHttpX402Authorizer, createHttpX402ResourceClient, createHttpX402SettlementRecorder, executeAuthorizedX402Payment, parsePaymentRequiredHeader, preAuthorizeX402Requirement } from "../dist/index.js";
 
 const policyId = "0198ef00-0000-7000-8000-000000000401";
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -104,4 +104,19 @@ test("settlement reporter persists only outcome metadata", async () => {
   await recorder.recordSettlement({ auditId: "0198ef00-0000-7000-8000-000000000402", outcome: "settled", reasonCode: "resource_response_received", settlementReference: "receipt" });
   assert.equal(call.url, "https://policy.example/v1/x402/settlements");
   assert.equal(JSON.stringify(call.init.body).includes("paymentSignature"), false);
+});
+
+test("HTTP resource adapter sends PAYMENT-SIGNATURE only to the merchant", async () => {
+  let call;
+  const client = createHttpX402ResourceClient({ url: "https://merchant.example/data", method: "POST", headers: { accept: "application/json" }, body: "request-body" }, async (url, init) => {
+    call = { url, init };
+    return { ok: true, status: 200 };
+  });
+  const result = await client.sendPaymentSignature("signed-payment-payload");
+  assert.equal(result.ok, true);
+  assert.equal(call.url, "https://merchant.example/data");
+  assert.equal(call.init.headers["PAYMENT-SIGNATURE"], "signed-payment-payload");
+  assert.equal(call.init.body, "request-body");
+  assert.throws(() => createHttpX402ResourceClient({ url: "http://merchant.example" }, async () => ({ ok: true, status: 200 })));
+  assert.throws(() => createHttpX402ResourceClient({ url: "https://merchant.example", headers: { "PAYMENT-SIGNATURE": "caller-must-not-set" } }, async () => ({ ok: true, status: 200 })));
 });
