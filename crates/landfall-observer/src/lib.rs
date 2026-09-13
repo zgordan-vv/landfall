@@ -544,12 +544,14 @@ pub fn status_observed_event(
     observer_source_id: &str,
     event_id: &str,
     occurred_at: &str,
+    signature: &str,
     observation: &NormalizedSignatureObservation,
 ) -> serde_json::Value {
     let mut attributes = serde_json::json!({
         "observer_source_id": observer_source_id,
         "source_result": observation.source_result,
-        "duration_ns": "0"
+        "duration_ns": "0",
+        "signature": signature
     });
     if let Some(commitment) = &observation.commitment {
         attributes["commitment"] = serde_json::Value::String(commitment.clone());
@@ -558,6 +560,39 @@ pub fn status_observed_event(
         attributes["slot"] = serde_json::Value::String(slot.to_string());
     }
     serde_json::json!({"schema_version":"1.0","event_type":"solana.status.observed","event_id":event_id,"occurred_at":occurred_at,"project_id":project_id,"environment_id":environment_id,"trace_id":trace_id,"source":{"kind":"observer","name":"landfall-observer","version":"0.1.0"},"privacy_mode":"standard","privacy_policy_version":"1.0","redaction_version":"1.0","attributes":attributes})
+}
+
+/// Builds immutable execution evidence from a `getTransaction` response.
+pub fn execution_enriched_event(
+    project_id: &str,
+    environment_id: &str,
+    trace_id: &str,
+    observer_source_id: &str,
+    event_id: &str,
+    occurred_at: &str,
+    signature: &str,
+    commitment: &str,
+    execution: &NormalizedExecution,
+    block_time: Option<&str>,
+) -> serde_json::Value {
+    let mut attributes = serde_json::json!({
+        "observer_source_id": observer_source_id,
+        "signature": signature,
+        "slot": execution.slot,
+        "commitment": commitment,
+        "execution_result": if execution.execution_error { "failure" } else { "success" },
+        "logs_present": execution.logs_present,
+    });
+    if let Some(value) = block_time {
+        attributes["block_time"] = serde_json::Value::String(value.to_owned());
+    }
+    if let Some(value) = &execution.fee_lamports {
+        attributes["fee_lamports"] = serde_json::Value::String(value.clone());
+    }
+    if let Some(value) = &execution.compute_units_consumed {
+        attributes["compute_units_consumed"] = serde_json::Value::String(value.clone());
+    }
+    serde_json::json!({"schema_version":"1.0","event_type":"solana.execution.enriched","event_id":event_id,"occurred_at":occurred_at,"project_id":project_id,"environment_id":environment_id,"trace_id":trace_id,"source":{"kind":"observer","name":"landfall-observer","version":"0.1.0"},"privacy_mode":"standard","privacy_policy_version":"1.0","redaction_version":"1.0","attributes":attributes})
 }
 
 /// Maps a Solana RPC status to protocol-level observation fields.
@@ -583,7 +618,7 @@ pub fn normalize_signature_status(
 
 #[cfg(test)]
 mod observation_tests {
-    use super::{SignatureStatus, normalize_signature_status};
+    use super::{NormalizedExecution, SignatureStatus, execution_enriched_event, normalize_signature_status};
     #[test]
     fn absent_signature_is_not_found() {
         assert_eq!(normalize_signature_status(None).source_result, "not_found");
@@ -599,6 +634,14 @@ mod observation_tests {
         assert_eq!(result.source_result, "found");
         assert_eq!(result.slot, Some(42));
         assert_eq!(result.commitment.as_deref(), Some("confirmed"));
+    }
+
+    #[test]
+    fn execution_event_keeps_only_normalized_chain_evidence() {
+        let execution = NormalizedExecution { slot: "42".into(), block_time: None, fee_lamports: Some("5000".into()), compute_units_consumed: Some("900".into()), transaction_version: "legacy".into(), logs_present: true, execution_error: false };
+        let event = execution_enriched_event("0198ef00-0000-7000-8000-000000000100", "0198ef00-0000-7000-8000-000000000200", "0198ef00-0000-7000-8000-000000000300", "0198ef00-0000-7000-8000-000000000400", "0198ef00-0000-7000-8000-000000000401", "2026-09-13T20:00:00Z", "ziGvcqbBxmYap3jPvg45LtH252McotYHjRpDHyoZPpQQX5qRWsNUUK7QFxwmQ6A4AnCfCrbVqsrTGNbonuXvZ3m", "confirmed", &execution, None);
+        assert_eq!(event["attributes"]["execution_result"], "success");
+        assert!(event["attributes"].get("log_messages").is_none());
     }
 }
 
