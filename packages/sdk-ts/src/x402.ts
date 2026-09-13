@@ -29,6 +29,23 @@ export interface X402Authorizer {
   authorize(request: X402PreAuthorization): Promise<{ readonly decision: "approved" | "denied"; readonly reasonCode: string }>;
 }
 
+export interface X402AuthorizeFetchResponse { readonly status: number; json(): Promise<unknown>; }
+export type X402AuthorizeFetch = (input: string, init: { readonly method: "POST"; readonly headers: Readonly<Record<string, string>>; readonly body: string }) => Promise<X402AuthorizeFetchResponse>;
+
+/** Creates the HTTP client for Landfall's F3 pre-payment decision endpoint. */
+export function createHttpX402Authorizer(policyServiceUrl: string, bearerToken: string, fetcher: X402AuthorizeFetch): X402Authorizer {
+  const endpoint = `${policyServiceUrl.replace(/\/$/, "")}/v1/x402/authorize`;
+  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "") throw new Error("x402 policy service requires HTTPS and a bearer token");
+  return Object.freeze({
+    async authorize(request: X402PreAuthorization): Promise<{ readonly decision: "approved" | "denied"; readonly reasonCode: string }> {
+      const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ policy_id: request.policyId, agent_id: request.agentId, merchant_origin: request.merchantOrigin, network: request.network, asset: request.asset, amount_atomic: request.amountAtomic, idempotency_key: request.idempotencyKey }) });
+      const body = await response.json();
+      if (!isRecord(body) || (body["decision"] !== "approved" && body["decision"] !== "denied") || typeof body["reason_code"] !== "string") throw new Error(`x402 policy service returned an invalid response (${response.status})`);
+      return Object.freeze({ decision: body["decision"], reasonCode: body["reason_code"] });
+    },
+  });
+}
+
 /** Decodes and validates the standard base64 `PAYMENT-REQUIRED` HTTP header. */
 export function parsePaymentRequiredHeader(header: string): X402PaymentRequired {
   let decoded: unknown;
