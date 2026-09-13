@@ -26,7 +26,7 @@ use axum::{
     http::{HeaderValue, Request, StatusCode},
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use landfall_protocol::check_event_compatibility;
 use landfall_storage::{
@@ -77,8 +77,9 @@ pub mod trace_filters;
 pub mod workload;
 use crate::auth::AuthenticatedToken;
 use crate::control_plane::{
-    create_environment, create_project, create_route, create_token, disable_route,
-    list_environments, list_routes, list_tokens, revoke_token,
+    create_environment, create_project, create_route, create_token, create_x402_spend_policy,
+    disable_route, list_environments, list_routes, list_tokens, list_x402_spend_policy,
+    revoke_token, update_x402_spend_policy,
 };
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
@@ -191,7 +192,10 @@ pub struct ApiError {
         control_plane::disable_route,
         control_plane::create_token,
         control_plane::list_tokens,
-        control_plane::revoke_token
+        control_plane::revoke_token,
+        control_plane::create_x402_spend_policy,
+        control_plane::list_x402_spend_policy,
+        control_plane::update_x402_spend_policy
     ),
     components(schemas(
         IngestRequest,
@@ -211,7 +215,9 @@ pub struct ApiError {
         crate::control_plane::RouteResponse,
         crate::control_plane::CreateTokenRequest,
         crate::control_plane::CreatedTokenResponse,
-        crate::control_plane::TokenResponse
+        crate::control_plane::TokenResponse,
+        crate::control_plane::UpsertX402SpendPolicyRequest,
+        crate::control_plane::X402SpendPolicyResponse
     )),
     info(title = "Landfall Ingestion API", version = "0.1.0")
 )]
@@ -297,6 +303,14 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/tokens/{token_id}/revoke",
             post(revoke_token),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/x402/policies",
+            post(create_x402_spend_policy).get(list_x402_spend_policy),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/x402/policies/{policy_id}",
+            put(update_x402_spend_policy),
         )
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),

@@ -13,6 +13,10 @@ pub mod trace_events;
 pub use trace_events::{
     ObservationTarget, RawEventRow, load_events_for_trace, load_observation_target,
 };
+pub mod x402_governance;
+pub use x402_governance::{
+    X402SpendPolicyRecord, list_x402_spend_policies, upsert_x402_spend_policy,
+};
 pub mod projections;
 pub use projections::{AttemptProjectionWrite, TraceProjectionWrite, replace_trace_projection};
 pub mod diagnostics;

@@ -7,6 +7,7 @@ use axum::{
     response::IntoResponse,
 };
 use getrandom::fill;
+use landfall_storage::{X402SpendPolicyRecord, list_x402_spend_policies, upsert_x402_spend_policy};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
@@ -112,6 +113,44 @@ pub struct TokenResponse {
     pub revoked_at: Option<String>,
 }
 
+/// Request to create or update a non-custodial x402 spend policy.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpsertX402SpendPolicyRequest {
+    /// Stable application-owned agent label.
+    pub agent_id: String,
+    /// CAIP-2 network identifier, such as `solana:mainnet`.
+    pub network: String,
+    /// Asset identifier selected by the deployment.
+    pub asset: String,
+    /// Canonical positive base-10 atomic amount.
+    pub max_per_request_atomic: String,
+    /// Canonical positive base-10 aggregate daily cap.
+    pub max_per_day_atomic: String,
+    /// Exact HTTPS origins that the agent may pay.
+    pub merchant_origins: Vec<String>,
+    /// Whether the policy may authorize future requests.
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+/// Safe x402 policy data returned to the project owner.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct X402SpendPolicyResponse {
+    pub policy_id: String,
+    pub project_id: String,
+    pub agent_id: String,
+    pub network: String,
+    pub asset: String,
+    pub max_per_request_atomic: String,
+    pub max_per_day_atomic: String,
+    pub merchant_origins: Vec<String>,
+    pub enabled: bool,
+}
+
+fn default_enabled() -> bool {
+    true
+}
+
 fn error(
     status: StatusCode,
     code: &'static str,
@@ -142,6 +181,68 @@ fn valid_rpc_endpoint(endpoint: &str) -> bool {
         && endpoint.starts_with("https://")
         && !endpoint.contains('@')
         && !endpoint.chars().any(char::is_whitespace)
+}
+
+fn valid_atomic_amount(value: &str) -> bool {
+    !value.is_empty()
+        && value != "0"
+        && !(value.len() > 1 && value.starts_with('0'))
+        && value.parse::<u128>().is_ok()
+}
+
+fn valid_merchant_origin(value: &str) -> bool {
+    let Some(host) = value.strip_prefix("https://") else {
+        return false;
+    };
+    !host.is_empty()
+        && host.len() <= 2040
+        && !host.contains(['/', '?', '#', '@'])
+        && !host.chars().any(char::is_whitespace)
+        && value == value.to_ascii_lowercase()
+}
+
+fn valid_x402_policy(request: &UpsertX402SpendPolicyRequest) -> bool {
+    let limits_are_ordered = request
+        .max_per_request_atomic
+        .parse::<u128>()
+        .ok()
+        .zip(request.max_per_day_atomic.parse::<u128>().ok())
+        .is_some_and(|(per_request, per_day)| per_request <= per_day);
+    valid_text(&request.agent_id, 160)
+        && valid_text(&request.network, 160)
+        && valid_text(&request.asset, 256)
+        && valid_atomic_amount(&request.max_per_request_atomic)
+        && valid_atomic_amount(&request.max_per_day_atomic)
+        && limits_are_ordered
+        && !request.merchant_origins.is_empty()
+        && request.merchant_origins.len() <= 100
+        && request
+            .merchant_origins
+            .iter()
+            .all(|origin| valid_merchant_origin(origin))
+        && request
+            .merchant_origins
+            .iter()
+            .enumerate()
+            .all(|(index, origin)| {
+                !request.merchant_origins[..index]
+                    .iter()
+                    .any(|previous| previous == origin)
+            })
+}
+
+fn x402_response(record: X402SpendPolicyRecord) -> X402SpendPolicyResponse {
+    X402SpendPolicyResponse {
+        policy_id: record.policy_id.to_string(),
+        project_id: record.project_id.to_string(),
+        agent_id: record.agent_id,
+        network: record.network,
+        asset: record.asset,
+        max_per_request_atomic: record.max_per_request_atomic,
+        max_per_day_atomic: record.max_per_day_atomic,
+        merchant_origins: record.merchant_origins,
+        enabled: record.enabled,
+    }
 }
 
 fn format_time(value: Option<OffsetDateTime>) -> Option<String> {
@@ -187,6 +288,129 @@ fn project_admin(principal: Option<Extension<AuthenticatedToken>>, project_id: U
         principal.project_id == project_id
             && principal.scopes.iter().any(|scope| scope == ADMIN_SCOPE)
     })
+}
+
+/// Creates a project-scoped x402 spend policy.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/x402/policies", params(("project_id" = String, Path)), request_body = UpsertX402SpendPolicyRequest, responses((status = 201, body = X402SpendPolicyResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 409, body = ApiError)))]
+pub async fn create_x402_spend_policy(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+    Json(request): Json<UpsertX402SpendPolicyRequest>,
+) -> axum::response::Response {
+    upsert_x402_policy(
+        state,
+        principal,
+        project_id,
+        Uuid::now_v7(),
+        request,
+        StatusCode::CREATED,
+    )
+    .await
+}
+
+/// Replaces mutable limits, enabled state, and complete merchant allowlist of one policy.
+#[utoipa::path(put, path = "/v1/control/projects/{project_id}/x402/policies/{policy_id}", params(("project_id" = String, Path), ("policy_id" = String, Path)), request_body = UpsertX402SpendPolicyRequest, responses((status = 200, body = X402SpendPolicyResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 409, body = ApiError)))]
+pub async fn update_x402_spend_policy(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, policy_id)): Path<(Uuid, Uuid)>,
+    Json(request): Json<UpsertX402SpendPolicyRequest>,
+) -> axum::response::Response {
+    upsert_x402_policy(
+        state,
+        principal,
+        project_id,
+        policy_id,
+        request,
+        StatusCode::OK,
+    )
+    .await
+}
+
+/// Lists every x402 policy owned by the authenticated project.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/x402/policies", params(("project_id" = String, Path)), responses((status = 200, body = [X402SpendPolicyResponse]), (status = 401, body = ApiError), (status = 403, body = ApiError)))]
+pub async fn list_x402_spend_policy(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "x402 policy listing requires durable storage",
+        );
+    };
+    match list_x402_spend_policies(pool, project_id).await {
+        Ok(records) => (
+            StatusCode::OK,
+            Json(records.into_iter().map(x402_response).collect::<Vec<_>>()),
+        )
+            .into_response(),
+        Err(_) => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "x402 policy listing failed",
+        ),
+    }
+}
+
+async fn upsert_x402_policy(
+    state: std::sync::Arc<AppState>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    project_id: Uuid,
+    policy_id: Uuid,
+    request: UpsertX402SpendPolicyRequest,
+    status: StatusCode,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    if !valid_x402_policy(&request) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_x402_policy",
+            "policy requires canonical limits and unique lowercase HTTPS merchant origins",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "x402 policy changes require durable storage",
+        );
+    };
+    let record = X402SpendPolicyRecord {
+        policy_id,
+        project_id,
+        agent_id: request.agent_id,
+        network: request.network,
+        asset: request.asset,
+        max_per_request_atomic: request.max_per_request_atomic,
+        max_per_day_atomic: request.max_per_day_atomic,
+        merchant_origins: request.merchant_origins,
+        enabled: request.enabled,
+    };
+    match upsert_x402_spend_policy(pool, &record).await {
+        Ok(()) => (status, Json(x402_response(record))).into_response(),
+        Err(_) => error(
+            StatusCode::CONFLICT,
+            "x402_policy_conflict",
+            "policy identity conflicts with an existing policy",
+        ),
+    }
 }
 
 /// Creates a project and issues its first `project:admin` token in one transaction.
