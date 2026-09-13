@@ -1,15 +1,15 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type ComparisonSummary, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation } from "@landfall/api-client";
+import { LandfallApiClient, type ComparisonSummary, type CreatedTokenResponse, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation } from "@landfall/api-client";
 import "./styles.css";
 
-type Route = "overview" | "traces" | "comparison" | "trace-detail";
+type Route = "overview" | "onboarding" | "traces" | "comparison" | "trace-detail";
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
   if (value.startsWith("traces/") || value === "trace-detail") return "trace-detail";
-  return value === "traces" || value === "comparison" ? value : "overview";
+  return value === "traces" || value === "comparison" || value === "onboarding" ? value : "overview";
 }
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -25,13 +25,42 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
   React.useEffect(() => { const onHash = () => setRoute(routeFromLocation()); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash); }, []);
-  const labels: Record<Route, string> = { overview: "Overview", traces: "Traces", comparison: "Comparison", "trace-detail": "Trace detail" };
+  const labels: Record<Route, string> = { overview: "Overview", onboarding: "Get started", traces: "Traces", comparison: "Comparison", "trace-detail": "Trace detail" };
   return <div className="app-shell">
     <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span></header>
     <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).filter((key) => key !== "trace-detail").map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
-      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <ComparisonView />}</main>
+      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : route === "onboarding" ? "Connect your first transaction flow" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "onboarding" && <Onboarding />}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <ComparisonView />}</main>
     </div>
   </div>;
+}
+
+function Onboarding() {
+  const api = React.useMemo(() => new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }), []);
+  const [bootstrapToken, setBootstrapToken] = React.useState("");
+  const [projectName, setProjectName] = React.useState("");
+  const [adminToken, setAdminToken] = React.useState("");
+  const [projectId, setProjectId] = React.useState("");
+  const [environmentId, setEnvironmentId] = React.useState("");
+  const [environmentName, setEnvironmentName] = React.useState("production");
+  const [cluster, setCluster] = React.useState("mainnet-beta");
+  const [routeName, setRouteName] = React.useState("mainnet-primary");
+  const [endpoint, setEndpoint] = React.useState("https://api.mainnet-beta.solana.com");
+  const [sdkToken, setSdkToken] = React.useState<CreatedTokenResponse | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const run = async (action: () => Promise<void>) => { setBusy(true); setMessage(null); try { await action(); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Request failed"); } finally { setBusy(false); } };
+  const copy = async (value: string) => { await navigator.clipboard.writeText(value); setMessage("Copied to clipboard. Store the token in your secret manager now."); };
+  return <section className="onboarding" aria-label="Landfall setup">
+    <p className="muted">This wizard writes real configuration through the control-plane API. Tokens are shown only when created and are not saved in the browser.</p>
+    <form className="state-card setup-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { const result = await api.createProject(bootstrapToken, projectName, "dashboard-owner"); setProjectId(result.project.project_id); setAdminToken(result.initial_token.token); setMessage(`Project ${result.project.name} created. Copy and store the administrator token before proceeding.`); }); }}>
+      <div><p className="eyebrow">1 · Project</p><h2>Create a project</h2></div><label>Bootstrap token<input required type="password" value={bootstrapToken} onChange={(event) => setBootstrapToken(event.target.value)} autoComplete="off" /></label><label>Project name<input required value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="Acme payments" /></label><button disabled={busy} type="submit">Create project</button>
+    </form>
+    {projectId && <><section className="state-card token-reveal"><p className="eyebrow">Save now</p><h2>Project administrator token</h2><code>{adminToken}</code><button className="secondary-button" onClick={() => void copy(adminToken)} type="button">Copy token</button><p className="muted">It controls this project. Landfall cannot display it again.</p></section>
+    <form className="state-card setup-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { const result = await api.createEnvironment(projectId, adminToken, environmentName, cluster); setEnvironmentId(result.environment_id); setMessage(`Environment ${result.name} created.`); }); }}><div><p className="eyebrow">2 · Environment</p><h2>Add an environment</h2></div><label>Name<input required value={environmentName} onChange={(event) => setEnvironmentName(event.target.value)} /></label><label>Cluster<input required value={cluster} onChange={(event) => setCluster(event.target.value)} /></label><button disabled={busy || Boolean(environmentId)} type="submit">Create environment</button></form></>}
+    {environmentId && <form className="state-card setup-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { await api.createRoute(projectId, environmentId, adminToken, routeName, endpoint); setMessage("RPC route connected. Landfall will use it for eligible observation jobs."); }); }}><div><p className="eyebrow">3 · Observation</p><h2>Connect Solana RPC</h2></div><label>Route name<input required value={routeName} onChange={(event) => setRouteName(event.target.value)} /></label><label>HTTPS endpoint<input required type="url" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} /></label><button disabled={busy} type="submit">Connect route</button><p className="muted">The endpoint is never shown again in the dashboard.</p></form>}
+    {environmentId && <section className="state-card setup-form"><div><p className="eyebrow">4 · Instrumentation</p><h2>Create an SDK token</h2></div>{sdkToken ? <><code>{sdkToken.token}</code><button className="secondary-button" onClick={() => void copy(sdkToken.token)} type="button">Copy SDK token</button><pre className="command">{`LANDFALL_TOKEN=${sdkToken.token}\n# Configure your SDK collector with this token.`}</pre></> : <button disabled={busy} onClick={() => void run(async () => { const token = await api.createToken(projectId, adminToken, "sdk-production", ["ingest:write"]); setSdkToken(token); setMessage("SDK token created. Copy it now; it will not be displayed again."); })} type="button">Create SDK token</button>}</section>}
+    {message && <p className="setup-message" role="status">{message}</p>}
+  </section>;
 }
 
 function OnboardingHealth() {

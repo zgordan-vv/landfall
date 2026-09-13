@@ -1,6 +1,6 @@
 /** Small fetch-based client for the documented Landfall read APIs. */
 export interface FetchResponse { readonly ok: boolean; readonly status: number; json(): Promise<unknown>; }
-export interface FetchInit { method?: string; headers?: Record<string, string>; }
+export interface FetchInit { method?: string; headers?: Record<string, string>; body?: string; }
 export type FetchLike = (input: string, init?: FetchInit) => Promise<FetchResponse>;
 
 export interface ApiClientOptions { baseUrl: string; fetch?: FetchLike; token?: string; }
@@ -15,6 +15,11 @@ export interface TraceRecommendation { recommendation_id: string; recommendation
 export interface TraceDetail { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; application_state: string; observation_state: string; updated_at: string; }
 export interface TraceListItem { trace_id: string; lifecycle_state: string; landing_state: string; execution_state: string; updated_at: string; }
 export interface OverviewSummary { window_hours: number; total_traces: number; landed_traces: number; successful_executions: number; unknown_executions: number; updated_at: string; }
+export interface ProjectResponse { project_id: string; name: string; }
+export interface CreatedTokenResponse { token_id: string; name: string; token_prefix: string; token: string; scopes: string[]; expires_at: string | null; }
+export interface CreatedProjectResponse { project: ProjectResponse; initial_token: CreatedTokenResponse; }
+export interface EnvironmentResponse { environment_id: string; project_id: string; name: string; cluster: string; }
+export interface RouteResponse { route_id: string; environment_id: string; name: string; enabled: boolean; }
 
 export class LandfallApiClient {
   private readonly baseUrl: string;
@@ -38,11 +43,21 @@ export class LandfallApiClient {
   async getTraceDetail(traceId: string): Promise<TraceDetail> { return this.get(`/v1/traces/${encodeURIComponent(traceId)}`); }
   async getTraces(limit = 50): Promise<TraceListItem[]> { return this.get(`/v1/traces?limit=${Math.min(100, Math.max(1, limit))}`); }
   async getOverview(): Promise<OverviewSummary> { return this.get("/v1/overview"); }
+  async createProject(token: string, name: string, initialTokenName: string): Promise<CreatedProjectResponse> { return this.post("/v1/control/projects", { name, initial_token_name: initialTokenName }, token); }
+  async createEnvironment(projectId: string, token: string, name: string, cluster: string): Promise<EnvironmentResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments`, { name, cluster }, token); }
+  async createRoute(projectId: string, environmentId: string, token: string, name: string, endpoint: string): Promise<RouteResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes`, { name, endpoint }, token); }
+  async createToken(projectId: string, token: string, name: string, scopes: string[]): Promise<CreatedTokenResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens`, { name, scopes }, token); }
 
   private async get<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { accept: "application/json" };
     if (this.token) headers["authorization"] = `Bearer ${this.token}`;
     const response = await this.request(`${this.baseUrl}${path}`, { method: "GET", headers });
+    if (!response.ok) throw new Error(`Landfall API request failed: ${response.status}`);
+    return (await response.json()) as T;
+  }
+
+  private async post<T>(path: string, body: unknown, token: string): Promise<T> {
+    const response = await this.request(`${this.baseUrl}${path}`, { method: "POST", headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
     if (!response.ok) throw new Error(`Landfall API request failed: ${response.status}`);
     return (await response.json()) as T;
   }
