@@ -79,8 +79,8 @@ pub mod x402_payments;
 use crate::auth::AuthenticatedToken;
 use crate::control_plane::{
     create_environment, create_project, create_route, create_token, create_x402_spend_policy,
-    disable_route, list_environments, list_routes, list_tokens, list_x402_spend_policy,
-    revoke_token, update_x402_spend_policy,
+    disable_route, list_environments, list_routes, list_tokens, list_x402_payment_audit,
+    list_x402_spend_policy, revoke_token, update_x402_spend_policy,
 };
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::info_span;
@@ -196,6 +196,7 @@ pub struct ApiError {
         control_plane::revoke_token,
         control_plane::create_x402_spend_policy,
         control_plane::list_x402_spend_policy,
+        control_plane::list_x402_payment_audit,
         control_plane::update_x402_spend_policy,
         crate::x402_payments::authorize,
         crate::x402_payments::record_settlement
@@ -221,6 +222,7 @@ pub struct ApiError {
         crate::control_plane::TokenResponse,
         crate::control_plane::UpsertX402SpendPolicyRequest,
         crate::control_plane::X402SpendPolicyResponse,
+        crate::control_plane::X402PaymentAuditResponse,
         crate::x402_payments::X402AuthorizeRequest,
         crate::x402_payments::X402AuthorizeResponse,
         crate::x402_payments::X402SettlementRequest,
@@ -319,6 +321,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/x402/policies",
             post(create_x402_spend_policy).get(list_x402_spend_policy),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/x402/audit",
+            get(list_x402_payment_audit),
         )
         .route(
             "/v1/control/projects/{project_id}/x402/policies/{policy_id}",

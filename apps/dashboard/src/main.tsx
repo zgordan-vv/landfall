@@ -1,15 +1,15 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type ComparisonSummary, type CreatedTokenResponse, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation } from "@landfall/api-client";
+import { LandfallApiClient, type ComparisonSummary, type CreatedTokenResponse, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation, type X402PaymentAuditRecord } from "@landfall/api-client";
 import "./styles.css";
 
-type Route = "overview" | "onboarding" | "traces" | "comparison" | "trace-detail";
+type Route = "overview" | "onboarding" | "traces" | "comparison" | "payments" | "trace-detail";
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
   if (value.startsWith("traces/") || value === "trace-detail") return "trace-detail";
-  return value === "traces" || value === "comparison" || value === "onboarding" ? value : "overview";
+  return value === "traces" || value === "comparison" || value === "onboarding" || value === "payments" ? value : "overview";
 }
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -25,13 +25,27 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
   React.useEffect(() => { const onHash = () => setRoute(routeFromLocation()); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash); }, []);
-  const labels: Record<Route, string> = { overview: "Overview", onboarding: "Get started", traces: "Traces", comparison: "Comparison", "trace-detail": "Trace detail" };
+  const labels: Record<Route, string> = { overview: "Overview", onboarding: "Get started", traces: "Traces", comparison: "Comparison", payments: "x402 payments", "trace-detail": "Trace detail" };
   return <div className="app-shell">
     <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span></header>
     <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).filter((key) => key !== "trace-detail").map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
-      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : route === "onboarding" ? "Connect your first transaction flow" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "onboarding" && <Onboarding />}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <ComparisonView />}</main>
+      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : route === "onboarding" ? "Connect your first transaction flow" : route === "payments" ? "Controlled x402 payment activity" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "onboarding" && <Onboarding />}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <ComparisonView />}{route === "payments" && <X402PaymentAudit />}</main>
     </div>
   </div>;
+}
+
+function X402PaymentAudit() {
+  const api = React.useMemo(() => new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }), []);
+  const [projectId, setProjectId] = React.useState("");
+  const [token, setToken] = React.useState("");
+  const [records, setRecords] = React.useState<X402PaymentAuditRecord[] | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const load = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); setBusy(true); setMessage(null); try { setRecords(await api.getX402PaymentAudit(projectId.trim(), token)); } catch (reason) { setRecords(null); setMessage(reason instanceof Error ? reason.message : "Payment audit request failed"); } finally { setBusy(false); } };
+  return <section aria-label="x402 payment audit">
+    <section className="state-card"><p className="muted">Use a project administrator token to read this project’s payment ledger. It is used only for this request and is not saved by the browser.</p><form className="setup-form" onSubmit={(event) => { void load(event); }}><label>Project ID<input required value={projectId} onChange={(event) => setProjectId(event.target.value)} placeholder="UUID" /></label><label>Administrator token<input required type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label><button disabled={busy} type="submit">{busy ? "Loading…" : "Load payment activity"}</button></form>{message && <p className="setup-message" role="alert">{message}</p>}</section>
+    {records !== null && <section className="state-card"><div className="list-heading"><h2>Recent decisions</h2><span className="muted">{records.length} records</span></div>{records.length === 0 ? <p className="empty-state">No x402 payment decisions have been recorded yet.</p> : <div className="payment-table" role="table" aria-label="x402 payment decisions">{records.map((record) => <div className="payment-row" role="row" key={record.audit_id}><div role="cell"><strong>{record.merchant_origin}</strong><span>{record.agent_id} · {record.network} · {record.asset} · {record.amount_atomic} atomic units</span><small>{record.reason_code}{record.settlement_reference ? ` · receipt: ${record.settlement_reference}` : ""}</small></div><span className={`status-label payment-${record.decision}`} role="cell">{record.decision}</span><time role="cell">{new Date(record.decided_at).toLocaleString()}</time></div>)}</div>}</section>}
+  </section>;
 }
 
 function Onboarding() {

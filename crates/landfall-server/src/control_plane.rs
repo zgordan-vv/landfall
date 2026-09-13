@@ -2,19 +2,23 @@
 
 use axum::{
     Json,
-    extract::{Extension, Path, State},
+    extract::{Extension, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use getrandom::fill;
-use landfall_storage::{X402SpendPolicyRecord, list_x402_spend_policies, upsert_x402_spend_policy};
+use landfall_storage::{
+    X402PaymentAuditRecord, X402SpendPolicyRecord,
+    list_x402_payment_audit as query_x402_payment_audit, list_x402_spend_policies,
+    upsert_x402_spend_policy,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{ApiError, AppState, AuthenticatedToken, auth};
+use crate::{ApiError, AppState, AuthenticatedToken, TraceListQuery, auth};
 
 const ADMIN_SCOPE: &str = "project:admin";
 const ALLOWED_SCOPES: &[&str] = &[
@@ -148,6 +152,22 @@ pub struct X402SpendPolicyResponse {
     pub enabled: bool,
 }
 
+/// One safe, project-visible x402 payment decision.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct X402PaymentAuditResponse {
+    pub audit_id: String,
+    pub policy_id: Option<String>,
+    pub agent_id: String,
+    pub merchant_origin: String,
+    pub network: String,
+    pub asset: String,
+    pub amount_atomic: String,
+    pub decision: String,
+    pub reason_code: String,
+    pub settlement_reference: Option<String>,
+    pub decided_at: String,
+}
+
 fn default_enabled() -> bool {
     true
 }
@@ -243,6 +263,22 @@ fn x402_response(record: X402SpendPolicyRecord) -> X402SpendPolicyResponse {
         max_per_day_atomic: record.max_per_day_atomic,
         merchant_origins: record.merchant_origins,
         enabled: record.enabled,
+    }
+}
+
+fn x402_audit_response(record: X402PaymentAuditRecord) -> X402PaymentAuditResponse {
+    X402PaymentAuditResponse {
+        audit_id: record.audit_id.to_string(),
+        policy_id: record.policy_id.map(|value| value.to_string()),
+        agent_id: record.agent_id,
+        merchant_origin: record.merchant_origin,
+        network: record.network,
+        asset: record.asset,
+        amount_atomic: record.amount_atomic,
+        decision: record.decision,
+        reason_code: record.reason_code,
+        settlement_reference: record.settlement_reference,
+        decided_at: record.decided_at,
     }
 }
 
@@ -360,6 +396,48 @@ pub async fn list_x402_spend_policy(
             StatusCode::SERVICE_UNAVAILABLE,
             "storage_unavailable",
             "x402 policy listing failed",
+        ),
+    }
+}
+
+/// Lists recent x402 decisions and terminal outcomes without exposing signatures.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/x402/audit", params(("project_id" = String, Path), ("limit" = Option<u32>, Query)), responses((status = 200, body = [X402PaymentAuditResponse]), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 503, body = ApiError)))]
+pub async fn list_x402_payment_audit(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+    Query(query): Query<TraceListQuery>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "x402 audit requires durable storage",
+        );
+    };
+    let limit = i64::from(query.limit.unwrap_or(50).clamp(1, 100));
+    match query_x402_payment_audit(pool, project_id, limit).await {
+        Ok(records) => (
+            StatusCode::OK,
+            Json(
+                records
+                    .into_iter()
+                    .map(x402_audit_response)
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "x402 audit listing failed",
         ),
     }
 }

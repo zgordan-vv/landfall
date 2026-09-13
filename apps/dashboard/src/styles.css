@@ -54,6 +54,14 @@ h2 { margin: .35rem 0 1rem; font-size: 1.2rem; }
 .status-label.confirmed { color: var(--accent); background: #17372f; }
 .status-label.incomplete { color: #f6c977; background: #3a2d18; }
 .empty-state { padding: 2rem; color: var(--muted); text-align: center; }
+.payment-table { overflow: hidden; border: 1px solid #2d3c54; border-radius: .7rem; }
+.payment-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid #2d3c54; background: #1c2738; }
+.payment-row:last-child { border-bottom: 0; }
+.payment-row strong, .payment-row span, .payment-row small { display: block; }
+.payment-row div > span, .payment-row small, .payment-row time { margin-top: .25rem; color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.payment-settled { color: var(--accent); background: #17372f; }
+.payment-approved { color: #8ebcff; background: #1e3154; }
+.payment-denied, .payment-failed { color: #f6c977; background: #3a2d18; }
 .pagination { margin-top: 1rem; }
 .back-link { display: inline-block; margin-top: 2.5rem; color: var(--accent); text-decoration: none; }
 .detail-header { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
@@ -92,4 +100,4 @@ h2 { margin: .35rem 0 1rem; font-size: 1.2rem; }
 .metric-grid strong, .metric-grid span { display: block; }
 .metric-grid strong { font-size: 1.5rem; }
 .metric-grid span { color: var(--muted); font-size: .8rem; margin-top: .3rem; }
-@media (max-width: 640px) { .layout { grid-template-columns: 1fr; } nav { display: flex; gap: .35rem; padding: .75rem 1rem; border-right: 0; border-bottom: 1px solid #273246; } .nav-caption { display: none; } .nav-link { padding: .5rem .65rem; } .metric-grid, .check-list, .trend-grid, .detail-grid, .select-grid, .comparison-grid { grid-template-columns: 1fr; } .trace-row { grid-template-columns: 1fr auto; } .trace-row time { grid-column: 1 / -1; } .detail-header { align-items: start; flex-direction: column; gap: .7rem; } }
+@media (max-width: 640px) { .layout { grid-template-columns: 1fr; } nav { display: flex; gap: .35rem; padding: .75rem 1rem; border-right: 0; border-bottom: 1px solid #273246; overflow-x: auto; } .nav-caption { display: none; } .nav-link { padding: .5rem .65rem; white-space: nowrap; } .metric-grid, .check-list, .trend-grid, .detail-grid, .select-grid, .comparison-grid { grid-template-columns: 1fr; } .trace-row, .payment-row { grid-template-columns: 1fr auto; } .trace-row time, .payment-row time { grid-column: 1 / -1; } .detail-header { align-items: start; flex-direction: column; gap: .7rem; } }

@@ -20,6 +20,7 @@ export interface CreatedTokenResponse { token_id: string; name: string; token_pr
 export interface CreatedProjectResponse { project: ProjectResponse; initial_token: CreatedTokenResponse; }
 export interface EnvironmentResponse { environment_id: string; project_id: string; name: string; cluster: string; }
 export interface RouteResponse { route_id: string; environment_id: string; name: string; enabled: boolean; }
+export interface X402PaymentAuditRecord { audit_id: string; policy_id: string | null; agent_id: string; merchant_origin: string; network: string; asset: string; amount_atomic: string; decision: "approved" | "denied" | "settled" | "failed"; reason_code: string; settlement_reference: string | null; decided_at: string; }
 
 export class LandfallApiClient {
   private readonly baseUrl: string;
@@ -47,6 +48,7 @@ export class LandfallApiClient {
   async createEnvironment(projectId: string, token: string, name: string, cluster: string): Promise<EnvironmentResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments`, { name, cluster }, token); }
   async createRoute(projectId: string, environmentId: string, token: string, name: string, endpoint: string): Promise<RouteResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes`, { name, endpoint }, token); }
   async createToken(projectId: string, token: string, name: string, scopes: string[]): Promise<CreatedTokenResponse> { return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens`, { name, scopes }, token); }
+  async getX402PaymentAudit(projectId: string, token: string, limit = 50): Promise<X402PaymentAuditRecord[]> { return this.getWithToken(`/v1/control/projects/${encodeURIComponent(projectId)}/x402/audit?limit=${Math.min(100, Math.max(1, limit))}`, token); }
 
   private async get<T>(path: string): Promise<T> {
     const headers: Record<string, string> = { accept: "application/json" };
@@ -58,6 +60,12 @@ export class LandfallApiClient {
 
   private async post<T>(path: string, body: unknown, token: string): Promise<T> {
     const response = await this.request(`${this.baseUrl}${path}`, { method: "POST", headers: { accept: "application/json", "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(`Landfall API request failed: ${response.status}`);
+    return (await response.json()) as T;
+  }
+
+  private async getWithToken<T>(path: string, token: string): Promise<T> {
+    const response = await this.request(`${this.baseUrl}${path}`, { method: "GET", headers: { accept: "application/json", authorization: `Bearer ${token}` } });
     if (!response.ok) throw new Error(`Landfall API request failed: ${response.status}`);
     return (await response.json()) as T;
   }

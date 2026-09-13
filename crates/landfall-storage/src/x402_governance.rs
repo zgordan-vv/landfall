@@ -52,6 +52,33 @@ pub struct X402SettlementRecord {
     pub replayed: bool,
 }
 
+/// A privacy-safe entry from the immutable x402 payment ledger.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct X402PaymentAuditRecord {
+    /// Durable payment-decision identifier.
+    pub audit_id: Uuid,
+    /// Policy that governed the request, if one was found.
+    pub policy_id: Option<Uuid>,
+    /// Project-controlled agent that requested payment.
+    pub agent_id: String,
+    /// Allowed merchant origin, not the full resource URL.
+    pub merchant_origin: String,
+    /// x402 network identifier.
+    pub network: String,
+    /// Asset identifier.
+    pub asset: String,
+    /// Requested amount in atomic units.
+    pub amount_atomic: String,
+    /// `approved`, `denied`, `settled`, or `failed`.
+    pub decision: String,
+    /// Stable machine-readable explanation.
+    pub reason_code: String,
+    /// Opaque external receipt, if provided; never a signed payment payload.
+    pub settlement_reference: Option<String>,
+    /// Server-side decision time in UTC.
+    pub decided_at: String,
+}
+
 /// The only terminal outcomes an external wallet/facilitator may report.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum X402SettlementOutcome {
@@ -205,6 +232,38 @@ pub async fn record_x402_settlement(
         outcome,
         replayed: false,
     }))
+}
+
+/// Lists the newest safe payment-audit entries for one project.
+pub async fn list_x402_payment_audit(
+    pool: &PgPool,
+    project_id: Uuid,
+    limit: i64,
+) -> Result<Vec<X402PaymentAuditRecord>, sqlx::Error> {
+    let rows = sqlx::query(
+        "SELECT audit_id, policy_id, agent_id, merchant_origin, network, asset, amount_atomic::text AS amount_atomic, decision, reason_code, settlement_reference, decided_at::text AS decided_at FROM telemetry.x402_payment_audit WHERE project_id = $1 ORDER BY decided_at DESC, audit_id DESC LIMIT $2",
+    )
+    .bind(project_id)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            Ok(X402PaymentAuditRecord {
+                audit_id: row.try_get("audit_id")?,
+                policy_id: row.try_get("policy_id")?,
+                agent_id: row.try_get("agent_id")?,
+                merchant_origin: row.try_get("merchant_origin")?,
+                network: row.try_get("network")?,
+                asset: row.try_get("asset")?,
+                amount_atomic: row.try_get("amount_atomic")?,
+                decision: row.try_get("decision")?,
+                reason_code: row.try_get("reason_code")?,
+                settlement_reference: row.try_get("settlement_reference")?,
+                decided_at: row.try_get("decided_at")?,
+            })
+        })
+        .collect()
 }
 
 fn decision_to_db(decision: PolicyDecision) -> &'static str {
