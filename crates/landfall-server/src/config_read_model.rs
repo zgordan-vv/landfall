@@ -16,7 +16,7 @@ pub struct ProjectConfig {
 pub struct EnvironmentConfig {
     pub environment_id: String,
     pub display_name: String,
-    pub privacy_mode: String,
+    pub cluster: String,
     pub routes: Vec<RouteConfig>,
 }
 
@@ -26,8 +26,7 @@ pub struct RouteConfig {
     pub route_id: String,
     pub label: String,
     pub enabled: bool,
-    pub commitment: String,
-    pub auth_configured: bool,
+    pub endpoint_configured: bool,
 }
 
 /// Creates a configuration snapshot with deterministic route ordering.
@@ -62,28 +61,27 @@ mod tests {
             vec![EnvironmentConfig {
                 environment_id: "prod".into(),
                 display_name: "Production".into(),
-                privacy_mode: "strict".into(),
+                cluster: "mainnet-beta".into(),
                 routes: vec![
                     RouteConfig {
                         route_id: "zeta".into(),
                         label: "Zeta RPC".into(),
                         enabled: true,
-                        commitment: "confirmed".into(),
-                        auth_configured: true,
+                        endpoint_configured: true,
                     },
                     RouteConfig {
                         route_id: "alpha".into(),
                         label: "Alpha RPC".into(),
                         enabled: false,
-                        commitment: "finalized".into(),
-                        auth_configured: false,
+                        endpoint_configured: true,
                     },
                 ],
             }],
         );
         assert_eq!(snapshot.environments[0].routes[0].route_id, "alpha");
         let json = serde_json::to_string(&snapshot).unwrap();
-        assert!(!json.contains("endpoint"));
+        assert!(!json.contains("\"endpoint\":"));
+        assert!(!json.contains("://"));
         assert!(!json.contains("token"));
     }
 }

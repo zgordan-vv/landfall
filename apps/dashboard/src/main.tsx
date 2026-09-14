@@ -6,6 +6,7 @@ import {
   type ComparisonSummary,
   type CreatedTokenResponse,
   type OverviewSummary,
+  type ReportResponse,
   type TraceDetail as ApiTraceDetail,
   type TraceDiagnostic,
   type TraceListItem,
@@ -14,7 +15,8 @@ import {
 } from "@landfall/api-client";
 import "./styles.css";
 
-type Route = "overview" | "onboarding" | "traces" | "comparison" | "payments" | "trace-detail";
+type Route =
+  "overview" | "onboarding" | "traces" | "comparison" | "payments" | "reports" | "trace-detail";
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
@@ -22,7 +24,8 @@ function routeFromLocation(): Route {
   return value === "traces" ||
     value === "comparison" ||
     value === "onboarding" ||
-    value === "payments"
+    value === "payments" ||
+    value === "reports"
     ? value
     : "overview";
 }
@@ -57,6 +60,44 @@ function useDashboardApi(): LandfallApiClient {
   const api = React.useContext(DashboardApiContext);
   if (api === null) throw new Error("Dashboard access token is required");
   return api;
+}
+
+function recommendationCopy(recommendationKey: string, trace: ApiTraceDetail) {
+  if (
+    recommendationKey === "improve_evidence_coverage" &&
+    trace.lifecycle_state === "signed" &&
+    trace.landing_state === "not_observed"
+  ) {
+    return {
+      title: "Confirm whether the signed transaction was sent",
+      detail:
+        "Landfall received signing evidence but no submission or on-chain observation. If you intended to send it, submit it once. If its blockhash has expired, create and sign a fresh transaction instead.",
+    };
+  }
+  if (recommendationKey === "improve_evidence_coverage") {
+    return {
+      title: "Capture the missing lifecycle evidence",
+      detail:
+        "Add the missing SDK or observer event so Landfall can determine the transaction outcome rather than leaving it unknown.",
+    };
+  }
+  return { title: recommendationKey.replaceAll("_", " "), detail: "Review this recommendation." };
+}
+
+function diagnosticCopy(claimKey: string, count: number) {
+  if (claimKey === "missing_evidence") {
+    return {
+      title: "Missing lifecycle evidence",
+      detail:
+        count > 1
+          ? "Two independent checks could not establish the transaction outcome. Review the evidence checklist and the recommendation below."
+          : "Landfall cannot establish the transaction outcome from the evidence received so far.",
+    };
+  }
+  return {
+    title: claimKey.replaceAll("_", " "),
+    detail: "Review this diagnostic together with the captured lifecycle evidence.",
+  };
 }
 
 function DashboardAccess({ onConnect }: { onConnect: (token: string) => void }) {
@@ -109,6 +150,7 @@ function Dashboard() {
     traces: "Traces",
     comparison: "Comparison",
     payments: "x402 payments",
+    reports: "Reports",
     "trace-detail": "Trace detail",
   };
   const api = React.useMemo(
@@ -127,6 +169,8 @@ function Dashboard() {
       <ComparisonView />
     ) : route === "payments" ? (
       <X402PaymentAudit />
+    ) : route === "reports" ? (
+      <ReportExports />
     ) : (
       <Onboarding />
     );
@@ -172,11 +216,15 @@ function Dashboard() {
                 ? "Connect your first transaction flow"
                 : route === "payments"
                   ? "Controlled x402 payment activity"
-                  : labels[route]}
+                  : route === "reports"
+                    ? "Export lifecycle evidence"
+                    : labels[route]}
           </h1>
           <p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>
           {route === "onboarding" ? (
             <Onboarding />
+          ) : route === "payments" || route === "reports" ? (
+            workspace
           ) : api ? (
             <DashboardApiContext.Provider value={api}>{workspace}</DashboardApiContext.Provider>
           ) : (
@@ -185,6 +233,170 @@ function Dashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+function ReportExports() {
+  const api = React.useMemo(
+    () => new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }),
+    [],
+  );
+  const [projectId, setProjectId] = React.useState("");
+  const [token, setToken] = React.useState("");
+  const [title, setTitle] = React.useState("Lifecycle evidence export");
+  const [privacyProfile, setPrivacyProfile] = React.useState<"internal" | "shareable">("shareable");
+  const [reports, setReports] = React.useState<ReportResponse[] | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const load = async () => {
+    setReports(await api.listReports(projectId.trim(), token));
+  };
+  const create = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.createReport(projectId.trim(), token, title.trim(), privacyProfile);
+      await load();
+      setMessage("Report created and stored in PostgreSQL.");
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Report export failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const download = async (report: ReportResponse, format: "json" | "html") => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const bytes = await api.downloadReport(projectId.trim(), report.report_id, format, token);
+      const blob = new Blob([new TextDecoder().decode(bytes)], {
+        type: format === "json" ? "application/json" : "text/html",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `landfall-report-${report.report_id}.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Report download failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section aria-label="report exports">
+      <section className="state-card">
+        <p className="muted">
+          Create an immutable report from the traces currently stored for one project. A shareable
+          report hides trace IDs; an internal report retains them.
+        </p>
+        <form className="setup-form" onSubmit={(event) => void create(event)}>
+          <label>
+            Project ID
+            <input
+              required
+              value={projectId}
+              onChange={(event) => setProjectId(event.target.value)}
+              placeholder="UUID"
+            />
+          </label>
+          <label>
+            Administrator token
+            <input
+              required
+              type="password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Report title
+            <input
+              required
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={240}
+            />
+          </label>
+          <label>
+            Privacy profile
+            <select
+              value={privacyProfile}
+              onChange={(event) =>
+                setPrivacyProfile(event.target.value as "internal" | "shareable")
+              }
+            >
+              <option value="shareable">Shareable — redact trace IDs</option>
+              <option value="internal">Internal — include trace IDs</option>
+            </select>
+          </label>
+          <button disabled={busy} type="submit">
+            {busy ? "Working…" : "Create report"}
+          </button>
+        </form>
+        <button
+          className="secondary-button"
+          disabled={busy || !projectId.trim() || !token}
+          type="button"
+          onClick={() =>
+            void load().catch((reason: unknown) =>
+              setMessage(reason instanceof Error ? reason.message : "Report listing failed"),
+            )
+          }
+        >
+          Load existing reports
+        </button>
+        {message && (
+          <p className="setup-message" role="status">
+            {message}
+          </p>
+        )}
+      </section>
+      {reports !== null && (
+        <section className="state-card">
+          <div className="list-heading">
+            <h2>Stored reports</h2>
+            <span className="muted">{reports.length} reports</span>
+          </div>
+          {reports.length === 0 ? (
+            <p className="empty-state">No reports have been created for this project.</p>
+          ) : (
+            <ul className="recommendation-list">
+              {reports.map((report) => (
+                <li key={report.report_id}>
+                  <strong>{report.title}</strong>
+                  <span>
+                    {report.privacy_profile} · {report.trace_count} traces ·{" "}
+                    {new Date(report.created_at).toLocaleString()}
+                  </span>
+                  <p>
+                    <button
+                      className="secondary-button"
+                      disabled={busy}
+                      type="button"
+                      onClick={() => void download(report, "json")}
+                    >
+                      Download JSON
+                    </button>{" "}
+                    <button
+                      className="secondary-button"
+                      disabled={busy}
+                      type="button"
+                      onClick={() => void download(report, "html")}
+                    >
+                      Download HTML
+                    </button>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </section>
   );
 }
 
@@ -772,6 +984,24 @@ function TraceDetail() {
     );
   const lifecycle = apiTrace.lifecycle_state;
   const landing = apiTrace.landing_state;
+  const visibleRecommendations = recommendations
+    ? [...new Map(recommendations.map((advice) => [advice.recommendation_key, advice])).values()]
+    : [];
+  const visibleDiagnostics = diagnostics
+    ? [
+        ...new Map(
+          diagnostics.map((finding) => {
+            const key = `${finding.claim_key}:${finding.certainty}`;
+            const existing = diagnostics.filter(
+              (candidate) =>
+                candidate.claim_key === finding.claim_key &&
+                candidate.certainty === finding.certainty,
+            );
+            return [key, { finding, count: existing.length }] as const;
+          }),
+        ).values(),
+      ]
+    : [];
   return (
     <section aria-labelledby="detail-title">
       <a className="back-link" href="#traces">
@@ -807,29 +1037,37 @@ function TraceDetail() {
         </section>
         <section className="state-card">
           <h2>Diagnoses & recommendations</h2>
-          {diagnostics?.length ? (
+          {visibleDiagnostics.length ? (
             <ul className="detail-list">
-              {diagnostics.map((finding) => (
-                <li key={finding.diagnostic_id}>
-                  {finding.claim_key}{" "}
-                  <span
-                    className={`status-label ${finding.certainty === "unknown" ? "incomplete" : "confirmed"}`}
-                  >
-                    {finding.certainty}
-                  </span>
-                </li>
-              ))}
+              {visibleDiagnostics.map(({ finding, count }) => {
+                const copy = diagnosticCopy(finding.claim_key, count);
+                return (
+                  <li key={`${finding.claim_key}:${finding.certainty}`}>
+                    <strong>{copy.title}</strong>
+                    <span>{copy.detail}</span>
+                    <span
+                      className={`status-label ${finding.certainty === "unknown" ? "incomplete" : "confirmed"}`}
+                    >
+                      {finding.certainty}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="muted">No findings recorded for this trace.</p>
           )}
-          {recommendations?.length ? (
+          {visibleRecommendations.length ? (
             <ul className="detail-list">
-              {recommendations.map((advice) => (
-                <li key={advice.recommendation_id}>
-                  {advice.recommendation_key} <small>{advice.rule_set_version}</small>
-                </li>
-              ))}
+              {visibleRecommendations.map((advice) => {
+                const copy = recommendationCopy(advice.recommendation_key, apiTrace);
+                return (
+                  <li key={advice.recommendation_id}>
+                    <strong>{copy.title}</strong>
+                    <span>{copy.detail}</span>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="muted">No recommendations recorded for this trace.</p>
@@ -838,9 +1076,11 @@ function TraceDetail() {
         <section className="state-card">
           <h2>Evidence checklist</h2>
           <ul className="detail-list checklist">
-            <li>✓ Trace created</li>
-            <li>✓ Read from durable API</li>
-            <li>! Simulation evidence unavailable</li>
+            <li>{apiTrace.evidence.trace_created ? "✓" : "!"} Trace created</li>
+            <li>{apiTrace.evidence.signing_completed ? "✓" : "!"} Signing completed</li>
+            <li>{apiTrace.evidence.submission_completed ? "✓" : "!"} Submission completed</li>
+            <li>{apiTrace.evidence.status_observed ? "✓" : "!"} On-chain status observed</li>
+            <li>{apiTrace.evidence.simulation_completed ? "✓" : "!"} Simulation completed</li>
           </ul>
         </section>
       </div>

@@ -22,5 +22,5 @@ docker inspect --format '{{json .Config.Healthcheck}}' landfall-server:local
 docker inspect --format '{{.Config.StopSignal}}' landfall-server:local
 ```
 
-The current binary entry point is still a minimal composition placeholder, so
-an end-to-end HTTP probe requires the runtime server wiring to be enabled.
+The production container runs the HTTP server and workers. Verify the complete
+runtime path with an HTTP readiness probe against `/health/ready`.

@@ -25,7 +25,7 @@ pub async fn append_diagnostics(
 ) -> Result<(), sqlx::Error> {
     let mut tx: Transaction<'_, Postgres> = pool.begin().await?;
     for diagnostic in diagnostics {
-        sqlx::query("INSERT INTO reporting.diagnostics (diagnostic_id, trace_id, rule_id, rule_set_version, claim_key, certainty, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)")
+        sqlx::query("INSERT INTO reporting.diagnostics (diagnostic_id, trace_id, rule_id, rule_set_version, claim_key, certainty, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (diagnostic_id) DO NOTHING")
             .bind(diagnostic.diagnostic_id).bind(diagnostic.trace_id).bind(&diagnostic.rule_id).bind(&diagnostic.rule_set_version).bind(&diagnostic.claim_key).bind(&diagnostic.certainty).bind(diagnostic.created_at).execute(&mut *tx).await?;
         for event_id in &diagnostic.evidence_event_ids {
             sqlx::query("INSERT INTO reporting.diagnostic_evidence (diagnostic_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING")

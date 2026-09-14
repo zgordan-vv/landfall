@@ -6,7 +6,7 @@ use std::{
     io::{self, BufReader},
 };
 
-use landfall_cli::{OperatorCommand, group_traces, ingest_ndjson, parse_operator_command};
+use landfall_cli::{group_traces, ingest_ndjson};
 use landfall_core::versions::current_versions;
 use landfall_report::{PrivacyProfile, ReportCounts, ReportDocument, TraceReport, render_json};
 
@@ -19,36 +19,12 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let raw: Vec<String> = env::args().skip(1).collect();
-    if !raw.is_empty() && raw[0] != "ingest" {
-        let json = raw.iter().any(|arg| arg == "--json");
-        let command_args: Vec<String> = raw
-            .iter()
-            .filter(|arg| arg.as_str() != "--json")
-            .cloned()
-            .collect();
-        let command = parse_operator_command(&command_args)?;
-        let message = match command {
-            OperatorCommand::Init => "initialized local Landfall configuration",
-            OperatorCommand::Doctor => "doctor: configuration and schema checks passed",
-            OperatorCommand::Trace => "trace command requires an event source",
-            OperatorCommand::Report(_) => "report job command accepted",
-            OperatorCommand::Rules => "rules: reducer, diagnostics, metrics, recommendations",
-            OperatorCommand::RetentionDryRun => "retention dry-run: no data deleted",
-            OperatorCommand::Demo => "demo fixture ready",
-        };
-        if json {
-            println!(
-                "{{\"ok\":true,\"message\":{}}}",
-                serde_json::to_string(message)?
-            );
-        } else {
-            println!("{message}");
-        }
-        return Ok(());
-    }
     let mut args = raw.into_iter();
     if args.next().as_deref() != Some("ingest") {
-        return Err("usage: landfall ingest <ndjson-file>".into());
+        return Err(
+            "the CLI currently supports only real offline analysis: landfall ingest <ndjson-file>"
+                .into(),
+        );
     }
     let path = args.next().ok_or("missing NDJSON file")?;
     let profile = match args.next().as_deref() {

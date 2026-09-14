@@ -16,7 +16,7 @@ pub use projector_worker::{ProjectTraceJob, project_trace_queue, run_project_tra
 pub mod alias_resolver;
 pub use alias_resolver::{AliasResolution, AliasResolver};
 pub mod projection;
-pub use projection::{ProjectionError, reduce_loaded_events};
+pub use projection::{ProjectionError, order_loaded_events, reduce_loaded_events};
 pub mod projection_metrics;
 pub use projection_metrics::{ProjectionMetrics, ProjectionMetricsSnapshot};
 
@@ -30,7 +30,8 @@ use axum::{
 };
 use landfall_protocol::check_event_compatibility;
 use landfall_storage::{
-    IngestEvent, TraceProjectionWrite, enqueue_observation_if_eligible, ensure_raw_event_partition,
+    DiagnosticWrite, IngestEvent, RecommendationWrite, TraceProjectionWrite, append_diagnostics,
+    append_recommendations, enqueue_observation_if_eligible, ensure_raw_event_partition,
     ingest_atomically, load_events_for_trace, replace_trace_projection,
 };
 use serde::{Deserialize, Serialize};
@@ -42,7 +43,6 @@ use std::time::{Duration, Instant};
 use std::{path::PathBuf, sync::Arc};
 use tower::limit::ConcurrencyLimitLayer;
 pub mod acknowledged_events;
-pub mod artifact_store;
 pub mod backup;
 pub mod business_action;
 pub mod cohort_comparison;
@@ -65,7 +65,7 @@ pub mod projection_benchmark;
 pub mod query_benchmark;
 pub mod recommendation_disposition;
 pub mod report_benchmark;
-pub mod report_jobs;
+pub mod reports;
 pub mod retention;
 pub mod retention_benchmark;
 pub mod secret_matrix;
@@ -79,9 +79,10 @@ pub mod x402_payments;
 use crate::auth::AuthenticatedToken;
 use crate::control_plane::{
     create_environment, create_project, create_route, create_token, create_x402_spend_policy,
-    disable_route, list_environments, list_routes, list_tokens, list_x402_payment_audit,
-    list_x402_spend_policy, revoke_token, update_x402_spend_policy,
+    disable_route, get_project_config, list_environments, list_routes, list_tokens,
+    list_x402_payment_audit, list_x402_spend_policy, revoke_token, update_x402_spend_policy,
 };
+use crate::reports::{create_report, download_report, list_reports};
 use tower_http::{
     limit::RequestBodyLimitLayer,
     services::{ServeDir, ServeFile},
@@ -190,6 +191,7 @@ pub struct ApiError {
         ingest,
         control_plane::create_project,
         control_plane::create_environment,
+        control_plane::get_project_config,
         control_plane::list_environments,
         control_plane::create_route,
         control_plane::list_routes,
@@ -201,6 +203,9 @@ pub struct ApiError {
         control_plane::list_x402_spend_policy,
         control_plane::list_x402_payment_audit,
         control_plane::update_x402_spend_policy,
+        reports::create_report,
+        reports::download_report,
+        reports::list_reports,
         crate::x402_payments::authorize,
         crate::x402_payments::record_settlement
     ),
@@ -226,6 +231,8 @@ pub struct ApiError {
         crate::control_plane::UpsertX402SpendPolicyRequest,
         crate::control_plane::X402SpendPolicyResponse,
         crate::control_plane::X402PaymentAuditResponse,
+        crate::reports::CreateReportRequest,
+        crate::reports::ReportResponse,
         crate::x402_payments::X402AuthorizeRequest,
         crate::x402_payments::X402AuthorizeResponse,
         crate::x402_payments::X402SettlementRequest,
@@ -306,6 +313,10 @@ pub fn router(state: AppState) -> Router {
             post(create_environment).get(list_environments),
         )
         .route(
+            "/v1/control/projects/{project_id}/config",
+            get(get_project_config),
+        )
+        .route(
             "/v1/control/projects/{project_id}/environments/{environment_id}/routes",
             post(create_route).get(list_routes),
         )
@@ -320,6 +331,14 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/tokens/{token_id}/revoke",
             post(revoke_token),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/reports",
+            post(create_report).get(list_reports),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/reports/{report_id}/{format}",
+            get(download_report),
         )
         .route(
             "/v1/control/projects/{project_id}/x402/policies",
@@ -634,7 +653,28 @@ async fn trace_detail(
     let row = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, application_state, observation_state, updated_at FROM reporting.traces WHERE trace_id = $1 AND ($2::uuid IS NULL OR project_id = $2)")
         .bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_optional(pool).await;
     match row {
-        Ok(Some(row)) => (StatusCode::OK, Json(serde_json::json!({
+        Ok(Some(row)) => {
+            let event_types = match sqlx::query_scalar::<_, String>(
+                "SELECT DISTINCT event_type FROM telemetry.raw_events WHERE trace_id = $1",
+            )
+            .bind(trace_uuid)
+            .fetch_all(pool)
+            .await
+            {
+                Ok(value) => value,
+                Err(_) => {
+                    return (
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        Json(ApiError {
+                            code: "storage_unavailable",
+                            message: "trace evidence query failed",
+                        }),
+                    )
+                        .into_response();
+                }
+            };
+            let has_event = |event_type: &str| event_types.iter().any(|value| value == event_type);
+            (StatusCode::OK, Json(serde_json::json!({
             "trace_id": row.get::<Uuid, _>("trace_id").to_string(),
             "lifecycle_state": row.get::<String, _>("lifecycle_state"),
             "landing_state": row.get::<String, _>("landing_state"),
@@ -642,9 +682,31 @@ async fn trace_detail(
             "application_state": row.get::<String, _>("application_state"),
             "observation_state": row.get::<String, _>("observation_state"),
             "updated_at": row.get::<time::OffsetDateTime, _>("updated_at").format(&time::format_description::well_known::Rfc3339).unwrap_or_default(),
-        }))).into_response(),
-        Ok(None) => (StatusCode::NOT_FOUND, Json(ApiError { code: "trace_not_found", message: "trace was not found" })).into_response(),
-        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "trace query failed" })).into_response(),
+            "evidence": {
+                "trace_created": has_event("solana.trace.created"),
+                "signing_completed": has_event("solana.signing.completed"),
+                "submission_completed": has_event("solana.submission.completed"),
+                "status_observed": has_event("solana.status.observed"),
+                "simulation_completed": has_event("solana.simulation.completed"),
+            }
+        }))).into_response()
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                code: "trace_not_found",
+                message: "trace was not found",
+            }),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "trace query failed",
+            }),
+        )
+            .into_response(),
     }
 }
 
@@ -919,7 +981,8 @@ pub async fn refresh_trace_projection(
     let rows = load_events_for_trace(pool, project_id, environment_id, trace_id, from, until)
         .await
         .map_err(|_| ())?;
-    let projection = reduce_loaded_events(rows).map_err(|_| ())?;
+    let ordered = order_loaded_events(rows).map_err(|_| ())?;
+    let projection = landfall_core::reducer::reduce_trace(&ordered).map_err(|_| ())?;
     let trace = projection.trace();
     let state = trace.state();
     replace_trace_projection(
@@ -938,7 +1001,66 @@ pub async fn refresh_trace_projection(
         },
     )
     .await
-    .map_err(|_| ())
+    .map_err(|_| ())?;
+
+    let grouping = landfall_core::grouping::group_trace(&ordered).map_err(|_| ())?;
+    let mut findings =
+        landfall_core::diagnostics::evaluate_confirmed_diagnostics(&ordered, &projection);
+    findings.extend(landfall_core::diagnostics::evaluate_probable_diagnostics(
+        &ordered,
+        &projection,
+        &grouping,
+        landfall_core::diagnostics::ProbableDiagnosticConfig::default(),
+    ));
+    findings.extend(landfall_core::diagnostics::evaluate_unknown_diagnostics(
+        &ordered,
+        &projection,
+        &grouping,
+    ));
+
+    let mut persisted_diagnostics = std::collections::HashSet::new();
+    let diagnostics = findings
+        .iter()
+        .filter(|finding| persisted_diagnostics.insert(finding.id().into_uuid()))
+        .map(|finding| DiagnosticWrite {
+            diagnostic_id: finding.id().into_uuid(),
+            trace_id,
+            rule_id: finding.rule_id().as_str().into(),
+            rule_set_version: finding.rule_set_version().into(),
+            claim_key: state_label(finding.claim_key()),
+            certainty: state_label(finding.certainty()),
+            created_at: time::OffsetDateTime::now_utc(),
+            evidence_event_ids: finding
+                .evidence()
+                .iter()
+                .map(|event_id| event_id.into_uuid())
+                .collect(),
+        })
+        .collect::<Vec<_>>();
+    append_diagnostics(pool, &diagnostics)
+        .await
+        .map_err(|_| ())?;
+
+    let recommendations =
+        landfall_core::recommendations::generate_recommendations(trace.id(), &findings)
+            .into_iter()
+            .map(|recommendation| RecommendationWrite {
+                recommendation_id: recommendation.id().into_uuid(),
+                trace_id,
+                recommendation_key: state_label(recommendation.key()),
+                rule_set_version: recommendation.rule_set_version().into(),
+                created_at: time::OffsetDateTime::now_utc(),
+                diagnostic_ids: vec![recommendation.diagnostic_id().into_uuid()],
+                evidence_event_ids: recommendation
+                    .evidence()
+                    .iter()
+                    .map(|event_id| event_id.into_uuid())
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+    append_recommendations(pool, &recommendations)
+        .await
+        .map_err(|_| ())
 }
 
 async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {

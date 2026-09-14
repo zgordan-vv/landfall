@@ -38,12 +38,12 @@ Rules:
 - TypeScript `paths` aliases must not be used to bypass package manifests or
   public exports.
 
-Each workspace now has its own manifest, TypeScript configuration, public entry
-point, and project references following this graph. All three libraries are
-temporarily marked `private` at version `0.0.0` so an empty skeleton cannot be
-published accidentally. A later repository check validates their dependency
-fields and TypeScript project references; `just lint` runs that architecture
-check before CI treats the boundary as enforced.
+Each workspace has its own manifest, TypeScript configuration, public entry
+point, and project references following this graph. The libraries remain
+`private` at version `0.0.0` until a versioned package-release policy is
+introduced. A repository check validates dependency fields and TypeScript
+project references; `just lint` runs that architecture check before CI treats
+the boundary as enforced.
 
 The dashboard package contains the React/Vite composition root and its
 production read views. It communicates with the Landfall HTTP API through the

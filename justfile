@@ -79,9 +79,8 @@ build: bootstrap
 # Reproduce the complete local/CI verification gate from a clean checkout.
 check: bootstrap _fmt-check lint typecheck test build
 
-# Start the dashboard development server; backend runtime wiring arrives in Task 8.
+# Start the live dashboard development server against the configured backend.
 dev: bootstrap
-    @echo "The Rust server is still an empty skeleton; starting the dashboard only."
     pnpm run dev:dashboard
 
 # Start PostgreSQL, wait for health, and verify version/storage/network invariants.

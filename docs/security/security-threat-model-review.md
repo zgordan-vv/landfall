@@ -8,7 +8,7 @@ mapped to concrete code rather than treated as design-only claims.
 | Bounded ingestion work | `RequestBodyLimitLayer`, compressed limit, concurrency/rate limits in `landfall-server` | Covered |
 | No credential fields in events | prohibited-key validation in server ingest | Covered |
 | Constant-time token comparison | `auth::constant_time_eq` over SHA-256 digests | Covered |
-| Export redaction and integrity | `export_safety`, `artifact_store` | Covered |
+| Export redaction and integrity | durable PostgreSQL report artifacts and `export_safety` | Covered |
 | Deletion auditability | `deletion::TraceTombstone` append-only ledger | Covered |
 | Safe retention | `retention::plan_retention` rejects zero-day policy and supports dry-run | Covered |
 | Object authorization and production CORS | full HTTP authorization middleware and production headers | Open — Phase 14.4/14.5 |

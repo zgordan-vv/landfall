@@ -3,6 +3,7 @@ export interface FetchResponse {
   readonly ok: boolean;
   readonly status: number;
   json(): Promise<unknown>;
+  arrayBuffer?(): Promise<ArrayBuffer>;
 }
 export interface FetchInit {
   method?: string;
@@ -90,6 +91,14 @@ export interface TraceDetail {
   application_state: string;
   observation_state: string;
   updated_at: string;
+  evidence: TraceEvidence;
+}
+export interface TraceEvidence {
+  trace_created: boolean;
+  signing_completed: boolean;
+  submission_completed: boolean;
+  status_observed: boolean;
+  simulation_completed: boolean;
 }
 export interface TraceListItem {
   trace_id: string;
@@ -146,6 +155,29 @@ export interface X402PaymentAuditRecord {
   reason_code: string;
   settlement_reference: string | null;
   decided_at: string;
+}
+export interface ReportResponse {
+  report_id: string;
+  title: string;
+  status: string;
+  privacy_profile: "internal" | "shareable";
+  trace_count: number;
+  created_at: string;
+}
+export interface ProjectConfig {
+  project_id: string;
+  display_name: string;
+  environments: Array<{
+    environment_id: string;
+    display_name: string;
+    cluster: string;
+    routes: Array<{
+      route_id: string;
+      label: string;
+      enabled: boolean;
+      endpoint_configured: boolean;
+    }>;
+  }>;
 }
 
 export class LandfallApiClient {
@@ -242,6 +274,42 @@ export class LandfallApiClient {
       `/v1/control/projects/${encodeURIComponent(projectId)}/x402/audit?limit=${Math.min(100, Math.max(1, limit))}`,
       token,
     );
+  }
+  async getProjectConfig(projectId: string, token: string): Promise<ProjectConfig> {
+    return this.getWithToken(`/v1/control/projects/${encodeURIComponent(projectId)}/config`, token);
+  }
+  async createReport(
+    projectId: string,
+    token: string,
+    title: string,
+    privacyProfile: "internal" | "shareable",
+  ): Promise<ReportResponse> {
+    return this.post(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/reports`,
+      { title, privacy_profile: privacyProfile },
+      token,
+    );
+  }
+  async listReports(projectId: string, token: string): Promise<ReportResponse[]> {
+    return this.getWithToken(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/reports`,
+      token,
+    );
+  }
+  async downloadReport(
+    projectId: string,
+    reportId: string,
+    format: "json" | "html",
+    token: string,
+  ): Promise<Uint8Array> {
+    const response = await this.request(
+      `${this.baseUrl}/v1/control/projects/${encodeURIComponent(projectId)}/reports/${encodeURIComponent(reportId)}/${format}`,
+      { method: "GET", headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok) throw new Error(`Landfall API request failed: ${response.status}`);
+    if (!response.arrayBuffer)
+      throw new Error("The active fetch implementation cannot download report bytes");
+    return new Uint8Array(await response.arrayBuffer());
   }
 
   private async get<T>(path: string): Promise<T> {

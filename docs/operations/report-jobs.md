@@ -1,13 +1,9 @@
-# Report jobs
+# Durable report exports
 
-`ReportJobRegistry` and `run_report_worker` provide the asynchronous report
-job foundation. Creation records a queued job and its frozen projection
-watermark. The bounded queue applies backpressure; the worker transitions jobs
-through `queued → running → completed` or `failed`, preserving an error for
-status queries. Cancellation stops intake without inventing a successful
-result.
+`POST /v1/control/projects/{project_id}/reports` creates a completed report
+directly from the project's current durable trace read model. It stores JSON
+and HTML artifacts in PostgreSQL in the same transaction as report metadata.
 
-## Verification
-
-Run `cargo test -p landfall-server report_jobs`. The worker test observes the
-queued-to-running-to-completed transition.
+The caller selects `internal` or `shareable` privacy. Shareable reports redact
+trace IDs before either artifact is stored. Download JSON or HTML with
+`GET /v1/control/projects/{project_id}/reports/{report_id}/{format}`.

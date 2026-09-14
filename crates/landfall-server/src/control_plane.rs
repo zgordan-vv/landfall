@@ -18,7 +18,10 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{ApiError, AppState, AuthenticatedToken, TraceListQuery, auth};
+use crate::{
+    ApiError, AppState, AuthenticatedToken, TraceListQuery, auth,
+    config_read_model::{EnvironmentConfig, ProjectConfig, RouteConfig, project_config},
+};
 
 const ADMIN_SCOPE: &str = "project:admin";
 const ALLOWED_SCOPES: &[&str] = &[
@@ -166,6 +169,87 @@ pub struct X402PaymentAuditResponse {
     pub reason_code: String,
     pub settlement_reference: Option<String>,
     pub decided_at: String,
+}
+
+/// Returns the authenticated project's non-secret environment and route configuration.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/config", params(("project_id" = String, Path)), responses((status = 200, body = ProjectConfig), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, body = ApiError)))]
+pub async fn get_project_config(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "configuration requires durable storage",
+        );
+    };
+    let project = match sqlx::query("SELECT name FROM control.projects WHERE project_id = $1")
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(Some(value)) => value,
+        Ok(None) => {
+            return error(
+                StatusCode::NOT_FOUND,
+                "project_not_found",
+                "project was not found",
+            );
+        }
+        Err(_) => {
+            return error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "storage_unavailable",
+                "configuration query failed",
+            );
+        }
+    };
+    let rows = match sqlx::query("SELECT e.environment_id, e.name AS environment_name, e.cluster, r.route_id, r.name AS route_name, r.enabled FROM control.environments e LEFT JOIN control.routes r ON r.environment_id = e.environment_id WHERE e.project_id = $1 ORDER BY e.environment_id, r.route_id")
+        .bind(project_id)
+        .fetch_all(pool)
+        .await
+    {
+        Ok(value) => value,
+        Err(_) => return error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "configuration query failed"),
+    };
+    let mut environments = std::collections::BTreeMap::<Uuid, EnvironmentConfig>::new();
+    for row in rows {
+        let environment_id = row.get::<Uuid, _>("environment_id");
+        let environment = environments
+            .entry(environment_id)
+            .or_insert_with(|| EnvironmentConfig {
+                environment_id: environment_id.to_string(),
+                display_name: row.get("environment_name"),
+                cluster: row.get("cluster"),
+                routes: Vec::new(),
+            });
+        if let Some(route_id) = row.get::<Option<Uuid>, _>("route_id") {
+            environment.routes.push(RouteConfig {
+                route_id: route_id.to_string(),
+                label: row.get("route_name"),
+                enabled: row.get("enabled"),
+                endpoint_configured: true,
+            });
+        }
+    }
+    (
+        StatusCode::OK,
+        Json(project_config(
+            project_id.to_string(),
+            project.get::<String, _>("name"),
+            environments.into_values().collect::<Vec<_>>(),
+        )),
+    )
+        .into_response()
 }
 
 fn default_enabled() -> bool {

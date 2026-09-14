@@ -24,7 +24,7 @@ pub async fn append_recommendations(
 ) -> Result<(), sqlx::Error> {
     let mut tx: Transaction<'_, Postgres> = pool.begin().await?;
     for recommendation in recommendations {
-        sqlx::query("INSERT INTO reporting.recommendations (recommendation_id, trace_id, recommendation_key, rule_set_version, created_at) VALUES ($1,$2,$3,$4,$5)")
+        sqlx::query("INSERT INTO reporting.recommendations (recommendation_id, trace_id, recommendation_key, rule_set_version, created_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (recommendation_id) DO NOTHING")
             .bind(recommendation.recommendation_id).bind(recommendation.trace_id).bind(&recommendation.recommendation_key).bind(&recommendation.rule_set_version).bind(recommendation.created_at).execute(&mut *tx).await?;
         for diagnostic_id in &recommendation.diagnostic_ids {
             sqlx::query("INSERT INTO reporting.recommendation_diagnostics (recommendation_id, diagnostic_id) VALUES ($1,$2) ON CONFLICT DO NOTHING")

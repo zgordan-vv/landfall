@@ -1,8 +1,9 @@
 # Project, environment, and route configuration
 
-`config_read_model` defines the payload exposed by configuration read
-endpoints. It includes stable identifiers, display labels, enabled state,
-commitment, privacy mode, and whether route authentication is configured.
+`GET /v1/control/projects/{project_id}/config` returns the authenticated
+project's environments and routes. It includes stable identifiers, display
+labels, Solana cluster, enabled state, and whether a route has a configured
+endpoint.
 
 Raw RPC URLs, credentials, headers, and tokens are intentionally absent. The
 builder sorts environments and routes by identifier so repeated responses are

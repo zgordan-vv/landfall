@@ -29,7 +29,6 @@ Use these runbooks in this order when operating a local or pilot deployment:
 13. [Release and deployment](release-deployment.md) — publish an immutable
    image, stage it, deploy it behind TLS, and roll it back safely.
 
-For security-specific response use the [security section](../security/). The
-current server entry point is a composition placeholder; pilot deployment must
-complete runtime wiring, migrations, secrets, and monitoring before production
-traffic is allowed.
+For security-specific response use the [security section](../security/). A
+pilot deployment still requires migrations, secrets, TLS/reverse proxy, and
+monitoring before production traffic is allowed.

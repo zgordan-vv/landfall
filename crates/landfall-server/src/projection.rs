@@ -1,7 +1,7 @@
 //! Adapter from persisted rows to the pure ordering/reducer pipeline.
 
 use landfall_core::{
-    ordering::{CollectedEvent, OrderingConfig, canonical_order},
+    ordering::{CanonicalOrder, CollectedEvent, OrderingConfig, canonical_order},
     reducer::{ReducerError, TraceProjection, reduce_trace},
 };
 use landfall_protocol::{UtcTimestamp, WireEvent};
@@ -20,6 +20,15 @@ pub enum ProjectionError {
 pub fn reduce_loaded_events(
     rows: impl IntoIterator<Item = RawEventRow>,
 ) -> Result<TraceProjection, ProjectionError> {
+    let ordered = order_loaded_events(rows)?;
+    reduce_trace(&ordered).map_err(ProjectionError::Reduction)
+}
+
+/// Converts persisted events into their deterministic canonical order so
+/// projection and derived analysis evaluate precisely the same evidence.
+pub fn order_loaded_events(
+    rows: impl IntoIterator<Item = RawEventRow>,
+) -> Result<CanonicalOrder, ProjectionError> {
     let events = rows
         .into_iter()
         .map(|row| {
@@ -35,7 +44,5 @@ pub fn reduce_loaded_events(
             Ok(CollectedEvent::new(event, received_at))
         })
         .collect::<Result<Vec<_>, ProjectionError>>()?;
-    let ordered =
-        canonical_order(events, OrderingConfig::default()).map_err(ProjectionError::Ordering)?;
-    reduce_trace(&ordered).map_err(ProjectionError::Reduction)
+    canonical_order(events, OrderingConfig::default()).map_err(ProjectionError::Ordering)
 }

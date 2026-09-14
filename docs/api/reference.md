@@ -12,6 +12,9 @@ registers these routes:
 | `POST` | `/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/disable` | Disable an RPC route | `204` |
 | `GET`, `POST` | `/v1/control/projects/{project_id}/tokens` | List token metadata or create a project token | `200`, `201` |
 | `POST` | `/v1/control/projects/{project_id}/tokens/{token_id}/revoke` | Revoke a token | `204` |
+| `GET` | `/v1/control/projects/{project_id}/config` | Read non-secret environments and route configuration | `200` |
+| `GET`, `POST` | `/v1/control/projects/{project_id}/reports` | List durable exports or create a JSON/HTML export | `200`, `201` |
+| `GET` | `/v1/control/projects/{project_id}/reports/{report_id}/{format}` | Download a durable JSON or HTML export | `200` |
 | `GET` | `/health/live` | Process liveness | `200` |
 | `GET` | `/health/ready` | Dependency/read-model readiness | `200` or degraded status |
 | `GET` | `/openapi.json` | Generated OpenAPI document | `200` |
@@ -41,9 +44,8 @@ inside JSON fields.
 
 Use `GET /openapi.json` for generated request/response schemas. Preserve decimal
 strings exactly, scope identifiers to project/environment, and treat unknown
-data-quality states as first-class values. Pagination, ETags, trace queries,
-reports, and cohort endpoints are represented by read-model modules and become
-public only when registered in the runtime router.
+data-quality states as first-class values. Every route in this table is
+registered by the runtime router.
 
 ## Control-plane access
 

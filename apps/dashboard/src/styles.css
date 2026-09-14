@@ -423,6 +423,14 @@ h2 {
 .detail-list .status-label {
   margin-left: 0.4rem;
 }
+.detail-list li > strong,
+.detail-list li > span {
+  display: block;
+}
+.detail-list li > span {
+  margin-top: 0.3rem;
+  line-height: 1.45;
+}
 .checklist {
   list-style: none;
   padding-left: 0;

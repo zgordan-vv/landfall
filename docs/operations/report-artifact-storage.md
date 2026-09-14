@@ -1,11 +1,8 @@
 # Report artifact storage
 
-The artifact store accepts JSON or HTML bytes only up to 10 MiB, records the
-format/privacy profile, byte count, and SHA-256 digest, and exposes immutable
-content for download. Verification recomputes the digest before serving bytes;
-modified or truncated content fails with `ChecksumMismatch`.
+Each JSON and HTML export is stored as immutable PostgreSQL bytes alongside its
+SHA-256 digest, byte count, privacy profile, and storage key. Artifacts survive
+server restarts and are authorized by the owning project's administrator token.
 
-## Verification
-
-Run `cargo test -p landfall-server artifact_store` to verify the size cap and
-checksum mismatch behavior.
+The API returns only the requested format and never exposes an RPC endpoint,
+credential, or wallet material.
