@@ -54,3 +54,21 @@ groups:
         annotations:
           summary: An enabled RPC route has produced no telemetry in 24 hours
           runbook: docs/operations/monitoring-and-alerts.md#landfallexpectedingestionsilent
+
+      - alert: LandfallX402PaymentFailures
+        expr: landfall_x402_payments{state="failed_24h"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: One or more x402 payments failed in the trailing 24 hours
+          runbook: docs/operations/monitoring-and-alerts.md#landfallx402paymentfailures
+
+      - alert: LandfallX402PaymentsPending
+        expr: landfall_x402_payments{state="pending"} >= 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: At least ten x402 payment authorizations remain unsettled
+          runbook: docs/operations/monitoring-and-alerts.md#landfallx402paymentspending

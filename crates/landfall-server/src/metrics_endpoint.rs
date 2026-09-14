@@ -12,11 +12,14 @@ pub struct DurableMetrics {
     pub running_jobs: i64,
     pub dead_letter_jobs: i64,
     pub events_last_24h: i64,
+    pub x402_pending: i64,
+    pub x402_settled_last_24h: i64,
+    pub x402_failed_last_24h: i64,
 }
 
 /// Loads non-tenant-specific operational gauges from the durable store.
 pub async fn load(pool: &PgPool) -> Result<DurableMetrics, sqlx::Error> {
-    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'ready') AS ready_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'running') AS running_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'dead_letter') AS dead_letter_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h")
+    let row = sqlx::query("SELECT (SELECT COUNT(*)::bigint FROM control.projects) AS projects, (SELECT COUNT(*)::bigint FROM control.environments) AS environments, (SELECT COUNT(*)::bigint FROM control.routes WHERE enabled) AS enabled_routes, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'ready') AS ready_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'running') AS running_jobs, (SELECT COUNT(*)::bigint FROM work.jobs WHERE status = 'dead_letter') AS dead_letter_jobs, (SELECT COUNT(*)::bigint FROM telemetry.raw_events WHERE received_at >= now() - interval '24 hours') AS events_last_24h, (SELECT COUNT(*)::bigint FROM telemetry.x402_payment_audit WHERE decision = 'approved') AS x402_pending, (SELECT COUNT(*)::bigint FROM telemetry.x402_payment_audit WHERE decision = 'settled' AND decided_at >= now() - interval '24 hours') AS x402_settled_last_24h, (SELECT COUNT(*)::bigint FROM telemetry.x402_payment_audit WHERE decision = 'failed' AND decided_at >= now() - interval '24 hours') AS x402_failed_last_24h")
         .fetch_one(pool)
         .await?;
     Ok(DurableMetrics {
@@ -27,6 +30,9 @@ pub async fn load(pool: &PgPool) -> Result<DurableMetrics, sqlx::Error> {
         running_jobs: row.get("running_jobs"),
         dead_letter_jobs: row.get("dead_letter_jobs"),
         events_last_24h: row.get("events_last_24h"),
+        x402_pending: row.get("x402_pending"),
+        x402_settled_last_24h: row.get("x402_settled_last_24h"),
+        x402_failed_last_24h: row.get("x402_failed_last_24h"),
     })
 }
 
@@ -62,6 +68,8 @@ pub fn render(ready: bool, durable: Option<DurableMetrics>) -> String {
             "landfall_events_received_24h {}\n",
             values.events_last_24h
         ));
+        output.push_str("# HELP landfall_x402_payments Current pending payments and terminal payments in the trailing 24 hours.\n# TYPE landfall_x402_payments gauge\n");
+        output.push_str(&format!("landfall_x402_payments{{state=\"pending\"}} {}\nlandfall_x402_payments{{state=\"settled_24h\"}} {}\nlandfall_x402_payments{{state=\"failed_24h\"}} {}\n", values.x402_pending, values.x402_settled_last_24h, values.x402_failed_last_24h));
     }
     output
 }
@@ -82,11 +90,15 @@ mod tests {
                 running_jobs: 5,
                 dead_letter_jobs: 6,
                 events_last_24h: 7,
+                x402_pending: 8,
+                x402_settled_last_24h: 9,
+                x402_failed_last_24h: 10,
             }),
         );
         assert!(text.contains("# TYPE landfall_jobs gauge"));
         assert!(text.contains("landfall_jobs{state=\"dead_letter\"} 6"));
         assert!(text.contains("landfall_process_ready 1"));
+        assert!(text.contains("landfall_x402_payments{state=\"failed_24h\"} 10"));
         assert!(!text.contains("endpoint"));
         assert!(!text.contains("token"));
     }

@@ -105,6 +105,24 @@ traffic; otherwise remove it from `deploy/monitoring/alerts.yml` or silence it
 with a documented expiration. For an expected active route, check route status,
 provider reachability, and application ingest clients.
 
+### LandfallX402PaymentFailures
+
+One or more payment attempts reached the durable `failed` terminal state in the
+last 24 hours. Open the project's **x402 payments** audit view and compare the
+stable `reason_code` with the merchant response and facilitator logs. The
+payment signature and wallet material are deliberately unavailable in Landfall.
+Do not retry a charge from the alert alone: first determine whether the merchant
+served the resource and whether the failure was recorded after an ambiguous
+network timeout.
+
+### LandfallX402PaymentsPending
+
+Ten or more authorizations remain in `approved` state for 15 minutes. This can
+mean callers are not reporting terminal outcomes, a merchant is unavailable, or
+the client was interrupted after policy approval. Inspect recent audit records
+and client logs; safely settle only outcomes that the client can verify. Pending
+records are not evidence that payment occurred.
+
 ## Ownership and review
 
 Review alert thresholds after the first two weeks of real traffic. The bundled

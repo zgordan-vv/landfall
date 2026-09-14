@@ -9,13 +9,23 @@ use axum::{
 use landfall_storage::{X402SettlementOutcome, authorize_x402_payment, record_x402_settlement};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::{
+    collections::HashMap,
+    sync::{Mutex, OnceLock},
+    time::{Duration, Instant},
+};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{ApiError, AppState, AuthenticatedToken};
 
+const MAX_X402_REQUESTS_PER_SECOND_PER_PROJECT: u32 = 20;
+const MAX_ACTIVE_X402_RATE_WINDOWS: usize = 10_000;
+static X402_RATE_WINDOWS: OnceLock<Mutex<HashMap<Uuid, (Instant, u32)>>> = OnceLock::new();
+
 /// A request to evaluate one x402 payment requirement before wallet signing.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct X402AuthorizeRequest {
     pub policy_id: String,
     pub agent_id: String,
@@ -38,13 +48,14 @@ pub struct X402AuthorizeResponse {
 
 /// A terminal result reported by an external non-custodial signer/facilitator.
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct X402SettlementRequest {
     pub audit_id: String,
     /// `settled` after the paid resource response, otherwise `failed`.
     pub outcome: String,
     /// Stable operational reason, never a signature or transaction payload.
     pub reason_code: String,
-    /// Optional opaque facilitator receipt or transaction identifier.
+    /// Optional safe facilitator receipt or transaction identifier, never encoded evidence.
     pub settlement_reference: Option<String>,
 }
 
@@ -63,6 +74,9 @@ pub async fn authorize(
     Extension(principal): Extension<AuthenticatedToken>,
     Json(request): Json<X402AuthorizeRequest>,
 ) -> axum::response::Response {
+    if !x402_rate_allowed(principal.project_id) {
+        return rate_limited();
+    }
     let Ok(policy_id) = Uuid::parse_str(&request.policy_id) else {
         return error(
             StatusCode::BAD_REQUEST,
@@ -70,13 +84,12 @@ pub async fn authorize(
             "policy_id must be a UUID",
         );
     };
-    if request.idempotency_key.is_empty()
-        || request.idempotency_key.len() > 256
-        || request.agent_id.is_empty()
-        || request.merchant_origin.is_empty()
-        || request.network.is_empty()
-        || request.asset.is_empty()
-        || request.amount_atomic.is_empty()
+    if !valid_authorization_field(&request.idempotency_key, 256)
+        || !valid_authorization_field(&request.agent_id, 160)
+        || !valid_https_origin(&request.merchant_origin)
+        || !valid_authorization_field(&request.network, 160)
+        || !valid_authorization_field(&request.asset, 256)
+        || !valid_atomic_amount(&request.amount_atomic)
     {
         return error(
             StatusCode::BAD_REQUEST,
@@ -140,6 +153,9 @@ pub async fn record_settlement(
     Extension(principal): Extension<AuthenticatedToken>,
     Json(request): Json<X402SettlementRequest>,
 ) -> axum::response::Response {
+    if !x402_rate_allowed(principal.project_id) {
+        return rate_limited();
+    }
     let Ok(audit_id) = Uuid::parse_str(&request.audit_id) else {
         return error(
             StatusCode::BAD_REQUEST,
@@ -218,7 +234,31 @@ fn valid_reason_code(value: &str) -> bool {
 }
 
 fn valid_reference(value: &str) -> bool {
-    !value.is_empty() && value.len() <= 256 && !value.chars().any(char::is_control)
+    !value.is_empty()
+        && value.len() <= 128
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
+}
+
+fn valid_authorization_field(value: &str, max_len: usize) -> bool {
+    !value.is_empty() && value.len() <= max_len && !value.chars().any(char::is_control)
+}
+
+fn valid_https_origin(value: &str) -> bool {
+    let Some(host) = value.strip_prefix("https://") else {
+        return false;
+    };
+    !host.is_empty()
+        && host.len() <= 253
+        && !host.contains(['/', '?', '#', '@'])
+        && host
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b':'))
+}
+
+fn valid_atomic_amount(value: &str) -> bool {
+    value.len() <= 80 && value.bytes().all(|byte| byte.is_ascii_digit()) && !value.starts_with('0')
 }
 
 fn error(
@@ -227,4 +267,77 @@ fn error(
     message: &'static str,
 ) -> axum::response::Response {
     (status, Json(ApiError { code, message })).into_response()
+}
+
+fn rate_limited() -> axum::response::Response {
+    error(
+        StatusCode::TOO_MANY_REQUESTS,
+        "x402_rate_limited",
+        "x402 payment-control rate limit exceeded",
+    )
+}
+
+fn x402_rate_allowed(project_id: Uuid) -> bool {
+    let windows = X402_RATE_WINDOWS.get_or_init(|| Mutex::new(HashMap::new()));
+    let Ok(mut windows) = windows.lock() else {
+        return false;
+    };
+    let now = Instant::now();
+    windows.retain(|_, (started_at, _)| now.duration_since(*started_at) < Duration::from_secs(1));
+    let Some(window) = windows.get_mut(&project_id) else {
+        if windows.len() >= MAX_ACTIVE_X402_RATE_WINDOWS {
+            return false;
+        }
+        windows.insert(project_id, (now, 1));
+        return true;
+    };
+    if window.1 >= MAX_X402_REQUESTS_PER_SECOND_PER_PROJECT {
+        return false;
+    }
+    window.1 += 1;
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        MAX_X402_REQUESTS_PER_SECOND_PER_PROJECT, X402SettlementRequest, valid_atomic_amount,
+        valid_https_origin, valid_reference, x402_rate_allowed,
+    };
+    use uuid::Uuid;
+
+    #[test]
+    fn settlement_reference_is_an_identifier_not_a_payload() {
+        assert!(valid_reference("5NfVx7Zp9-merchant.receipt:42"));
+        assert!(!valid_reference("eyJzaWduYXR1cmUiOiJwYXlsb2FkIn0="));
+        assert!(!valid_reference("receipt/with/path"));
+    }
+
+    #[test]
+    fn authorization_values_are_constrained_before_storage() {
+        assert!(valid_https_origin("https://merchant.example:8443"));
+        assert!(!valid_https_origin("http://merchant.example"));
+        assert!(!valid_https_origin("https://user@merchant.example"));
+        assert!(valid_atomic_amount("1000000"));
+        assert!(!valid_atomic_amount("0"));
+        assert!(!valid_atomic_amount("01"));
+        assert!(!valid_atomic_amount("1.5"));
+    }
+
+    #[test]
+    fn payment_evidence_is_rejected_at_the_json_boundary() {
+        let body = r#"{"audit_id":"00000000-0000-0000-0000-000000000000","outcome":"failed","reason_code":"merchant_rejected","payment_signature":"secret"}"#;
+        assert!(serde_json::from_str::<X402SettlementRequest>(body).is_err());
+    }
+
+    #[test]
+    fn x402_rate_limit_is_scoped_to_one_project() {
+        let first = Uuid::now_v7();
+        let second = Uuid::now_v7();
+        for _ in 0..MAX_X402_REQUESTS_PER_SECOND_PER_PROJECT {
+            assert!(x402_rate_allowed(first));
+        }
+        assert!(!x402_rate_allowed(first));
+        assert!(x402_rate_allowed(second));
+    }
 }

@@ -474,18 +474,32 @@ async fn health_event() -> impl IntoResponse {
     )
 }
 
-static RATE_WINDOW: OnceLock<Mutex<(Instant, u32)>> = OnceLock::new();
+#[derive(Debug)]
+struct RateWindow {
+    started_at: Instant,
+    total_requests: u32,
+}
+
+static RATE_WINDOW: OnceLock<Mutex<RateWindow>> = OnceLock::new();
 
 async fn request_rate_limit(request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
-    let limiter = RATE_WINDOW.get_or_init(|| Mutex::new((Instant::now(), 0)));
+    let limiter = RATE_WINDOW.get_or_init(|| {
+        Mutex::new(RateWindow {
+            started_at: Instant::now(),
+            total_requests: 0,
+        })
+    });
     let allowed = limiter.lock().is_ok_and(|mut window| {
-        if window.0.elapsed() >= Duration::from_secs(1) {
-            *window = (Instant::now(), 0);
+        if window.started_at.elapsed() >= Duration::from_secs(1) {
+            *window = RateWindow {
+                started_at: Instant::now(),
+                total_requests: 0,
+            };
         }
-        if window.1 >= MAX_REQUESTS_PER_SECOND {
+        if window.total_requests >= MAX_REQUESTS_PER_SECOND {
             false
         } else {
-            window.1 += 1;
+            window.total_requests += 1;
             true
         }
     });
