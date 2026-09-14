@@ -732,7 +732,7 @@ async fn overview(
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT COUNT(*)::bigint AS total_traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed_traces, COUNT(*) FILTER (WHERE execution_state = 'success')::bigint AS successful_executions, COUNT(*) FILTER (WHERE execution_state = 'unknown')::bigint AS unknown_executions, COALESCE(MAX(updated_at), now()) AS updated_at FROM reporting.traces WHERE updated_at >= now() - interval '24 hours' AND ($1::uuid IS NULL OR project_id = $1)")
+    let row = sqlx::query("SELECT COUNT(*)::bigint AS total_traces, COUNT(*) FILTER (WHERE landing_state IN ('processed', 'confirmed', 'finalized'))::bigint AS landed_traces, COUNT(*) FILTER (WHERE execution_state = 'success')::bigint AS successful_executions, COUNT(*) FILTER (WHERE execution_state = 'unknown')::bigint AS unknown_executions, COALESCE(MAX(updated_at), now()) AS updated_at FROM reporting.traces WHERE updated_at >= now() - interval '24 hours' AND ($1::uuid IS NULL OR project_id = $1)")
         .bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_one(pool).await;
     match row {
         Ok(row) => (
@@ -862,7 +862,7 @@ async fn comparison(
         )
             .into_response();
     };
-    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state = 'landed')::bigint AS landed FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
+    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state IN ('processed', 'confirmed', 'finalized'))::bigint AS landed FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
     match rows {
         Ok(rows) if rows.len() == 2 => (
             StatusCode::OK,
