@@ -24,12 +24,17 @@ export type FetchLike = (
 export function createHttpBatchTransport<T>(
   collectorUrl: string,
   fetcher: FetchLike,
+  ingestToken?: string,
 ): BatchTransport<T> {
   const endpoint = `${collectorUrl.replace(/\/$/, "")}/v1/ingest`;
   return async (batch): Promise<TransportResponse> =>
     fetcher(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        ...(ingestToken === undefined ? {} : { authorization: `Bearer ${ingestToken}` }),
+      },
       body: JSON.stringify({ batch_id: batch.batchId, events: batch.events }),
     });
 }

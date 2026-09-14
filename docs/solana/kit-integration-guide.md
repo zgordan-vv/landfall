@@ -16,11 +16,24 @@ policy.
 5. Wrap every submission attempt with route and preflight configuration.
 6. Wrap confirmation waiting and send sanitized events asynchronously.
 
-The runnable dry-run harness is
+The runnable integration harness is
 [`examples/solana-kit-transfer.mjs`](../../examples/solana-kit-transfer.mjs).
-It uses an injected fake client and cannot submit funds. Keep
-`ALLOW_SUBMISSION` unset while developing; enabling real devnet submission
+It uses an application-supplied signed transaction and records blockhash,
+simulation, submission, and observed status through `LandfallSdk`. Landfall
+never receives a private key or raw signed transaction bytes. Provide the five
+`LANDFALL_*` environment values (collector URL, ingestion token, project,
+environment, and route) plus `SIGNED_TRANSACTION_BASE64`. Keep
+`ALLOW_SUBMISSION` unset while developing; enabling a real devnet submission
 requires an explicit operator decision and a separately configured signer.
+
+For an end-to-end devnet check using the configured Solana CLI keypair, use
+[`examples/solana-cli-sdk-transfer.mjs`](../../examples/solana-cli-sdk-transfer.mjs).
+It transfers a deliberately tiny devnet amount to the configured wallet itself
+unless `SOLANA_RECIPIENT` is set. It obtains the key only through the Solana
+CLI process, then automatically records submission and confirmed status as
+Landfall events. The CLI does not expose a separate signing callback; an
+application that owns that callback should also call the recorder's signing
+methods.
 
 P0 supports `@solana/kit` 8.2.0 on Node 24. The compatibility lane is frozen in
 [`config/solana-kit-lane.json`](../../config/solana-kit-lane.json) and the

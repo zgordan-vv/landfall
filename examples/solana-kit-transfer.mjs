@@ -1,5 +1,8 @@
 import {
+  LandfallSdk,
   captureLatestBlockhash,
+  createSolanaLifecycleRecorder,
+  generateUuidV7,
   measureConfirmationWait,
   measureSigning,
   normalizeSimulationResult,
@@ -16,6 +19,35 @@ const rpcEndpoint =
   process.env.SOLANA_RPC_URL ??
   (cluster === "devnet" ? "https://api.devnet.solana.com" : "http://127.0.0.1:8899");
 const signedTransaction = process.env.SIGNED_TRANSACTION_BASE64;
+const landfall = {
+  collectorUrl: process.env.LANDFALL_COLLECTOR_URL,
+  ingestToken: process.env.LANDFALL_INGEST_TOKEN,
+  projectId: process.env.LANDFALL_PROJECT_ID,
+  environmentId: process.env.LANDFALL_ENVIRONMENT_ID,
+  routeId: process.env.LANDFALL_ROUTE_ID,
+};
+for (const [name, value] of Object.entries(landfall)) {
+  if (!value) throw new Error(`${name} is required to send lifecycle telemetry`);
+}
+const sdk = new LandfallSdk({
+  collectorUrl: landfall.collectorUrl,
+  ingestToken: landfall.ingestToken,
+});
+const traceId = generateUuidV7();
+const recorder = createSolanaLifecycleRecorder(sdk, {
+  projectId: landfall.projectId,
+  environmentId: landfall.environmentId,
+  traceId,
+  source: { kind: "application", name: "solana-kit-transfer", version: "1.0.0" },
+});
+const elapsed = async (operation) => {
+  const started = process.hrtime.bigint();
+  try {
+    return { value: await operation(), durationNs: (process.hrtime.bigint() - started).toString() };
+  } catch (error) {
+    return { error, durationNs: (process.hrtime.bigint() - started).toString() };
+  }
+};
 async function rpc(method, params) {
   const response = await fetch(rpcEndpoint, {
     method: "POST",
@@ -71,29 +103,90 @@ const clock = (() => {
   let tick = 0n;
   return () => (tick += 10n);
 })();
-const blockhash = await captureLatestBlockhash(client);
-const simulation = normalizeSimulationResult(
-  await client.simulate({ instruction: "system.transfer", lamports }),
+recorder.traceCreated({ flow: "sdk-instrumented-transfer", transaction_version: "legacy" });
+const blockhashMeasurement = await elapsed(() => captureLatestBlockhash(client));
+if (blockhashMeasurement.error) throw blockhashMeasurement.error;
+const blockhash = blockhashMeasurement.value;
+recorder.blockhashAcquired({
+  route_id: landfall.routeId,
+  result: "acquired",
+  duration_ns: blockhashMeasurement.durationNs,
+  recent_blockhash: blockhash.blockhash,
+  last_valid_block_height: blockhash.lastValidBlockHeight,
+});
+const simulationId = generateUuidV7();
+recorder.simulationStarted({
+  simulation_id: simulationId,
+  route_id: landfall.routeId,
+  commitment: "confirmed",
+  replace_recent_blockhash: true,
+  sig_verify: false,
+});
+const simulationMeasurement = await elapsed(() =>
+  client.simulate({ instruction: "system.transfer", lamports }),
 );
+const simulation = normalizeSimulationResult(
+  simulationMeasurement.error ? { err: simulationMeasurement.error } : simulationMeasurement.value,
+);
+recorder.simulationCompleted({
+  simulation_id: simulationId,
+  route_id: landfall.routeId,
+  duration_ns: simulationMeasurement.durationNs,
+  transport_result: simulationMeasurement.error ? "connection_failed" : "response_received",
+  rpc_result: simulation.rpcResult,
+  ...(simulation.unitsConsumed === undefined ? {} : { units_consumed: simulation.unitsConsumed }),
+  ...(simulation.logsPresent === undefined ? {} : { logs_present: simulation.logsPresent }),
+});
+if (simulationMeasurement.error) throw simulationMeasurement.error;
 const signing = await measureSigning(
   () => client.sign({ instruction: "system.transfer", lamports }),
   clock,
 );
+const attemptId = generateUuidV7();
 const submission = allowSubmission
-  ? await submitWithRoute(
+  ? (recorder.submissionStarted({
+      attempt_id: attemptId,
+      route_id: landfall.routeId,
+      attempt_sequence: 1,
+      encoding: "base64",
+      skip_preflight: false,
+    }),
+    await submitWithRoute(
       {
-        attemptId: "demo-attempt-1",
-        route: { routeId: `${cluster}-rpc` },
+        attemptId,
+        route: { routeId: landfall.routeId },
         attemptSequence: 1,
         encoding: "base64",
         skipPreflight: false,
       },
-      () => client.submit(signing.value, { routeId: `${cluster}-rpc` }),
-    )
+      () => client.submit(signing.value, { routeId: landfall.routeId }),
+    ))
   : { result: "dry_run", value: undefined };
+if (allowSubmission) {
+  recorder.submissionCompleted({
+    attempt_id: attemptId,
+    route_id: landfall.routeId,
+    duration_ns: "0",
+    transport_result: "response_received",
+    rpc_result: submission.result === "accepted" ? "accepted" : "rejected",
+    ...(submission.value === undefined ? {} : { signature: submission.value }),
+  });
+}
 const confirmation = allowSubmission
   ? await measureConfirmationWait(() => client.confirm(submission.value, blockhash), clock)
   : { result: "not_started" };
+if (allowSubmission && submission.value !== undefined) {
+  recorder.statusObserved({
+    observer_source_id: generateUuidV7(),
+    source_result: confirmation.result === "commitment_reached" ? "found" : "not_found",
+    duration_ns: confirmation.durationNs ?? "0",
+    signature: submission.value,
+    commitment: "confirmed",
+  });
+}
+const delivery = await sdk.flush();
+if (delivery.status !== "flushed")
+  throw delivery.error ?? new Error(`telemetry flush ${delivery.status}`);
 
 console.log(
   JSON.stringify(
@@ -106,6 +199,7 @@ console.log(
       signing: { result: signing.result, durationNs: signing.durationNs },
       submission: { result: submission.result },
       confirmation: { result: confirmation.result },
+      traceId,
     },
     null,
     2,

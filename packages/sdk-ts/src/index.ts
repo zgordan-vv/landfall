@@ -10,6 +10,7 @@ export * from "./batching.js";
 export * from "./transport.js";
 export * from "./flush.js";
 export * from "./solana-boundary.js";
+export * from "./solana-lifecycle.js";
 export * from "./x402.js";
 export * from "./x402-svm.js";
 import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
@@ -24,6 +25,8 @@ import {
 
 export interface SdkOptions {
   readonly collectorUrl: string;
+  /** Project-scoped ingestion credential. Never include this value in telemetry events. */
+  readonly ingestToken?: string;
   readonly onTelemetryError?: (error: TelemetryError) => void;
   readonly onHealthChange?: HealthChangeCallback;
   readonly maxBatchEvents?: number;
@@ -35,6 +38,7 @@ export interface SdkOptions {
 
 export interface SdkConfig {
   readonly collectorUrl: string;
+  readonly ingestToken?: string;
   readonly maxBatchEvents: number;
   readonly maxBufferEvents: number;
 }
@@ -57,7 +61,15 @@ export function validateConfig(options: SdkOptions): SdkConfig {
     maxBufferEvents > 100_000
   )
     throw new Error("maxBufferEvents must be between maxBatchEvents and 100000");
-  return Object.freeze({ collectorUrl, maxBatchEvents, maxBufferEvents });
+  const ingestToken = options.ingestToken?.trim();
+  if (options.ingestToken !== undefined && !ingestToken)
+    throw new Error("ingestToken must not be empty when provided");
+  return Object.freeze({
+    collectorUrl,
+    maxBatchEvents,
+    maxBufferEvents,
+    ...(ingestToken === undefined ? {} : { ingestToken }),
+  });
 }
 
 export interface TelemetryError {
@@ -108,7 +120,11 @@ export class LandfallSdk {
     const runtimeFetch = (globalThis as unknown as { fetch?: FetchLike }).fetch;
     const fetcher = options.fetch ?? runtimeFetch?.bind(globalThis);
     if (fetcher === undefined) throw new Error("Fetch API is required to send telemetry");
-    this.#transport = createHttpBatchTransport(this.#config.collectorUrl, fetcher);
+    this.#transport = createHttpBatchTransport(
+      this.#config.collectorUrl,
+      fetcher,
+      this.#config.ingestToken,
+    );
     this.#retry = options.retry ?? {};
   }
 

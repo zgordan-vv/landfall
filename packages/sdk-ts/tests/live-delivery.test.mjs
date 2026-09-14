@@ -21,6 +21,7 @@ test("SDK posts buffered events to the collector and clears a successful batch",
   const requests = [];
   const sdk = new LandfallSdk({
     collectorUrl: "http://localhost:8080/",
+    ingestToken: "lf_test_ingest_token",
     fetch: async (url, init) => {
       requests.push({ url, init });
       return { status: 202 };
@@ -31,6 +32,7 @@ test("SDK posts buffered events to the collector and clears a successful batch",
   assert.deepEqual(await sdk.flush(), { status: "flushed" });
   assert.equal(sdk.bufferedEventCount, 0);
   assert.equal(requests[0].url, "http://localhost:8080/v1/ingest");
+  assert.equal(requests[0].init.headers.authorization, "Bearer lf_test_ingest_token");
   const body = JSON.parse(requests[0].init.body);
   assert.match(body.batch_id, /^[0-9a-f-]{36}$/);
   assert.deepEqual(body.events, [event]);
