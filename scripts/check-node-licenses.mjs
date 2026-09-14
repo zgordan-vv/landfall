@@ -4,6 +4,7 @@ const allowedLicenses = new Set([
   "Apache-2.0",
   "BSD-2-Clause",
   "BSD-3-Clause",
+  "BlueOak-1.0.0",
   "ISC",
   "MIT",
   "MPL-2.0",

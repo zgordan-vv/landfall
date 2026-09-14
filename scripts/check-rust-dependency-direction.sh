@@ -60,7 +60,7 @@ assert_direct_internal_dependencies "landfall-storage" $'landfall-core\nlandfall
 assert_direct_internal_dependencies "landfall-observer" $'landfall-core\nlandfall-protocol'
 assert_direct_internal_dependencies "landfall-report" $'landfall-core\nlandfall-protocol'
 assert_direct_internal_dependencies "landfall-server" $'landfall-core\nlandfall-observer\nlandfall-protocol\nlandfall-report\nlandfall-storage'
-assert_direct_internal_dependencies "landfall-cli" "landfall-server"
+assert_direct_internal_dependencies "landfall-cli" $'landfall-core\nlandfall-protocol\nlandfall-report'
 
 assert_dependency_tree_excludes \
     "landfall-protocol" \
