@@ -351,9 +351,8 @@ pub fn router(state: AppState) -> Router {
         .layer(middleware::from_fn(request_rate_limit))
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
-        .layer(middleware::from_fn(security_headers_and_cors))
         .with_state(state);
-    dashboard_router(router)
+    dashboard_router(router).layer(middleware::from_fn(security_headers_and_cors))
 }
 
 fn dashboard_router(router: Router) -> Router {
@@ -1390,13 +1389,18 @@ mod tests {
         std::fs::write(directory.join("index.html"), "<main>Landfall</main>").unwrap();
         std::fs::write(directory.join("assets/app.js"), "console.log('live')").unwrap();
 
-        let dashboard = super::dashboard_router_at(axum::Router::new(), directory.clone());
+        let dashboard = super::dashboard_router_at(axum::Router::new(), directory.clone())
+            .layer(axum::middleware::from_fn(super::security_headers_and_cors));
         let index = dashboard
             .clone()
             .oneshot(Request::get("/").body(Body::empty()).unwrap())
             .await
             .unwrap();
         assert_eq!(index.status(), StatusCode::OK);
+        assert_eq!(
+            index.headers().get("content-security-policy").unwrap(),
+            "default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+        );
         assert_eq!(
             axum::body::to_bytes(index.into_body(), usize::MAX)
                 .await
