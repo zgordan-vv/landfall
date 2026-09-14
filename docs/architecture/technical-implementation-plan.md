@@ -1805,3 +1805,12 @@ The first implementation action is **Phase 0, not scaffolding**:
 4. Only then initialize the workspace in Phase 1.
 
 This prevents apparently harmless bootstrap choices from silently deciding privacy, contract ownership, client compatibility, and persistence behavior.
+
+## 31. Post-launch customer education — Solana transaction storybook
+
+After the product is deployed and a first real trace exists, create the
+[Solana transaction storybook plan](../product/solana-transaction-storybook-plan.md).
+This is a customer-education and adoption deliverable, not an implementation
+substitute. It teaches non-blockchain buyers why a wallet notification or one
+RPC response cannot always explain a missing payment, and maps those pains to
+Landfall's evidence timeline and certainty labels.
