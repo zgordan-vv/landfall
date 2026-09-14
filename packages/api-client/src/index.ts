@@ -157,7 +157,8 @@ export class LandfallApiClient {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
     const defaultFetch = (globalThis as { fetch?: FetchLike }).fetch;
     if (!options.fetch && !defaultFetch) throw new Error("a fetch implementation is required");
-    this.request = options.fetch ?? (defaultFetch as FetchLike);
+    const browserFetch = defaultFetch as FetchLike;
+    this.request = options.fetch ?? ((input, init) => browserFetch.call(globalThis, input, init));
     this.token = options.token;
   }
 
