@@ -31,7 +31,8 @@ query contracts.
 - Architecture: [overview](../architecture/architecture-overview.md) and
   [system design](../architecture/system-design.md).
 - Reproducible [five-minute demo](portfolio-demo-script.md).
-- Fixture-backed dashboard with Overview, Traces, Trace detail, and Comparison.
+- React dashboard served by the Rust server, with token-gated live Overview,
+  Traces, Trace detail, and Comparison API queries.
 - Named security, resilience, and performance checks under [security](../security/)
   and [benchmarks](../benchmarks/).
 - Docker image, Compose profiles, backup/restore scripts, and release checksum.

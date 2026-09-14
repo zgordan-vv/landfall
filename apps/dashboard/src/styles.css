@@ -4,6 +4,7 @@ body { margin: 0; min-width: 320px; }
 .app-shell { min-height: 100vh; }
 .topbar { display: flex; align-items: baseline; gap: 1rem; padding: 1.25rem 2rem; border-bottom: 1px solid #273246; }
 .brand { color: var(--accent); font-weight: 800; font-size: 1.25rem; text-decoration: none; }
+.logout { margin-left: auto; }
 .eyebrow, .nav-caption { color: var(--muted); text-transform: uppercase; letter-spacing: .11em; font-size: .7rem; }
 .layout { display: grid; grid-template-columns: 13rem 1fr; min-height: calc(100vh - 4.5rem); }
 nav { padding: 2rem 1rem; border-right: 1px solid #273246; }

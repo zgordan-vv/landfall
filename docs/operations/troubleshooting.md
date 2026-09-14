@@ -8,9 +8,12 @@ database port to the host.
 
 ## Dashboard is blank or a route returns to Overview
 
-Rebuild the dashboard with `pnpm --filter @landfall/dashboard build`, restart
-the Vite dev server, and use hash routes such as `#traces` or
-`#traces/tr_01HZX9`. The portfolio dashboard is fixture-backed.
+Use hash routes such as `#traces` or `#traces/<trace-id>`. For the packaged
+dashboard, rebuild the server image and restart the `server` Compose service;
+it serves the React bundle itself. For development, run the Vite server after
+building the dashboard. Enter a project token with `traces:read` and
+`diagnostics:read` on first visit. The workspace reads the live API and shows
+an empty state until the project has ingested traces.
 
 ## A trace is Unknown
 

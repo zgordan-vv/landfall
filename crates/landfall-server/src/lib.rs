@@ -37,9 +37,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use sqlx::Row;
-use std::sync::Arc;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
+use std::{path::PathBuf, sync::Arc};
 use tower::limit::ConcurrencyLimitLayer;
 pub mod acknowledged_events;
 pub mod artifact_store;
@@ -82,7 +82,10 @@ use crate::control_plane::{
     disable_route, list_environments, list_routes, list_tokens, list_x402_payment_audit,
     list_x402_spend_policy, revoke_token, update_x402_spend_policy,
 };
-use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::{
+    limit::RequestBodyLimitLayer,
+    services::{ServeDir, ServeFile},
+};
 use tracing::info_span;
 use utoipa::{OpenApi, ToSchema};
 use uuid::Uuid;
@@ -334,7 +337,7 @@ pub fn router(state: AppState) -> Router {
             Arc::clone(&state),
             authenticate_api,
         ));
-    Router::new()
+    let router = Router::new()
         .merge(api)
         .merge(bootstrap)
         .merge(control)
@@ -349,7 +352,24 @@ pub fn router(state: AppState) -> Router {
         .layer(middleware::from_fn(compressed_body_limit))
         .layer(middleware::from_fn(request_context))
         .layer(middleware::from_fn(security_headers_and_cors))
-        .with_state(state)
+        .with_state(state);
+    dashboard_router(router)
+}
+
+fn dashboard_router(router: Router) -> Router {
+    let directory = std::env::var_os("LANDFALL_DASHBOARD_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/opt/landfall/dashboard"));
+    dashboard_router_at(router, directory)
+}
+
+fn dashboard_router_at(router: Router, directory: PathBuf) -> Router {
+    let index = directory.join("index.html");
+    if index.is_file() {
+        router.fallback_service(ServeDir::new(directory).not_found_service(ServeFile::new(index)))
+    } else {
+        router
+    }
 }
 
 fn required_scope(path: &str) -> &'static str {
@@ -431,6 +451,7 @@ async fn security_headers_and_cors(
         )
             .into_response();
     }
+    let is_dashboard = is_dashboard_request(request.uri().path());
     let mut response = next.run(request).await.into_response();
     let headers = response.headers_mut();
     headers.insert(
@@ -441,13 +462,25 @@ async fn security_headers_and_cors(
     headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
     headers.insert(
         "content-security-policy",
-        HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
+        if is_dashboard {
+            HeaderValue::from_static("default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+        } else {
+            HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'")
+        },
     );
     headers.insert(
         "permissions-policy",
         HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
     response
+}
+
+fn is_dashboard_request(path: &str) -> bool {
+    !path.starts_with("/v1/")
+        && !matches!(
+            path,
+            "/health/live" | "/health/ready" | "/health/event" | "/metrics" | "/openapi.json"
+        )
 }
 
 fn cors_allows_origin(origin: &str, host: Option<&str>) -> bool {
@@ -1346,6 +1379,55 @@ mod tests {
         assert_eq!(
             response.headers().get("content-type").unwrap(),
             "text/plain; version=0.0.4; charset=utf-8"
+        );
+    }
+
+    #[tokio::test]
+    async fn dashboard_bundle_is_served_without_taking_over_api_routes() {
+        let directory =
+            std::env::temp_dir().join(format!("landfall-dashboard-{}", uuid::Uuid::now_v7()));
+        std::fs::create_dir_all(directory.join("assets")).unwrap();
+        std::fs::write(directory.join("index.html"), "<main>Landfall</main>").unwrap();
+        std::fs::write(directory.join("assets/app.js"), "console.log('live')").unwrap();
+
+        let dashboard = super::dashboard_router_at(axum::Router::new(), directory.clone());
+        let index = dashboard
+            .clone()
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(index.status(), StatusCode::OK);
+        assert_eq!(
+            axum::body::to_bytes(index.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+            "<main>Landfall</main>"
+        );
+        let asset = dashboard
+            .oneshot(Request::get("/assets/app.js").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(asset.status(), StatusCode::OK);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[tokio::test]
+    async fn dashboard_and_api_responses_receive_separate_content_security_policies() {
+        let dashboard = router(super::AppState::default())
+            .oneshot(Request::get("/").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            dashboard.headers().get("content-security-policy").unwrap(),
+            "default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+        );
+        let api = router(super::AppState::default())
+            .oneshot(Request::get("/openapi.json").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(
+            api.headers().get("content-security-policy").unwrap(),
+            "default-src 'none'; frame-ancestors 'none'"
         );
     }
 

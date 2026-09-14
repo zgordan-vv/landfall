@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { LandfallApiClient, type ComparisonSummary, type CreatedTokenResponse, type OverviewSummary, type SystemHealthSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation, type X402PaymentAuditRecord } from "@landfall/api-client";
+import { LandfallApiClient, type ComparisonSummary, type CreatedTokenResponse, type OverviewSummary, type TraceDetail as ApiTraceDetail, type TraceDiagnostic, type TraceListItem, type TraceRecommendation, type X402PaymentAuditRecord } from "@landfall/api-client";
 import "./styles.css";
 
 type Route = "overview" | "onboarding" | "traces" | "comparison" | "payments" | "trace-detail";
@@ -22,14 +22,34 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
+const DashboardApiContext = React.createContext<LandfallApiClient | null>(null);
+
+function apiBaseUrl(): string {
+  return import.meta.env["VITE_LANDFALL_API_URL"] ?? "";
+}
+
+function useDashboardApi(): LandfallApiClient {
+  const api = React.useContext(DashboardApiContext);
+  if (api === null) throw new Error("Dashboard access token is required");
+  return api;
+}
+
+function DashboardAccess({ onConnect }: { onConnect: (token: string) => void }) {
+  const [token, setToken] = React.useState("");
+  return <section className="state-card" aria-label="Dashboard access"><p className="eyebrow">Connect</p><h2>Open your live workspace</h2><p className="muted">Enter a token with <code>traces:read</code> and <code>diagnostics:read</code>. It remains only in this browser tab and is never written to local storage.</p><form className="setup-form" onSubmit={(event) => { event.preventDefault(); onConnect(token.trim()); }}><label>Dashboard token<input required type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" /></label><button type="submit">Open workspace</button></form><p className="muted">Need a token? Use <a href="#onboarding">Get started</a> or ask your project administrator.</p></section>;
+}
+
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
+  const [accessToken, setAccessToken] = React.useState("");
   React.useEffect(() => { const onHash = () => setRoute(routeFromLocation()); window.addEventListener("hashchange", onHash); return () => window.removeEventListener("hashchange", onHash); }, []);
   const labels: Record<Route, string> = { overview: "Overview", onboarding: "Get started", traces: "Traces", comparison: "Comparison", payments: "x402 payments", "trace-detail": "Trace detail" };
+  const api = React.useMemo(() => accessToken ? new LandfallApiClient({ baseUrl: apiBaseUrl(), token: accessToken }) : null, [accessToken]);
+  const workspace = route === "overview" ? <OverviewMetrics /> : route === "traces" ? <TraceList /> : route === "trace-detail" ? <TraceDetail /> : route === "comparison" ? <ComparisonView /> : route === "payments" ? <X402PaymentAudit /> : <Onboarding />;
   return <div className="app-shell">
-    <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span></header>
+    <header className="topbar"><a className="brand" href="#overview">Landfall</a><span className="eyebrow">transaction observability</span>{api && <button className="secondary-button logout" onClick={() => setAccessToken("")} type="button">Disconnect</button>}</header>
     <div className="layout"><nav aria-label="Primary navigation"><p className="nav-caption">Workspace</p>{(Object.keys(labels) as Route[]).filter((key) => key !== "trace-detail").map((key) => <a className={route === key ? "nav-link active" : "nav-link"} aria-current={route === key ? "page" : undefined} href={`#${key}`} key={key}>{labels[key]}</a>)}</nav>
-      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : route === "onboarding" ? "Connect your first transaction flow" : route === "payments" ? "Controlled x402 payment activity" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "overview" && <><OverviewMetrics /><OnboardingHealth /></>}{route === "onboarding" && <Onboarding />}{route === "traces" && <TraceList />}{route === "trace-detail" && <TraceDetail />}{route === "comparison" && <ComparisonView />}{route === "payments" && <X402PaymentAudit />}</main>
+      <main className="content"><p className="eyebrow">{labels[route]}</p><h1>{route === "overview" ? "Lifecycle evidence at a glance" : route === "onboarding" ? "Connect your first transaction flow" : route === "payments" ? "Controlled x402 payment activity" : labels[route]}</h1><p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>{route === "onboarding" ? <Onboarding /> : api ? <DashboardApiContext.Provider value={api}>{workspace}</DashboardApiContext.Provider> : <DashboardAccess onConnect={setAccessToken} />}</main>
     </div>
   </div>;
 }
@@ -60,6 +80,7 @@ function Onboarding() {
   const [routeName, setRouteName] = React.useState("mainnet-primary");
   const [endpoint, setEndpoint] = React.useState("https://api.mainnet-beta.solana.com");
   const [sdkToken, setSdkToken] = React.useState<CreatedTokenResponse | null>(null);
+  const [dashboardToken, setDashboardToken] = React.useState<CreatedTokenResponse | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const run = async (action: () => Promise<void>) => { setBusy(true); setMessage(null); try { await action(); } catch (reason) { setMessage(reason instanceof Error ? reason.message : "Request failed"); } finally { setBusy(false); } };
@@ -70,6 +91,7 @@ function Onboarding() {
       <div><p className="eyebrow">1 · Project</p><h2>Create a project</h2></div><label>Bootstrap token<input required type="password" value={bootstrapToken} onChange={(event) => setBootstrapToken(event.target.value)} autoComplete="off" /></label><label>Project name<input required value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="Acme payments" /></label><button disabled={busy} type="submit">Create project</button>
     </form>
     {projectId && <><section className="state-card token-reveal"><p className="eyebrow">Save now</p><h2>Project administrator token</h2><code>{adminToken}</code><button className="secondary-button" onClick={() => void copy(adminToken)} type="button">Copy token</button><p className="muted">It controls this project. Landfall cannot display it again.</p></section>
+    <section className="state-card setup-form"><div><p className="eyebrow">Workspace access</p><h2>Create a dashboard token</h2></div>{dashboardToken ? <><code>{dashboardToken.token}</code><button className="secondary-button" onClick={() => void copy(dashboardToken.token)} type="button">Copy dashboard token</button><p className="muted">Use it in Overview, Traces, and Comparison. It is shown only once.</p></> : <button disabled={busy} onClick={() => void run(async () => { const token = await api.createToken(projectId, adminToken, "dashboard-reader", ["traces:read", "diagnostics:read"]); setDashboardToken(token); setMessage("Dashboard token created. Copy it now; it will not be displayed again."); })} type="button">Create dashboard token</button>}</section>
     <form className="state-card setup-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { const result = await api.createEnvironment(projectId, adminToken, environmentName, cluster); setEnvironmentId(result.environment_id); setMessage(`Environment ${result.name} created.`); }); }}><div><p className="eyebrow">2 · Environment</p><h2>Add an environment</h2></div><label>Name<input required value={environmentName} onChange={(event) => setEnvironmentName(event.target.value)} /></label><label>Cluster<input required value={cluster} onChange={(event) => setCluster(event.target.value)} /></label><button disabled={busy || Boolean(environmentId)} type="submit">Create environment</button></form></>}
     {environmentId && <form className="state-card setup-form" onSubmit={(event) => { event.preventDefault(); void run(async () => { await api.createRoute(projectId, environmentId, adminToken, routeName, endpoint); setMessage("RPC route connected. Landfall will use it for eligible observation jobs."); }); }}><div><p className="eyebrow">3 · Observation</p><h2>Connect Solana RPC</h2></div><label>Route name<input required value={routeName} onChange={(event) => setRouteName(event.target.value)} /></label><label>HTTPS endpoint<input required type="url" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} /></label><button disabled={busy} type="submit">Connect route</button><p className="muted">The endpoint is never shown again in the dashboard.</p></form>}
     {environmentId && <section className="state-card setup-form"><div><p className="eyebrow">4 · Instrumentation</p><h2>Create an SDK token</h2></div>{sdkToken ? <><code>{sdkToken.token}</code><button className="secondary-button" onClick={() => void copy(sdkToken.token)} type="button">Copy SDK token</button><pre className="command">{`LANDFALL_TOKEN=${sdkToken.token}\n# Configure your SDK collector with this token.`}</pre></> : <button disabled={busy} onClick={() => void run(async () => { const token = await api.createToken(projectId, adminToken, "sdk-production", ["ingest:write"]); setSdkToken(token); setMessage("SDK token created. Copy it now; it will not be displayed again."); })} type="button">Create SDK token</button>}</section>}
@@ -77,21 +99,11 @@ function Onboarding() {
   </section>;
 }
 
-function OnboardingHealth() {
-  const [health, setHealth] = React.useState<SystemHealthSummary | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getSystemStatus().then(setHealth).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "System status request failed")); }, []);
-  if (error) return <section className="state-card" role="alert"><h2>System health unavailable</h2><p className="muted">The dashboard could not read system status: {error}</p></section>;
-  if (health === null) return <section className="state-card" role="status"><h2>Loading system health…</h2><p className="muted">Checking durable dependencies.</p></section>;
-  const checks = [["Database", health.database_ready ? "PostgreSQL is reachable" : "PostgreSQL is unavailable", health.database_ready ? "ready" : "warning"], ["Projects", `${health.projects} configured`, health.projects > 0 ? "ready" : "warning"], ["Environments", `${health.environments} configured`, health.environments > 0 ? "ready" : "warning"], ["Routes", `${health.enabled_routes} enabled`, health.enabled_routes > 0 ? "ready" : "warning"], ["Events", `${health.events_last_24h} received in 24h`, health.events_last_24h > 0 ? "ready" : "warning"]] as const;
-  const warnings = checks.filter(([, , state]) => state === "warning").length;
-  return <section className="health-card" aria-labelledby="health-title"><div className="section-heading"><div><p className="eyebrow">Runtime</p><h2 id="health-title">System health</h2></div><span className={`badge ${warnings || health.dead_letter_jobs ? "warning" : "ready"}`}>{warnings || health.dead_letter_jobs ? "Attention required" : "Ready"}</span></div><div className="check-list">{checks.map(([label, detail, state]) => <div className="check-row" key={label}><span className={`status-dot ${state}`} aria-label={state === "ready" ? "Ready" : "Warning"} /> <div><strong>{label}</strong><span>{detail}</span></div></div>)}</div>{health.queued_jobs > 0 && <p className="muted">Queued jobs: {health.queued_jobs}</p>}{health.dead_letter_jobs > 0 && <p className="muted">Dead-letter jobs requiring investigation: {health.dead_letter_jobs}</p>}</section>;
-}
-
 function OverviewMetrics() {
+  const api = useDashboardApi();
   const [summary, setSummary] = React.useState<OverviewSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getOverview().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Overview API request failed")); }, []);
+  React.useEffect(() => { api.getOverview().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Overview API request failed")); }, [api]);
   if (error) return <section className="state-card" role="alert"><h2>Overview unavailable</h2><p className="muted">The dashboard could not read overview data: {error}</p></section>;
   if (summary === null) return <section className="state-card" role="status"><h2>Loading overview…</h2><p className="muted">Calculating metrics from durable traces.</p></section>;
   const rate = (numerator: number, denominator: number) => denominator === 0 ? "—" : `${((numerator / denominator) * 100).toFixed(1)}%`;
@@ -100,10 +112,11 @@ function OverviewMetrics() {
 }
 
 function TraceList() {
+  const api = useDashboardApi();
   const [query, setQuery] = React.useState(() => new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("q") ?? "");
   const [apiTraces, setApiTraces] = React.useState<TraceListItem[] | null>(null);
   const [apiError, setApiError] = React.useState<string | null>(null);
-  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getTraces().then(setApiTraces).catch((error: unknown) => setApiError(error instanceof Error ? error.message : "Trace API request failed")); }, []);
+  React.useEffect(() => { api.getTraces().then(setApiTraces).catch((error: unknown) => setApiError(error instanceof Error ? error.message : "Trace API request failed")); }, [api]);
   const traces = apiTraces?.map((trace) => ({ id: trace.trace_id, flow: "trace", status: trace.landing_state, certainty: trace.execution_state === "unknown" ? "incomplete" : "confirmed", route: "read-model", time: trace.updated_at })) ?? [];
   const visible = traces.filter((trace) => !query || `${trace.id} ${trace.flow} ${trace.route}`.toLowerCase().includes(query.toLowerCase()));
   function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); window.location.hash = `traces${query ? `?q=${encodeURIComponent(query)}` : ""}`; }
@@ -113,12 +126,13 @@ function TraceList() {
 }
 
 function TraceDetail() {
+  const api = useDashboardApi();
   const traceId = window.location.hash.split("/")[1] ?? "";
   const [apiTrace, setApiTrace] = React.useState<ApiTraceDetail | null>(null);
   const [apiError, setApiError] = React.useState<string | null>(null);
   const [diagnostics, setDiagnostics] = React.useState<TraceDiagnostic[] | null>(null);
   const [recommendations, setRecommendations] = React.useState<TraceRecommendation[] | null>(null);
-  React.useEffect(() => { let active = true; if (!traceId) { setApiError("A trace ID is required"); return () => { active = false; }; } const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); Promise.all([api.getTraceDetail(traceId), api.getTraceDiagnostics(traceId), api.getTraceRecommendations(traceId)]).then(([value, findings, advice]) => { if (active) { setApiTrace(value); setDiagnostics(findings); setRecommendations(advice); } }).catch((error: unknown) => { if (active) setApiError(error instanceof Error ? error.message : "Trace API request failed"); }); return () => { active = false; }; }, [traceId]);
+  React.useEffect(() => { let active = true; if (!traceId) { setApiError("A trace ID is required"); return () => { active = false; }; } Promise.all([api.getTraceDetail(traceId), api.getTraceDiagnostics(traceId), api.getTraceRecommendations(traceId)]).then(([value, findings, advice]) => { if (active) { setApiTrace(value); setDiagnostics(findings); setRecommendations(advice); } }).catch((error: unknown) => { if (active) setApiError(error instanceof Error ? error.message : "Trace API request failed"); }); return () => { active = false; }; }, [api, traceId]);
   if (apiError) return <section className="state-card" role="alert"><a className="back-link" href="#traces">← Back to traces</a><h2>Trace unavailable</h2><p className="muted">The dashboard could not read this trace from the API: {apiError}</p></section>;
   if (apiTrace === null) return <section className="state-card" role="status"><a className="back-link" href="#traces">← Back to traces</a><h2>Loading trace…</h2><p className="muted">Reading durable trace evidence from the API.</p></section>;
   const lifecycle = apiTrace.lifecycle_state;
@@ -127,9 +141,10 @@ function TraceDetail() {
 }
 
 function ComparisonView() {
+  const api = useDashboardApi();
   const [summary, setSummary] = React.useState<ComparisonSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  React.useEffect(() => { const api = new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }); api.getComparison().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Comparison API request failed")); }, []);
+  React.useEffect(() => { api.getComparison().then(setSummary).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Comparison API request failed")); }, [api]);
   if (error) return <section className="state-card" role="alert"><h2>Comparison unavailable</h2><p className="muted">{error}. Create traces in at least two environments to compare them.</p></section>;
   if (summary === null) return <section className="state-card" role="status"><h2>Loading comparison…</h2><p className="muted">Reading cohort totals from durable traces.</p></section>;
   const baselineRate = summary.baseline_traces ? summary.baseline_landed / summary.baseline_traces : 0;
