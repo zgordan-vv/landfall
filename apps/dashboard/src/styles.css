@@ -360,10 +360,25 @@ h2 {
   margin-top: 1rem;
 }
 .back-link {
-  display: inline-block;
-  margin-top: 2.5rem;
-  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.5rem;
+  padding: 0.65rem 0.9rem;
+  color: #d9fff5;
+  border: 1px solid #4d9f8d;
+  border-radius: 0.5rem;
+  background: #17372f;
+  box-shadow: 0 0 0 1px rgb(120 224 194 / 10%);
+  font-weight: 700;
   text-decoration: none;
+}
+.back-link:hover,
+.back-link:focus-visible {
+  color: #06110f;
+  background: var(--accent);
+  outline: 3px solid rgb(120 224 194 / 35%);
+  outline-offset: 3px;
 }
 .detail-header {
   display: flex;
