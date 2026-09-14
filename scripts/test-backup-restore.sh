@@ -15,8 +15,14 @@ cleanup() {
 trap cleanup EXIT
 
 "${compose[@]}" up --detach --wait
-"${compose[@]}" exec -T postgres-source psql --username=backup_e2e --dbname=backup_e2e \
-    --command "CREATE TABLE restore_proof (id integer PRIMARY KEY, value text NOT NULL); INSERT INTO restore_proof VALUES (1, 'restored');"
+for attempt in {1..15}; do
+    if "${compose[@]}" exec -T postgres-source psql --username=backup_e2e --dbname=backup_e2e \
+        --command "CREATE TABLE restore_proof (id integer PRIMARY KEY, value text NOT NULL); INSERT INTO restore_proof VALUES (1, 'restored');"; then
+        break
+    fi
+    [[ "$attempt" -lt 15 ]] || { printf 'Source database did not become queryable after its health check.\n' >&2; exit 1; }
+    sleep 1
+done
 
 BACKUP_FILE="$backup_directory/landfall.dump" \
 LANDFALL_DB_SERVICE=postgres-source \
