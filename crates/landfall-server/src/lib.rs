@@ -1167,9 +1167,19 @@ async fn ingest(
                     {
                         return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "projection_unavailable", message: "event was durable but its trace projection could not be refreshed" })).into_response();
                     }
-                    if enqueue_observation_if_eligible(pool, trace_id, true)
-                        .await
-                        .is_err()
+                    let has_submission_signature = durable.iter().any(|candidate| {
+                        candidate.trace_id == Some(trace_id)
+                            && candidate.event_type == "solana.submission.completed"
+                            && candidate
+                                .payload
+                                .pointer("/attributes/signature")
+                                .and_then(Value::as_str)
+                                .is_some()
+                    });
+                    if has_submission_signature
+                        && enqueue_observation_if_eligible(pool, trace_id, true)
+                            .await
+                            .is_err()
                     {
                         return (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "observation_queue_unavailable", message: "trace was durable but could not be queued for observation" })).into_response();
                     }
