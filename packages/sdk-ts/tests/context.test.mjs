@@ -7,5 +7,7 @@ test("business action context is immutable and links traces", () => {
   const sdk = new LandfallSdk({ collectorUrl: "http://localhost:8080" });
   const trace = sdk.startTrace("0198ef00-0000-7000-8000-000000000300", action);
   assert.equal(trace.businessAction?.businessActionId, "checkout-42");
-  assert.throws(() => { action.businessActionId = "changed"; }, TypeError);
+  assert.throws(() => {
+    action.businessActionId = "changed";
+  }, TypeError);
 });

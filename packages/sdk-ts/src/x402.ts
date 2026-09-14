@@ -38,7 +38,9 @@ export interface X402AuthorizationDecision {
 
 /** Signs through the application's own wallet boundary; Landfall never implements this. */
 export interface X402PaymentSigner {
-  createPaymentSignature(requirement: X402PaymentRequirement): Promise<{ readonly paymentSignature: string; readonly settlementReference?: string }>;
+  createPaymentSignature(
+    requirement: X402PaymentRequirement,
+  ): Promise<{ readonly paymentSignature: string; readonly settlementReference?: string }>;
 }
 
 /** Sends the signed x402 header directly to the merchant resource. */
@@ -59,11 +61,14 @@ export interface X402ResourceFetchResponse {
   readonly status: number;
 }
 
-export type X402ResourceFetch = (input: string, init: {
-  readonly method: string;
-  readonly headers: Readonly<Record<string, string>>;
-  readonly body?: string;
-}) => Promise<X402ResourceFetchResponse>;
+export type X402ResourceFetch = (
+  input: string,
+  init: {
+    readonly method: string;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body?: string;
+  },
+) => Promise<X402ResourceFetchResponse>;
 
 export interface X402ResourceRequest {
   readonly url: string;
@@ -73,39 +78,122 @@ export interface X402ResourceRequest {
 }
 
 export interface X402SettlementRecorder {
-  recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void>;
+  recordSettlement(input: {
+    readonly auditId: string;
+    readonly outcome: "settled" | "failed";
+    readonly reasonCode: string;
+    readonly settlementReference?: string;
+  }): Promise<void>;
 }
 
 export type X402PaymentExecution<Response> =
   | { readonly kind: "denied"; readonly authorization: X402AuthorizationDecision }
-  | { readonly kind: "already-settled" | "already-failed"; readonly authorization: X402AuthorizationDecision }
-  | { readonly kind: "settled"; readonly authorization: X402AuthorizationDecision; readonly response: Response };
+  | {
+      readonly kind: "already-settled" | "already-failed";
+      readonly authorization: X402AuthorizationDecision;
+    }
+  | {
+      readonly kind: "settled";
+      readonly authorization: X402AuthorizationDecision;
+      readonly response: Response;
+    };
 
-export interface X402AuthorizeFetchResponse { readonly status: number; json(): Promise<unknown>; }
-export type X402AuthorizeFetch = (input: string, init: { readonly method: "POST"; readonly headers: Readonly<Record<string, string>>; readonly body: string }) => Promise<X402AuthorizeFetchResponse>;
+export interface X402AuthorizeFetchResponse {
+  readonly status: number;
+  json(): Promise<unknown>;
+}
+export type X402AuthorizeFetch = (
+  input: string,
+  init: {
+    readonly method: "POST";
+    readonly headers: Readonly<Record<string, string>>;
+    readonly body: string;
+  },
+) => Promise<X402AuthorizeFetchResponse>;
 
 /** Creates the HTTP client for Landfall's F3 pre-payment decision endpoint. */
-export function createHttpX402Authorizer(policyServiceUrl: string, bearerToken: string, fetcher: X402AuthorizeFetch): X402Authorizer {
+export function createHttpX402Authorizer(
+  policyServiceUrl: string,
+  bearerToken: string,
+  fetcher: X402AuthorizeFetch,
+): X402Authorizer {
   const endpoint = `${policyServiceUrl.replace(/\/$/, "")}/v1/x402/authorize`;
-  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "") throw new Error("x402 policy service requires HTTPS and a bearer token");
+  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "")
+    throw new Error("x402 policy service requires HTTPS and a bearer token");
   return Object.freeze({
     async authorize(request: X402PreAuthorization): Promise<X402AuthorizationDecision> {
-      const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ policy_id: request.policyId, agent_id: request.agentId, merchant_origin: request.merchantOrigin, network: request.network, asset: request.asset, amount_atomic: request.amountAtomic, idempotency_key: request.idempotencyKey }) });
+      const response = await fetcher(endpoint, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${bearerToken}`,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          policy_id: request.policyId,
+          agent_id: request.agentId,
+          merchant_origin: request.merchantOrigin,
+          network: request.network,
+          asset: request.asset,
+          amount_atomic: request.amountAtomic,
+          idempotency_key: request.idempotencyKey,
+        }),
+      });
       const body = await response.json();
-      if (!isRecord(body) || typeof body["audit_id"] !== "string" || !isUuid(body["audit_id"]) || (body["decision"] !== "approved" && body["decision"] !== "denied" && body["decision"] !== "settled" && body["decision"] !== "failed") || typeof body["reason_code"] !== "string" || typeof body["replayed"] !== "boolean") throw new Error(`x402 policy service returned an invalid response (${response.status})`);
-      return Object.freeze({ auditId: body["audit_id"], decision: body["decision"], reasonCode: body["reason_code"], replayed: body["replayed"] });
+      if (
+        !isRecord(body) ||
+        typeof body["audit_id"] !== "string" ||
+        !isUuid(body["audit_id"]) ||
+        (body["decision"] !== "approved" &&
+          body["decision"] !== "denied" &&
+          body["decision"] !== "settled" &&
+          body["decision"] !== "failed") ||
+        typeof body["reason_code"] !== "string" ||
+        typeof body["replayed"] !== "boolean"
+      )
+        throw new Error(`x402 policy service returned an invalid response (${response.status})`);
+      return Object.freeze({
+        auditId: body["audit_id"],
+        decision: body["decision"],
+        reasonCode: body["reason_code"],
+        replayed: body["replayed"],
+      });
     },
   });
 }
 
 /** Creates the HTTP reporter for terminal outcomes; it has no signature parameter. */
-export function createHttpX402SettlementRecorder(policyServiceUrl: string, bearerToken: string, fetcher: X402AuthorizeFetch): X402SettlementRecorder {
+export function createHttpX402SettlementRecorder(
+  policyServiceUrl: string,
+  bearerToken: string,
+  fetcher: X402AuthorizeFetch,
+): X402SettlementRecorder {
   const endpoint = `${policyServiceUrl.replace(/\/$/, "")}/v1/x402/settlements`;
-  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "") throw new Error("x402 policy service requires HTTPS and a bearer token");
+  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(policyServiceUrl) || bearerToken.trim() === "")
+    throw new Error("x402 policy service requires HTTPS and a bearer token");
   return Object.freeze({
-    async recordSettlement(input: { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string }): Promise<void> {
-      const response = await fetcher(endpoint, { method: "POST", headers: { authorization: `Bearer ${bearerToken}`, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ audit_id: input.auditId, outcome: input.outcome, reason_code: input.reasonCode, settlement_reference: input.settlementReference }) });
-      if (response.status !== 200) throw new Error(`x402 settlement service returned ${response.status}`);
+    async recordSettlement(input: {
+      readonly auditId: string;
+      readonly outcome: "settled" | "failed";
+      readonly reasonCode: string;
+      readonly settlementReference?: string;
+    }): Promise<void> {
+      const response = await fetcher(endpoint, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${bearerToken}`,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          audit_id: input.auditId,
+          outcome: input.outcome,
+          reason_code: input.reasonCode,
+          settlement_reference: input.settlementReference,
+        }),
+      });
+      if (response.status !== 200)
+        throw new Error(`x402 settlement service returned ${response.status}`);
     },
   });
 }
@@ -118,14 +206,22 @@ export function createHttpX402ResourceClient(
   request: X402ResourceRequest,
   fetcher: X402ResourceFetch,
 ): X402PaidResourceClient<X402ResourceFetchResponse> {
-  if (!isHttpsUrl(request.url) || !validHttpMethod(request.method) || !validRequestHeaders(request.headers) || (request.body !== undefined && request.body.length > 1_000_000)) {
+  if (
+    !isHttpsUrl(request.url) ||
+    !validHttpMethod(request.method) ||
+    !validRequestHeaders(request.headers) ||
+    (request.body !== undefined && request.body.length > 1_000_000)
+  ) {
     throw new Error("x402 merchant request is invalid");
   }
   const method = request.method ?? "GET";
   const headers = request.headers ?? {};
   return Object.freeze({
-    async sendPaymentSignature(paymentSignature: string): Promise<X402PaidResourceResponse<X402ResourceFetchResponse>> {
-      if (!validText(paymentSignature, 16_384)) throw new Error("external x402 signer returned an invalid payment signature");
+    async sendPaymentSignature(
+      paymentSignature: string,
+    ): Promise<X402PaidResourceResponse<X402ResourceFetchResponse>> {
+      if (!validText(paymentSignature, 16_384))
+        throw new Error("external x402 signer returned an invalid payment signature");
       const response = await fetcher(request.url, {
         method,
         headers: Object.freeze({ ...headers, "PAYMENT-SIGNATURE": paymentSignature }),
@@ -150,25 +246,61 @@ export async function executeAuthorizedX402Payment<Response>(
   settlementRecorder: X402SettlementRecorder,
 ): Promise<X402PaymentExecution<Response>> {
   const decision = await authorizer.authorize(authorization);
-  if (decision.decision === "denied") return Object.freeze({ kind: "denied", authorization: decision });
-  if (decision.decision === "settled") return Object.freeze({ kind: "already-settled" as const, authorization: decision });
-  if (decision.decision === "failed") return Object.freeze({ kind: "already-failed" as const, authorization: decision });
-  let signed: { readonly paymentSignature: string; readonly settlementReference?: string } | undefined;
+  if (decision.decision === "denied")
+    return Object.freeze({ kind: "denied", authorization: decision });
+  if (decision.decision === "settled")
+    return Object.freeze({ kind: "already-settled" as const, authorization: decision });
+  if (decision.decision === "failed")
+    return Object.freeze({ kind: "already-failed" as const, authorization: decision });
+  let signed:
+    { readonly paymentSignature: string; readonly settlementReference?: string } | undefined;
   try {
     signed = await signer.createPaymentSignature(requirement);
-    if (!validText(signed.paymentSignature, 16_384)) throw new Error("external x402 signer returned an invalid payment signature");
+    if (!validText(signed.paymentSignature, 16_384))
+      throw new Error("external x402 signer returned an invalid payment signature");
     const paidResponse = await resourceClient.sendPaymentSignature(signed.paymentSignature);
-    if (!paidResponse.ok) throw new Error(`merchant rejected x402 payment with HTTP ${paidResponse.status}`);
-    await settlementRecorder.recordSettlement(settlementInput(decision.auditId, "settled", "resource_response_received", signed.settlementReference));
-    return Object.freeze({ kind: "settled" as const, authorization: decision, response: paidResponse.response });
+    if (!paidResponse.ok)
+      throw new Error(`merchant rejected x402 payment with HTTP ${paidResponse.status}`);
+    await settlementRecorder.recordSettlement(
+      settlementInput(
+        decision.auditId,
+        "settled",
+        "resource_response_received",
+        signed.settlementReference,
+      ),
+    );
+    return Object.freeze({
+      kind: "settled" as const,
+      authorization: decision,
+      response: paidResponse.response,
+    });
   } catch (cause) {
-    await settlementRecorder.recordSettlement(settlementInput(decision.auditId, "failed", "external_payment_failed", signed?.settlementReference));
+    await settlementRecorder.recordSettlement(
+      settlementInput(
+        decision.auditId,
+        "failed",
+        "external_payment_failed",
+        signed?.settlementReference,
+      ),
+    );
     throw cause;
   }
 }
 
-function settlementInput(auditId: string, outcome: "settled" | "failed", reasonCode: string, settlementReference: string | undefined): { readonly auditId: string; readonly outcome: "settled" | "failed"; readonly reasonCode: string; readonly settlementReference?: string } {
-  return settlementReference === undefined ? { auditId, outcome, reasonCode } : { auditId, outcome, reasonCode, settlementReference };
+function settlementInput(
+  auditId: string,
+  outcome: "settled" | "failed",
+  reasonCode: string,
+  settlementReference: string | undefined,
+): {
+  readonly auditId: string;
+  readonly outcome: "settled" | "failed";
+  readonly reasonCode: string;
+  readonly settlementReference?: string;
+} {
+  return settlementReference === undefined
+    ? { auditId, outcome, reasonCode }
+    : { auditId, outcome, reasonCode, settlementReference };
 }
 
 /** Decodes and validates the standard base64 `PAYMENT-REQUIRED` HTTP header. */
@@ -179,36 +311,93 @@ export function parsePaymentRequiredHeader(header: string): X402PaymentRequired 
   } catch {
     throw new Error("PAYMENT-REQUIRED is not valid base64 JSON");
   }
-  if (!isRecord(decoded) || decoded["x402Version"] !== 2 || !isRecord(decoded["resource"]) || typeof decoded["resource"]["url"] !== "string" || !Array.isArray(decoded["accepts"]) || decoded["accepts"].length === 0) {
+  if (
+    !isRecord(decoded) ||
+    decoded["x402Version"] !== 2 ||
+    !isRecord(decoded["resource"]) ||
+    typeof decoded["resource"]["url"] !== "string" ||
+    !Array.isArray(decoded["accepts"]) ||
+    decoded["accepts"].length === 0
+  ) {
     throw new Error("PAYMENT-REQUIRED is not a supported x402 v2 challenge");
   }
   const accepts = decoded["accepts"].map((candidate) => parseRequirement(candidate));
-  return Object.freeze({ x402Version: 2, resource: Object.freeze({ url: decoded["resource"]["url"] }), accepts: Object.freeze(accepts) });
+  return Object.freeze({
+    x402Version: 2,
+    resource: Object.freeze({ url: decoded["resource"]["url"] }),
+    accepts: Object.freeze(accepts),
+  });
 }
 
 /** Builds the input for Landfall's policy service; it never signs or settles a payment. */
-export function preAuthorizeX402Requirement(challenge: X402PaymentRequired, requirement: X402PaymentRequirement, policyId: string, agentId: string, idempotencyKey: string): X402PreAuthorization {
+export function preAuthorizeX402Requirement(
+  challenge: X402PaymentRequired,
+  requirement: X402PaymentRequirement,
+  policyId: string,
+  agentId: string,
+  idempotencyKey: string,
+): X402PreAuthorization {
   const merchantOrigin = normalizeHttpsOrigin(challenge.resource.url);
-  if (!isUuid(policyId) || !validText(agentId, 160) || !validText(idempotencyKey, 256)) throw new Error("x402 pre-authorization identity is invalid");
-  return Object.freeze({ policyId, agentId, merchantOrigin, network: requirement.network, asset: requirement.asset, amountAtomic: requirement.amount, idempotencyKey });
+  if (!isUuid(policyId) || !validText(agentId, 160) || !validText(idempotencyKey, 256))
+    throw new Error("x402 pre-authorization identity is invalid");
+  return Object.freeze({
+    policyId,
+    agentId,
+    merchantOrigin,
+    network: requirement.network,
+    asset: requirement.asset,
+    amountAtomic: requirement.amount,
+    idempotencyKey,
+  });
 }
 
 function parseRequirement(value: unknown): X402PaymentRequirement {
-  if (!isRecord(value) || typeof value["scheme"] !== "string" || typeof value["network"] !== "string" || !canonicalAtomic(value["amount"]) || typeof value["asset"] !== "string" || typeof value["payTo"] !== "string" || !Number.isInteger(value["maxTimeoutSeconds"]) || (value["maxTimeoutSeconds"] as number) <= 0) throw new Error("x402 payment requirement is invalid");
-  return Object.freeze({ scheme: value["scheme"], network: value["network"], amount: value["amount"], asset: value["asset"], payTo: value["payTo"], maxTimeoutSeconds: value["maxTimeoutSeconds"] as number });
+  if (
+    !isRecord(value) ||
+    typeof value["scheme"] !== "string" ||
+    typeof value["network"] !== "string" ||
+    !canonicalAtomic(value["amount"]) ||
+    typeof value["asset"] !== "string" ||
+    typeof value["payTo"] !== "string" ||
+    !Number.isInteger(value["maxTimeoutSeconds"]) ||
+    (value["maxTimeoutSeconds"] as number) <= 0
+  )
+    throw new Error("x402 payment requirement is invalid");
+  return Object.freeze({
+    scheme: value["scheme"],
+    network: value["network"],
+    amount: value["amount"],
+    asset: value["asset"],
+    payTo: value["payTo"],
+    maxTimeoutSeconds: value["maxTimeoutSeconds"] as number,
+  });
 }
 
 function normalizeHttpsOrigin(resourceUrl: string): string {
   const match = /^https:\/\/([^\/?#@\s]+)(?:[/?#].*)?$/i.exec(resourceUrl);
   const host = match?.[1];
-  if (host === undefined || host === "") throw new Error("x402 resource must use a credential-free HTTPS origin");
+  if (host === undefined || host === "")
+    throw new Error("x402 resource must use a credential-free HTTPS origin");
   return `https://${host.toLowerCase()}`;
 }
 
-function isHttpsUrl(value: string): boolean { return /^https:\/\/[^/?#@\s]+(?:[/?#].*)?$/i.test(value); }
-function validHttpMethod(value: string | undefined): boolean { return value === undefined || /^(GET|POST|PUT|PATCH|DELETE)$/i.test(value); }
+function isHttpsUrl(value: string): boolean {
+  return /^https:\/\/[^/?#@\s]+(?:[/?#].*)?$/i.test(value);
+}
+function validHttpMethod(value: string | undefined): boolean {
+  return value === undefined || /^(GET|POST|PUT|PATCH|DELETE)$/i.test(value);
+}
 function validRequestHeaders(headers: Readonly<Record<string, string>> | undefined): boolean {
-  return headers === undefined || Object.entries(headers).every(([name, value]) => /^[A-Za-z0-9-]{1,64}$/.test(name) && typeof value === "string" && value.length <= 8_192 && name.toLowerCase() !== "payment-signature");
+  return (
+    headers === undefined ||
+    Object.entries(headers).every(
+      ([name, value]) =>
+        /^[A-Za-z0-9-]{1,64}$/.test(name) &&
+        typeof value === "string" &&
+        value.length <= 8_192 &&
+        name.toLowerCase() !== "payment-signature",
+    )
+  );
 }
 
 function decodeBase64UrlUtf8(value: string): string {
@@ -217,18 +406,34 @@ function decodeBase64UrlUtf8(value: string): string {
   if (source.length === 0 || /[^A-Za-z0-9+/]/.test(source)) throw new Error("invalid base64");
   const bytes: number[] = [];
   for (let index = 0; index < source.length; index += 4) {
-    const first = alphabet.indexOf(source[index] ?? ""); const second = alphabet.indexOf(source[index + 1] ?? "");
-    const third = alphabet.indexOf(source[index + 2] ?? "A"); const fourth = alphabet.indexOf(source[index + 3] ?? "A");
+    const first = alphabet.indexOf(source[index] ?? "");
+    const second = alphabet.indexOf(source[index + 1] ?? "");
+    const third = alphabet.indexOf(source[index + 2] ?? "A");
+    const fourth = alphabet.indexOf(source[index + 3] ?? "A");
     if (first < 0 || second < 0 || third < 0 || fourth < 0) throw new Error("invalid base64");
     const bits = (first << 18) | (second << 12) | (third << 6) | fourth;
-    bytes.push((bits >> 16) & 255); if (index + 2 < source.length) bytes.push((bits >> 8) & 255); if (index + 3 < source.length) bytes.push(bits & 255);
+    bytes.push((bits >> 16) & 255);
+    if (index + 2 < source.length) bytes.push((bits >> 8) & 255);
+    if (index + 3 < source.length) bytes.push(bits & 255);
   }
   return decodeUtf8(bytes);
 }
 
-function decodeUtf8(bytes: number[]): string { return new (globalThis as unknown as { TextDecoder: new () => { decode(input: Uint8Array): string } }).TextDecoder().decode(Uint8Array.from(bytes)); }
+function decodeUtf8(bytes: number[]): string {
+  return new (
+    globalThis as unknown as { TextDecoder: new () => { decode(input: Uint8Array): string } }
+  ).TextDecoder().decode(Uint8Array.from(bytes));
+}
 
-function canonicalAtomic(value: unknown): value is string { return typeof value === "string" && /^(?:[1-9][0-9]*)$/.test(value); }
-function validText(value: string, maximum: number): boolean { return value.trim().length > 0 && value.length <= maximum; }
-function isUuid(value: string): boolean { return /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
+function canonicalAtomic(value: unknown): value is string {
+  return typeof value === "string" && /^(?:[1-9][0-9]*)$/.test(value);
+}
+function validText(value: string, maximum: number): boolean {
+  return value.trim().length > 0 && value.length <= maximum;
+}
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

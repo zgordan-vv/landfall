@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 test("SDK package exposes ESM entrypoint and declarations", async () => {
-  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
   assert.equal(packageJson.type, "module");
   assert.equal(packageJson.module, "./dist/index.js");
   assert.equal(packageJson.types, "./dist/index.d.ts");

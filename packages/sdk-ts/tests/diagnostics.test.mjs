@@ -15,7 +15,12 @@ test("health counters aggregate drops and transport failures", () => {
 });
 
 test("health callback failures are isolated and sdk exposes a snapshot", () => {
-  const sdk = new LandfallSdk({ collectorUrl: "http://localhost:8080", onHealthChange: () => { throw new Error("ignored"); } });
+  const sdk = new LandfallSdk({
+    collectorUrl: "http://localhost:8080",
+    onHealthChange: () => {
+      throw new Error("ignored");
+    },
+  });
   sdk.recordDroppedEvents(3);
   sdk.recordTransportFailure(2);
   assert.deepEqual(sdk.health, { droppedEvents: 3, transportFailures: 2 });

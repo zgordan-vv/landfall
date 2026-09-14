@@ -4,12 +4,17 @@ export class EventBuffer<T> {
   readonly #items: T[] = [];
 
   constructor(capacity: number) {
-    if (!Number.isInteger(capacity) || capacity < 1) throw new Error("buffer capacity must be a positive integer");
+    if (!Number.isInteger(capacity) || capacity < 1)
+      throw new Error("buffer capacity must be a positive integer");
     this.#capacity = capacity;
   }
 
-  get size(): number { return this.#items.length; }
-  get capacity(): number { return this.#capacity; }
+  get size(): number {
+    return this.#items.length;
+  }
+  get capacity(): number {
+    return this.#capacity;
+  }
 
   /** Adds one item, returning false instead of growing beyond the bound. */
   push(item: T): boolean {
@@ -20,7 +25,8 @@ export class EventBuffer<T> {
 
   /** Removes up to `limit` oldest items for batch assembly. */
   drain(limit: number = this.#capacity): T[] {
-    if (!Number.isInteger(limit) || limit < 1) throw new Error("drain limit must be a positive integer");
+    if (!Number.isInteger(limit) || limit < 1)
+      throw new Error("drain limit must be a positive integer");
     return this.#items.splice(0, limit);
   }
 

@@ -6,7 +6,9 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use landfall_storage::{X402SettlementOutcome, authorize_x402_payment, record_x402_settlement};
+use landfall_storage::{
+    X402AuthorizationInput, X402SettlementOutcome, authorize_x402_payment, record_x402_settlement,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
@@ -107,14 +109,16 @@ pub async fn authorize(
     let key_hash = Sha256::digest(request.idempotency_key.as_bytes());
     match authorize_x402_payment(
         pool,
-        principal.project_id,
-        policy_id,
-        &request.agent_id,
-        &request.merchant_origin,
-        &request.network,
-        &request.asset,
-        &request.amount_atomic,
-        &key_hash,
+        X402AuthorizationInput {
+            project_id: principal.project_id,
+            policy_id,
+            agent_id: &request.agent_id,
+            merchant_origin: &request.merchant_origin,
+            network: &request.network,
+            asset: &request.asset,
+            amount_atomic: &request.amount_atomic,
+            idempotency_key_hash: &key_hash,
+        },
     )
     .await
     {

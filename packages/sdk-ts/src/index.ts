@@ -15,7 +15,12 @@ export * from "./x402-svm.js";
 import { boundedFlush, type FlushOptions, type FlushResult } from "./flush.js";
 import { BatchAssembler, type OutboundBatch } from "./batching.js";
 import { EventBuffer } from "./buffer.js";
-import { createHttpBatchTransport, sendWithRetry, type FetchLike, type RetryOptions } from "./transport.js";
+import {
+  createHttpBatchTransport,
+  sendWithRetry,
+  type FetchLike,
+  type RetryOptions,
+} from "./transport.js";
 
 export interface SdkOptions {
   readonly collectorUrl: string;
@@ -36,13 +41,22 @@ export interface SdkConfig {
 
 export function validateConfig(options: SdkOptions): SdkConfig {
   const collectorUrl = options.collectorUrl.trim();
-  if (!/^https:\/\/[^\s/]+(?:\/.*)?$/.test(collectorUrl) && !/^http:\/\/localhost(?::\d+)?(?:\/.*)?$/.test(collectorUrl)) {
+  if (
+    !/^https:\/\/[^\s/]+(?:\/.*)?$/.test(collectorUrl) &&
+    !/^http:\/\/localhost(?::\d+)?(?:\/.*)?$/.test(collectorUrl)
+  ) {
     throw new Error("collectorUrl must use HTTPS (or localhost for development)");
   }
   const maxBatchEvents = options.maxBatchEvents ?? 100;
   const maxBufferEvents = options.maxBufferEvents ?? 1_000;
-  if (!Number.isInteger(maxBatchEvents) || maxBatchEvents < 1 || maxBatchEvents > 1_000) throw new Error("maxBatchEvents must be between 1 and 1000");
-  if (!Number.isInteger(maxBufferEvents) || maxBufferEvents < maxBatchEvents || maxBufferEvents > 100_000) throw new Error("maxBufferEvents must be between maxBatchEvents and 100000");
+  if (!Number.isInteger(maxBatchEvents) || maxBatchEvents < 1 || maxBatchEvents > 1_000)
+    throw new Error("maxBatchEvents must be between 1 and 1000");
+  if (
+    !Number.isInteger(maxBufferEvents) ||
+    maxBufferEvents < maxBatchEvents ||
+    maxBufferEvents > 100_000
+  )
+    throw new Error("maxBufferEvents must be between maxBatchEvents and 100000");
   return Object.freeze({ collectorUrl, maxBatchEvents, maxBufferEvents });
 }
 
@@ -57,8 +71,12 @@ export interface BusinessActionContext {
   readonly name?: string;
 }
 
-export function createBusinessActionContext(businessActionId: string, name?: string): BusinessActionContext {
-  if (businessActionId.trim().length === 0 || businessActionId.length > 128) throw new Error("businessActionId must be 1-128 characters");
+export function createBusinessActionContext(
+  businessActionId: string,
+  name?: string,
+): BusinessActionContext {
+  if (businessActionId.trim().length === 0 || businessActionId.length > 128)
+    throw new Error("businessActionId must be 1-128 characters");
   const context: BusinessActionContext = { businessActionId: businessActionId.trim() };
   return Object.freeze(name === undefined ? context : { ...context, name: name.slice(0, 160) });
 }
@@ -94,21 +112,38 @@ export class LandfallSdk {
     this.#retry = options.retry ?? {};
   }
 
-  get config(): SdkConfig { return this.#config; }
-  get health(): SdkHealth { return this.#health.snapshot; }
+  get config(): SdkConfig {
+    return this.#config;
+  }
+  get health(): SdkHealth {
+    return this.#health.snapshot;
+  }
 
-  get bufferedEventCount(): number { return this.#buffer.size + (this.#inFlight?.events.length ?? 0); }
+  get bufferedEventCount(): number {
+    return this.#buffer.size + (this.#inFlight?.events.length ?? 0);
+  }
 
-  recordDroppedEvents(count = 1): void { this.#health.recordDropped(count); }
-  recordTransportFailure(count = 1): void { this.#health.recordTransportFailure(count); }
+  recordDroppedEvents(count = 1): void {
+    this.#health.recordDropped(count);
+  }
+  recordTransportFailure(count = 1): void {
+    this.#health.recordTransportFailure(count);
+  }
 
   /** Delivers buffered telemetry. An optional operation is retained for backward compatibility. */
-  async flush(flushOperation?: () => Promise<void>, options: FlushOptions = {}): Promise<FlushResult> {
+  async flush(
+    flushOperation?: () => Promise<void>,
+    options: FlushOptions = {},
+  ): Promise<FlushResult> {
     const operation = flushOperation ?? (() => this.#flushBuffered());
     const result = await boundedFlush(operation, options);
     if (result.status === "failed") {
       this.recordTransportFailure();
-      this.reportTelemetryError({ code: "transport", message: "shutdown flush failed", cause: result.error });
+      this.reportTelemetryError({
+        code: "transport",
+        message: "shutdown flush failed",
+        cause: result.error,
+      });
     }
     return result;
   }
@@ -129,7 +164,10 @@ export class LandfallSdk {
   /** Queues one event. It never throws into the customer transaction path. */
   capture(event: WireEvent, expectedTraceId?: TraceId): boolean {
     if (expectedTraceId !== undefined && event.trace_id !== expectedTraceId) {
-      this.reportTelemetryError({ code: "validation", message: "event trace_id does not match its trace context" });
+      this.reportTelemetryError({
+        code: "validation",
+        message: "event trace_id does not match its trace context",
+      });
       return false;
     }
     if (!this.#buffer.push(event)) {

@@ -58,8 +58,8 @@ pub async fn claim_observation_job(
     else {
         return Ok(None);
     };
-    sqlx::query("UPDATE work.jobs SET status = 'running', locked_by = $1, locked_until = now() + make_interval(secs => $2), attempts = attempts + 1 WHERE job_id = $3")
-        .bind(worker_id).bind(lease_seconds as f64).bind(job_id).execute(&mut *tx).await?;
+    sqlx::query("UPDATE work.jobs SET status = 'running', locked_by = $1, locked_until = now() + make_interval(secs => $2::text::double precision), attempts = attempts + 1 WHERE job_id = $3")
+        .bind(worker_id).bind(lease_seconds.to_string()).bind(job_id).execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(Some(ClaimedObservationJob {
         job_id,
@@ -81,10 +81,10 @@ pub async fn retry_observation_job(
     error: &str,
     delay_seconds: i64,
 ) -> Result<ObservationRetryOutcome, sqlx::Error> {
-    let outcome = sqlx::query_scalar::<_, String>("UPDATE work.jobs SET status = CASE WHEN attempts >= 10 THEN 'dead_letter' ELSE 'ready' END, locked_by = NULL, locked_until = NULL, last_error = $2, available_at = CASE WHEN attempts >= 10 THEN available_at ELSE now() + make_interval(secs => $3) END WHERE job_id = $1 AND status = 'running' RETURNING status")
+    let outcome = sqlx::query_scalar::<_, String>("UPDATE work.jobs SET status = CASE WHEN attempts >= 10 THEN 'dead_letter' ELSE 'ready' END, locked_by = NULL, locked_until = NULL, last_error = $2, available_at = CASE WHEN attempts >= 10 THEN available_at ELSE now() + make_interval(secs => $3::text::double precision) END WHERE job_id = $1 AND status = 'running' RETURNING status")
         .bind(job_id)
         .bind(error)
-        .bind(delay_seconds as f64)
+        .bind(delay_seconds.to_string())
         .fetch_optional(pool)
         .await?;
     Ok(match outcome.as_deref() {

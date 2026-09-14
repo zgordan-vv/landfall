@@ -19,7 +19,11 @@ export interface SimulationSnapshot {
 export type MonotonicClock = () => bigint;
 
 /** Fingerprints a transient copy of signed bytes and wipes that copy immediately. */
-export function fingerprintSignedBytesInMemory(keyId: UuidV7, signedBytes: Uint8Array, hmac: HmacBytes): SignedBytesFingerprint {
+export function fingerprintSignedBytesInMemory(
+  keyId: UuidV7,
+  signedBytes: Uint8Array,
+  hmac: HmacBytes,
+): SignedBytesFingerprint {
   const transient = signedBytes.slice();
   try {
     return fingerprintSignedBytes(keyId, transient, hmac);
@@ -45,11 +49,19 @@ export interface ConfirmationWaitMeasurement<T> {
 }
 
 /** Measures confirmation waiting; callers may classify timeout/cancellation errors explicitly. */
-export async function measureConfirmationWait<T>(waitOperation: () => Promise<T>, clock: MonotonicClock, classifyError?: (error: unknown) => Exclude<ConfirmationWaitResult, "commitment_reached">): Promise<ConfirmationWaitMeasurement<T>> {
+export async function measureConfirmationWait<T>(
+  waitOperation: () => Promise<T>,
+  clock: MonotonicClock,
+  classifyError?: (error: unknown) => Exclude<ConfirmationWaitResult, "commitment_reached">,
+): Promise<ConfirmationWaitMeasurement<T>> {
   const started = clock();
   try {
     const value = await waitOperation();
-    return Object.freeze({ result: "commitment_reached" as const, durationNs: durationDelta(started, clock()), value });
+    return Object.freeze({
+      result: "commitment_reached" as const,
+      durationNs: durationDelta(started, clock()),
+      value,
+    });
   } catch (error) {
     const result = classifyError?.(error) ?? "failed";
     return Object.freeze({ result, durationNs: durationDelta(started, clock()), error });
@@ -57,13 +69,24 @@ export async function measureConfirmationWait<T>(waitOperation: () => Promise<T>
 }
 
 /** Measures application-owned signing without receiving or inspecting signer material. */
-export async function measureSigning<T>(signOperation: () => Promise<T>, clock: MonotonicClock): Promise<SigningMeasurement<T>> {
+export async function measureSigning<T>(
+  signOperation: () => Promise<T>,
+  clock: MonotonicClock,
+): Promise<SigningMeasurement<T>> {
   const started = clock();
   try {
     const value = await signOperation();
-    return Object.freeze({ result: "completed" as const, durationNs: durationDelta(started, clock()), value });
+    return Object.freeze({
+      result: "completed" as const,
+      durationNs: durationDelta(started, clock()),
+      value,
+    });
   } catch (error) {
-    return Object.freeze({ result: "failed" as const, durationNs: durationDelta(started, clock()), error });
+    return Object.freeze({
+      result: "failed" as const,
+      durationNs: durationDelta(started, clock()),
+      error,
+    });
   }
 }
 
@@ -74,12 +97,24 @@ function durationDelta(started: bigint, ended: bigint): string {
 
 export function normalizeSimulationResult(input: unknown): SimulationSnapshot {
   if (input === null || typeof input !== "object") return { rpcResult: "malformed_response" };
-  const value = input as { err?: unknown; unitsConsumed?: unknown; logs?: unknown; blockhashNotFound?: unknown };
+  const value = input as {
+    err?: unknown;
+    unitsConsumed?: unknown;
+    logs?: unknown;
+    blockhashNotFound?: unknown;
+  };
   let rpcResult: SimulationRpcResult = "succeeded";
   if (value.blockhashNotFound === true) rpcResult = "blockhash_not_found";
   else if (value.err !== undefined && value.err !== null) rpcResult = "execution_error";
   const unitsConsumed = normalizeUnsignedDecimal(value.unitsConsumed);
-  const snapshot: SimulationSnapshot = { rpcResult, ...(unitsConsumed === undefined ? {} : { unitsConsumed }), ...(value.logs === undefined ? {} : { logsPresent: Array.isArray(value.logs) && value.logs.length > 0 }), ...(value.err === undefined || value.err === null ? {} : { error: value.err }) };
+  const snapshot: SimulationSnapshot = {
+    rpcResult,
+    ...(unitsConsumed === undefined ? {} : { unitsConsumed }),
+    ...(value.logs === undefined
+      ? {}
+      : { logsPresent: Array.isArray(value.logs) && value.logs.length > 0 }),
+    ...(value.err === undefined || value.err === null ? {} : { error: value.err }),
+  };
   return Object.freeze(snapshot);
 }
 
@@ -92,13 +127,18 @@ function normalizeUnsignedDecimal(value: unknown): string | undefined {
 }
 
 /** Normalizes Kit's bigint/string block-height representations at the boundary. */
-export function normalizeBlockhashSnapshot(blockhash: string, lastValidBlockHeight: BlockHeightInput): SolanaBlockhashSnapshot {
+export function normalizeBlockhashSnapshot(
+  blockhash: string,
+  lastValidBlockHeight: BlockHeightInput,
+): SolanaBlockhashSnapshot {
   const normalizedHash = blockhash.trim();
-  const normalizedHeight = typeof lastValidBlockHeight === "bigint"
-    ? lastValidBlockHeight.toString(10)
-    : lastValidBlockHeight.trim();
+  const normalizedHeight =
+    typeof lastValidBlockHeight === "bigint"
+      ? lastValidBlockHeight.toString(10)
+      : lastValidBlockHeight.trim();
   if (normalizedHash.length === 0) throw new Error("blockhash must not be empty");
-  if (!/^(0|[1-9][0-9]*)$/.test(normalizedHeight)) throw new Error("lastValidBlockHeight must be a canonical unsigned decimal");
+  if (!/^(0|[1-9][0-9]*)$/.test(normalizedHeight))
+    throw new Error("lastValidBlockHeight must be a canonical unsigned decimal");
   return Object.freeze({ blockhash: normalizedHash, lastValidBlockHeight: normalizedHeight });
 }
 
@@ -124,10 +164,14 @@ export interface SubmissionAttemptResult<T> {
 }
 
 /** Executes one application submission attempt while retaining route metadata. */
-export async function submitWithRoute<T>(config: SubmissionAttemptConfig, submit: () => Promise<T>): Promise<SubmissionAttemptResult<T>> {
+export async function submitWithRoute<T>(
+  config: SubmissionAttemptConfig,
+  submit: () => Promise<T>,
+): Promise<SubmissionAttemptResult<T>> {
   if (config.attemptId.trim().length === 0) throw new Error("attemptId must not be empty");
   if (config.route.routeId.trim().length === 0) throw new Error("routeId must not be empty");
-  if (!Number.isInteger(config.attemptSequence) || config.attemptSequence < 1) throw new Error("attemptSequence must be positive");
+  if (!Number.isInteger(config.attemptSequence) || config.attemptSequence < 1)
+    throw new Error("attemptSequence must be positive");
   try {
     const value = await submit();
     return Object.freeze({ config, result: "accepted" as const, value });
@@ -145,7 +189,9 @@ export interface SolanaClientPort<TPrepared, TSigned, TSignature> {
   readonly confirm: (signature: TSignature, blockhash: SolanaBlockhashSnapshot) => Promise<unknown>;
 }
 
-export async function captureLatestBlockhash<TPrepared, TSigned, TSignature>(client: SolanaClientPort<TPrepared, TSigned, TSignature>): Promise<SolanaBlockhashSnapshot> {
+export async function captureLatestBlockhash<TPrepared, TSigned, TSignature>(
+  client: SolanaClientPort<TPrepared, TSigned, TSignature>,
+): Promise<SolanaBlockhashSnapshot> {
   const snapshot = await client.getLatestBlockhash();
   return normalizeBlockhashSnapshot(snapshot.blockhash, snapshot.lastValidBlockHeight);
 }

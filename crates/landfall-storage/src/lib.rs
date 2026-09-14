@@ -15,8 +15,8 @@ pub use trace_events::{
 };
 pub mod x402_governance;
 pub use x402_governance::{
-    X402AuthorizationRecord, X402PaymentAuditRecord, X402SettlementOutcome, X402SettlementRecord,
-    X402SpendPolicyRecord, authorize_x402_payment, list_x402_payment_audit,
+    X402AuthorizationInput, X402AuthorizationRecord, X402PaymentAuditRecord, X402SettlementOutcome,
+    X402SettlementRecord, X402SpendPolicyRecord, authorize_x402_payment, list_x402_payment_audit,
     list_x402_spend_policies, record_x402_settlement, upsert_x402_spend_policy,
 };
 pub mod projections;

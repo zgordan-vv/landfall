@@ -1,4 +1,5 @@
 //! Solana JSON-RPC observation and scheduling adapter.
+//!
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -618,7 +619,9 @@ pub fn normalize_signature_status(
 
 #[cfg(test)]
 mod observation_tests {
-    use super::{NormalizedExecution, SignatureStatus, execution_enriched_event, normalize_signature_status};
+    use super::{
+        NormalizedExecution, SignatureStatus, execution_enriched_event, normalize_signature_status,
+    };
     #[test]
     fn absent_signature_is_not_found() {
         assert_eq!(normalize_signature_status(None).source_result, "not_found");
@@ -638,8 +641,27 @@ mod observation_tests {
 
     #[test]
     fn execution_event_keeps_only_normalized_chain_evidence() {
-        let execution = NormalizedExecution { slot: "42".into(), block_time: None, fee_lamports: Some("5000".into()), compute_units_consumed: Some("900".into()), transaction_version: "legacy".into(), logs_present: true, execution_error: false };
-        let event = execution_enriched_event("0198ef00-0000-7000-8000-000000000100", "0198ef00-0000-7000-8000-000000000200", "0198ef00-0000-7000-8000-000000000300", "0198ef00-0000-7000-8000-000000000400", "0198ef00-0000-7000-8000-000000000401", "2026-09-13T20:00:00Z", "ziGvcqbBxmYap3jPvg45LtH252McotYHjRpDHyoZPpQQX5qRWsNUUK7QFxwmQ6A4AnCfCrbVqsrTGNbonuXvZ3m", "confirmed", &execution, None);
+        let execution = NormalizedExecution {
+            slot: "42".into(),
+            block_time: None,
+            fee_lamports: Some("5000".into()),
+            compute_units_consumed: Some("900".into()),
+            transaction_version: "legacy".into(),
+            logs_present: true,
+            execution_error: false,
+        };
+        let event = execution_enriched_event(
+            "0198ef00-0000-7000-8000-000000000100",
+            "0198ef00-0000-7000-8000-000000000200",
+            "0198ef00-0000-7000-8000-000000000300",
+            "0198ef00-0000-7000-8000-000000000400",
+            "0198ef00-0000-7000-8000-000000000401",
+            "2026-09-13T20:00:00Z",
+            "ziGvcqbBxmYap3jPvg45LtH252McotYHjRpDHyoZPpQQX5qRWsNUUK7QFxwmQ6A4AnCfCrbVqsrTGNbonuXvZ3m",
+            "confirmed",
+            &execution,
+            None,
+        );
         assert_eq!(event["attributes"]["execution_result"], "success");
         assert!(event["attributes"].get("log_messages").is_none());
     }

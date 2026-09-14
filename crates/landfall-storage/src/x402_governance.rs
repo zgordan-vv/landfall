@@ -43,6 +43,27 @@ pub struct X402AuthorizationRecord {
     pub replayed: bool,
 }
 
+/// Validated x402 authorization fields passed to durable policy evaluation.
+#[derive(Debug, Clone, Copy)]
+pub struct X402AuthorizationInput<'a> {
+    /// Project that owns the spend policy.
+    pub project_id: Uuid,
+    /// Spend policy being evaluated.
+    pub policy_id: Uuid,
+    /// Project-controlled agent requesting payment.
+    pub agent_id: &'a str,
+    /// Normalized merchant origin.
+    pub merchant_origin: &'a str,
+    /// Requested payment network.
+    pub network: &'a str,
+    /// Requested asset identifier.
+    pub asset: &'a str,
+    /// Requested amount in atomic units.
+    pub amount_atomic: &'a str,
+    /// SHA-256 digest of the idempotency key.
+    pub idempotency_key_hash: &'a [u8],
+}
+
 /// Durable result of recording a non-custodial payment outcome.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct X402SettlementRecord {
@@ -92,6 +113,7 @@ pub enum X402SettlementOutcome {
 
 impl X402SettlementOutcome {
     /// Stable API/database spelling for the terminal state.
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Settled => "settled",
@@ -111,15 +133,18 @@ impl X402SettlementOutcome {
 /// Evaluates and durably records an idempotent x402 pre-payment decision.
 pub async fn authorize_x402_payment(
     pool: &PgPool,
-    project_id: Uuid,
-    policy_id: Uuid,
-    agent_id: &str,
-    merchant_origin: &str,
-    network: &str,
-    asset: &str,
-    amount_atomic: &str,
-    idempotency_key_hash: &[u8],
+    request: X402AuthorizationInput<'_>,
 ) -> Result<X402AuthorizationRecord, sqlx::Error> {
+    let X402AuthorizationInput {
+        project_id,
+        policy_id,
+        agent_id,
+        merchant_origin,
+        network,
+        asset,
+        amount_atomic,
+        idempotency_key_hash,
+    } = request;
     let mut tx = pool.begin().await?;
     if let Some(row) = sqlx::query("SELECT audit_id, decision, reason_code FROM telemetry.x402_payment_audit WHERE project_id = $1 AND idempotency_key_hash = $2")
         .bind(project_id).bind(idempotency_key_hash).fetch_optional(&mut *tx).await? {

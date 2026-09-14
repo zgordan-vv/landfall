@@ -5,12 +5,19 @@ use std::{collections::BTreeMap, io::BufRead};
 /// Supported operator commands beyond NDJSON ingestion.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum OperatorCommand {
+    /// Initialize local operator configuration.
     Init,
+    /// Inspect local configuration and dependency health.
     Doctor,
+    /// Inspect a transaction trace.
     Trace,
+    /// Operate on a named report subcommand.
     Report(String),
+    /// Inspect the active diagnostic rule set.
     Rules,
+    /// Preview retention without deleting retained data.
     RetentionDryRun,
+    /// Run the local product demonstration.
     Demo,
 }
 

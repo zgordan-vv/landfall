@@ -11,9 +11,16 @@ ignore = []
 [licenses]
 allow = [
     "Apache-2.0",
+    "BSD-3-Clause",
+    # Permissive transitive licenses used by Axum, SQLx, Tokio, and their
+    # dependencies. Every new dependency remains checked by cargo-deny.
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
     # Required in addition to Apache-2.0 by unicode-ident, a transitive
     # dependency of the pinned Serde/thiserror procedural macros.
     "Unicode-3.0",
+    "Zlib",
 ]
 confidence-threshold = 0.93
 

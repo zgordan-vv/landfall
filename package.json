@@ -28,7 +28,7 @@
     "check:web3js-v3-spike": "node scripts/check-web3js-v3-spike.mjs",
     "coverage": "pnpm run coverage:typescript && pnpm run coverage:rust",
     "coverage:rust": "bash scripts/coverage-rust.sh",
-    "coverage:typescript": "c8 --all --extension .js --include 'packages/sdk-ts/dist/**' --exclude '**/tests/**' --reporter=text --reporter=lcov --reports-dir coverage/typescript node --test packages/sdk-ts/tests/*.test.mjs",
+    "coverage:typescript": "pnpm --filter @landfall/sdk... build && c8 --all --extension .js --include 'packages/sdk-ts/dist/**' --exclude '**/tests/**' --reporter=text --reporter=lcov --reports-dir coverage/typescript node --test packages/sdk-ts/tests/*.test.mjs",
     "dev:dashboard": "pnpm --filter @landfall/dashboard dev",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",

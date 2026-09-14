@@ -8,7 +8,9 @@ export function redactEndpoint(endpoint: string): string {
 }
 
 /** Keeps only bounded scalar metadata keys explicitly allowed by the SDK policy. */
-export function allowMetadata(metadata: Record<string, unknown>): Record<string, string | number | boolean> {
+export function allowMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, string | number | boolean> {
   const result: Record<string, string | number | boolean> = {};
   for (const [key, value] of Object.entries(metadata)) {
     if (!ALLOWED_METADATA_KEYS.has(key)) continue;

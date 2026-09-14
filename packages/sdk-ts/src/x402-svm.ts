@@ -45,10 +45,12 @@ export function createOfficialSvmExactSigner(
 }
 
 function sameRequirement(left: X402PaymentRequirement, right: X402PaymentRequirement): boolean {
-  return left.scheme === right.scheme
-    && left.network === right.network
-    && left.amount === right.amount
-    && left.asset === right.asset
-    && left.payTo === right.payTo
-    && left.maxTimeoutSeconds === right.maxTimeoutSeconds;
+  return (
+    left.scheme === right.scheme &&
+    left.network === right.network &&
+    left.amount === right.amount &&
+    left.asset === right.asset &&
+    left.payTo === right.payTo &&
+    left.maxTimeoutSeconds === right.maxTimeoutSeconds
+  );
 }

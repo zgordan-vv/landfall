@@ -11,9 +11,13 @@ export interface FlushOptions {
 }
 
 /** Runs a shutdown flush without allowing it to block process termination indefinitely. */
-export async function boundedFlush(flushOperation: () => Promise<void>, options: FlushOptions = {}): Promise<FlushResult> {
+export async function boundedFlush(
+  flushOperation: () => Promise<void>,
+  options: FlushOptions = {},
+): Promise<FlushResult> {
   const timeoutMs = options.timeoutMs ?? 2_000;
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 0) throw new Error("flush timeout must be a non-negative integer");
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 0)
+    throw new Error("flush timeout must be a non-negative integer");
 
   const timerHost = globalThis as unknown as {
     setTimeout: (handler: () => void, timeout: number) => unknown;
@@ -23,7 +27,8 @@ export async function boundedFlush(flushOperation: () => Promise<void>, options:
   const timeout = new Promise<FlushResult>((resolve) => {
     timer = timerHost.setTimeout(() => resolve({ status: "timed_out" }), timeoutMs);
   });
-  const operation = Promise.resolve().then(flushOperation)
+  const operation = Promise.resolve()
+    .then(flushOperation)
     .then((): FlushResult => ({ status: "flushed" }))
     .catch((error): FlushResult => ({ status: "failed", error }));
   try {

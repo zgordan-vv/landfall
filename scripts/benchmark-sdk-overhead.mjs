@@ -13,4 +13,11 @@ for (let index = 0; index < iterations; index += 1) {
 const elapsedMs = performance.now() - started;
 if (typeof globalThis.gc === "function") globalThis.gc();
 const after = process.memoryUsage().heapUsed;
-console.log(JSON.stringify({ iterations, elapsed_ms: elapsedMs, ns_per_capture: (elapsedMs * 1e6) / iterations, heap_delta_bytes: after - before }));
+console.log(
+  JSON.stringify({
+    iterations,
+    elapsed_ms: elapsedMs,
+    ns_per_capture: (elapsedMs * 1e6) / iterations,
+    heap_delta_bytes: after - before,
+  }),
+);

@@ -16,7 +16,10 @@ export class HealthCounters {
   }
 
   get snapshot(): SdkHealth {
-    return Object.freeze({ droppedEvents: this.#droppedEvents, transportFailures: this.#transportFailures });
+    return Object.freeze({
+      droppedEvents: this.#droppedEvents,
+      transportFailures: this.#transportFailures,
+    });
   }
 
   recordDropped(count = 1): void {
@@ -30,7 +33,8 @@ export class HealthCounters {
   }
 
   #validateCount(count: number): number {
-    if (!Number.isInteger(count) || count < 1) throw new Error("health counter increment must be a positive integer");
+    if (!Number.isInteger(count) || count < 1)
+      throw new Error("health counter increment must be a positive integer");
     return count;
   }
 

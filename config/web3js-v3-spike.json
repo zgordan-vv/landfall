@@ -4,5 +4,13 @@
   "status": "recognized-unsupported",
   "timebox_hours": 8,
   "production_adapter": false,
-  "required_evidence": ["install", "typed-compile", "blockhash", "simulation", "submission", "confirmation", "privacy"]
+  "required_evidence": [
+    "install",
+    "typed-compile",
+    "blockhash",
+    "simulation",
+    "submission",
+    "confirmation",
+    "privacy"
+  ]
 }
