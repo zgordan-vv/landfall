@@ -99,6 +99,7 @@ Before approving production, run through the TLS proxy:
 ```bash
 curl --fail --silent https://staging.example.com/health/live
 curl --fail --silent https://staging.example.com/health/ready
+test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://staging.example.com/metrics)" = 404
 ```
 
 Then complete a scoped authenticated ingest, confirm its trace appears in the

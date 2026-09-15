@@ -13,7 +13,9 @@ Before enabling it:
    trust the values set by this proxy only.
 4. Keep PostgreSQL off the public network and do not log `Authorization` or
    raw RPC URLs.
-5. Run `nginx -t` and perform a HTTPS smoke test for `/health/live` and
+5. Keep `/metrics` on the private Docker network; confirm the public proxy
+   returns `404` for it.
+6. Run `nginx -t` and perform a HTTPS smoke test for `/health/live` and
    `/health/ready` before switching DNS.
 
 The file is intentionally a configuration fragment (`limit_req_zone` belongs

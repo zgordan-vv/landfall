@@ -20,6 +20,12 @@ server {
     client_max_body_size 2m;
     limit_req zone=landfall_api burst=40 nodelay;
 
+    # Prometheus uses the private Docker `data` network. Aggregate metrics
+    # still reveal operational shape, so never proxy this endpoint publicly.
+    location = /metrics {
+        return 404;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
