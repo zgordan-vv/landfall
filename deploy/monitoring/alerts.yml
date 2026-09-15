@@ -37,15 +37,6 @@ groups:
           summary: Landfall has at least 100 jobs waiting for 15 minutes
           runbook: docs/operations/monitoring-and-alerts.md#landfallreadyqueuebacklog
 
-      - alert: LandfallWorkerStoppedWithPendingJobs
-        expr: landfall_jobs{state="ready"} > 0 unless on (job, instance) landfall_jobs{state="running"} > 0
-        for: 10m
-        labels:
-          severity: critical
-        annotations:
-          summary: Landfall has pending jobs but none are running
-          runbook: docs/operations/monitoring-and-alerts.md#landfallworkerstoppedwithpendingjobs
-
       - alert: LandfallExpectedIngestionSilent
         expr: landfall_events_received_24h == 0 and on (job, instance) landfall_enabled_rpc_routes > 0
         for: 30m

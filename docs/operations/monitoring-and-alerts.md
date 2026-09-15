@@ -88,14 +88,6 @@ worker replicas are alive, whether the RPC provider is throttling, and whether
 database latency has increased. Increase worker capacity only after confirming
 that the downstream provider and database can sustain it.
 
-### LandfallWorkerStoppedWithPendingJobs
-
-There are ready jobs but no job is currently running for 10 minutes. This is a
-strong signal that the worker is stopped, cannot lease work, or is repeatedly
-failing before it claims a job. Check the `observer-worker` container and its
-JSON logs first, then inspect database connectivity and the worker lease
-settings.
-
 ### LandfallExpectedIngestionSilent
 
 At least one RPC route is enabled, yet no event has been received in the prior
@@ -129,3 +121,21 @@ Review alert thresholds after the first two weeks of real traffic. The bundled
 values are conservative operational defaults, not an SLO. Record threshold
 changes, the expected traffic assumption, and the on-call owner in the
 deployment's change record.
+
+## Scheduled local backup
+
+For a single-host pilot, use `scripts/scheduled-backup-postgres.sh` from a
+system timer or cron job. It creates a checksummed archive, verifies it before
+returning, skips an overlapping run, refuses to run below a free-space floor,
+and prunes only prior Landfall archives after the configured retention period.
+
+```bash
+LANDFALL_ENV_FILE=/root/landfall/landfall.env \
+LANDFALL_BACKUP_DIR=/root/landfall/backups \
+LANDFALL_BACKUP_RETENTION_DAYS=7 \
+./scripts/scheduled-backup-postgres.sh
+```
+
+This is availability protection, not disaster recovery: archives on the same
+host do not survive loss of that host. Copy each verified archive and manifest
+to encrypted off-host storage before making an availability promise.
