@@ -7,6 +7,7 @@ use axum::{
     response::IntoResponse,
 };
 use getrandom::fill;
+use landfall_observer::{JsonRpcClient, ReqwestRouteClient};
 use landfall_storage::{
     X402PaymentAuditRecord, X402SpendPolicyRecord,
     list_x402_payment_audit as query_x402_payment_audit, list_x402_spend_policies,
@@ -14,6 +15,7 @@ use landfall_storage::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::time::{Duration, Instant};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -99,6 +101,16 @@ pub struct RouteResponse {
     pub environment_id: String,
     pub name: String,
     pub enabled: bool,
+    pub encryption_key_id: Option<String>,
+}
+
+/// Non-secret result of checking a configured Solana JSON-RPC endpoint.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RouteVerificationResponse {
+    pub route_id: String,
+    pub reachable: bool,
+    pub latency_ms: u64,
+    pub network_identity: Option<String>,
 }
 
 /// Request to mint a scoped token for one project.
@@ -119,6 +131,7 @@ pub struct TokenResponse {
     pub scopes: Vec<String>,
     pub expires_at: Option<String>,
     pub revoked_at: Option<String>,
+    pub last_used_at: Option<String>,
 }
 
 /// Request to create or update a non-custodial x402 spend policy.
@@ -387,6 +400,7 @@ fn authorize_bootstrap(headers: &HeaderMap, state: &AppState) -> bool {
         return false;
     };
     let record = auth::ApiTokenRecord {
+        token_id: Uuid::nil(),
         project_id: Uuid::nil(),
         token_hash,
         scopes: vec![ADMIN_SCOPE.to_owned()],
@@ -755,10 +769,24 @@ pub async fn create_route(
             "route provisioning requires durable storage",
         );
     };
+    let Some(cipher) = state.route_secret_cipher.as_deref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "route_secret_key_unavailable",
+            "private RPC configuration requires the deployment route secret key",
+        );
+    };
+    let Ok((ciphertext, nonce)) = cipher.encrypt(&request.endpoint) else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "route_encryption_failed",
+            "private RPC configuration could not be encrypted",
+        );
+    };
     let route_id = Uuid::now_v7();
-    match sqlx::query("INSERT INTO control.routes (route_id, environment_id, name, endpoint) SELECT $1, environment_id, $3, $4 FROM control.environments WHERE environment_id = $2 AND project_id = $5")
-        .bind(route_id).bind(environment_id).bind(&request.name).bind(&request.endpoint).bind(project_id).execute(pool).await {
-        Ok(result) if result.rows_affected() == 1 => (StatusCode::CREATED, Json(RouteResponse { route_id: route_id.to_string(), environment_id: environment_id.to_string(), name: request.name, enabled: true })).into_response(),
+    match sqlx::query("INSERT INTO control.routes (route_id, environment_id, name, endpoint, endpoint_ciphertext, endpoint_nonce, encryption_key_id) SELECT $1, environment_id, $3, NULL, $4, $5, 'v1' FROM control.environments WHERE environment_id = $2 AND project_id = $6")
+        .bind(route_id).bind(environment_id).bind(&request.name).bind(ciphertext).bind(nonce).bind(project_id).execute(pool).await {
+        Ok(result) if result.rows_affected() == 1 => (StatusCode::CREATED, Json(RouteResponse { route_id: route_id.to_string(), environment_id: environment_id.to_string(), name: request.name, enabled: true, encryption_key_id: Some("v1".to_owned()) })).into_response(),
         Ok(_) => error(StatusCode::NOT_FOUND, "environment_not_found", "environment was not found in this project"),
         Err(_) => error(StatusCode::CONFLICT, "route_conflict", "route name already exists"),
     }
@@ -785,9 +813,9 @@ pub async fn list_routes(
             "route listing requires durable storage",
         );
     };
-    match sqlx::query("SELECT r.route_id, r.environment_id, r.name, r.enabled FROM control.routes r JOIN control.environments e ON e.environment_id = r.environment_id WHERE r.environment_id = $1 AND e.project_id = $2 ORDER BY r.created_at, r.route_id")
+    match sqlx::query("SELECT r.route_id, r.environment_id, r.name, r.enabled, r.encryption_key_id FROM control.routes r JOIN control.environments e ON e.environment_id = r.environment_id WHERE r.environment_id = $1 AND e.project_id = $2 ORDER BY r.created_at, r.route_id")
         .bind(environment_id).bind(project_id).fetch_all(pool).await {
-        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| RouteResponse { route_id: row.get::<Uuid, _>("route_id").to_string(), environment_id: row.get::<Uuid, _>("environment_id").to_string(), name: row.get("name"), enabled: row.get("enabled") }).collect::<Vec<_>>())).into_response(),
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| RouteResponse { route_id: row.get::<Uuid, _>("route_id").to_string(), environment_id: row.get::<Uuid, _>("environment_id").to_string(), name: row.get("name"), enabled: row.get("enabled"), encryption_key_id: row.get("encryption_key_id") }).collect::<Vec<_>>())).into_response(),
         Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "route listing failed"),
     }
 }
@@ -819,6 +847,80 @@ pub async fn disable_route(
         Ok(_) => error(StatusCode::NOT_FOUND, "route_not_found", "route was not found"),
         Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "route disable failed"),
     }
+}
+
+/// Verifies a configured route without returning its URL or credentials.
+#[utoipa::path(post, path = "/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/verify", params(("project_id" = String, Path), ("environment_id" = String, Path), ("route_id" = String, Path)), responses((status = 200, body = RouteVerificationResponse), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, body = ApiError), (status = 503, body = ApiError)))]
+pub async fn verify_route(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, environment_id, route_id)): Path<(Uuid, Uuid, Uuid)>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "route verification requires durable storage",
+        );
+    };
+    let Some(cipher) = state.route_secret_cipher.as_deref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "route_secret_key_unavailable",
+            "private RPC configuration requires the deployment route secret key",
+        );
+    };
+    let row = match sqlx::query("SELECT endpoint_ciphertext, endpoint_nonce FROM control.routes r JOIN control.environments e ON e.environment_id = r.environment_id WHERE r.route_id = $1 AND r.environment_id = $2 AND e.project_id = $3 AND r.enabled")
+        .bind(route_id).bind(environment_id).bind(project_id).fetch_optional(pool).await { Ok(Some(row)) => row, Ok(None) => return error(StatusCode::NOT_FOUND, "route_not_found", "enabled route was not found"), Err(_) => return error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "route lookup failed") };
+    let ciphertext: Option<Vec<u8>> = row.get("endpoint_ciphertext");
+    let nonce: Option<Vec<u8>> = row.get("endpoint_nonce");
+    let Some((ciphertext, nonce)) = ciphertext.zip(nonce) else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "route_not_encrypted",
+            "route must be migrated to encrypted storage before verification",
+        );
+    };
+    let endpoint = match cipher.decrypt(&ciphertext, &nonce) {
+        Ok(endpoint) => endpoint,
+        Err(_) => {
+            return error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "route_decryption_failed",
+                "route secret could not be read",
+            );
+        }
+    };
+    let started = Instant::now();
+    let network_identity = match ReqwestRouteClient::new(
+        route_id.to_string(),
+        endpoint.clone(),
+        Duration::from_secs(10),
+    ) {
+        Ok(client) => JsonRpcClient::new(endpoint, client)
+            .call::<(), String>(1, "getGenesisHash", ())
+            .await
+            .ok(),
+        Err(_) => None,
+    };
+    let latency_ms = started.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
+    (
+        StatusCode::OK,
+        Json(RouteVerificationResponse {
+            route_id: route_id.to_string(),
+            reachable: network_identity.is_some(),
+            latency_ms,
+            network_identity,
+        }),
+    )
+        .into_response()
 }
 
 /// Mints a least-privilege token for the caller's project.
@@ -898,8 +1000,8 @@ pub async fn list_tokens(
             "token listing requires durable storage",
         );
     };
-    match sqlx::query("SELECT token_id, name, token_prefix, scopes, expires_at, revoked_at FROM control.api_tokens WHERE project_id = $1 ORDER BY created_at, token_id").bind(project_id).fetch_all(pool).await {
-        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| TokenResponse { token_id: row.get::<Uuid, _>("token_id").to_string(), name: row.get("name"), token_prefix: row.get("token_prefix"), scopes: row.get("scopes"), expires_at: format_time(row.get("expires_at")), revoked_at: format_time(row.get("revoked_at")) }).collect::<Vec<_>>())).into_response(),
+    match sqlx::query("SELECT token_id, name, token_prefix, scopes, expires_at, revoked_at, last_used_at FROM control.api_tokens WHERE project_id = $1 ORDER BY created_at, token_id").bind(project_id).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| TokenResponse { token_id: row.get::<Uuid, _>("token_id").to_string(), name: row.get("name"), token_prefix: row.get("token_prefix"), scopes: row.get("scopes"), expires_at: format_time(row.get("expires_at")), revoked_at: format_time(row.get("revoked_at")), last_used_at: format_time(row.get("last_used_at")) }).collect::<Vec<_>>())).into_response(),
         Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "token listing failed"),
     }
 }

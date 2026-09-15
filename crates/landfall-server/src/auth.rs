@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ApiTokenRecord {
+    pub token_id: Uuid,
     pub project_id: Uuid,
     pub token_hash: [u8; 32],
     pub scopes: Vec<String>,
@@ -74,7 +75,7 @@ pub async fn authenticate_database(
     required_scope: &str,
 ) -> Result<AuthenticatedToken, AuthError> {
     let rows = sqlx::query(
-        "SELECT project_id, token_hash, scopes, expires_at, revoked_at FROM control.api_tokens",
+        "SELECT token_id, project_id, token_hash, scopes, expires_at, revoked_at FROM control.api_tokens",
     )
     .fetch_all(pool)
     .await
@@ -85,6 +86,7 @@ pub async fn authenticate_database(
             let bytes: Vec<u8> = row.get("token_hash");
             let token_hash: [u8; 32] = bytes.try_into().ok()?;
             Some(ApiTokenRecord {
+                token_id: row.get("token_id"),
                 project_id: row.get("project_id"),
                 token_hash,
                 scopes: row.get("scopes"),
@@ -99,6 +101,10 @@ pub async fn authenticate_database(
         required_scope,
         OffsetDateTime::now_utc(),
     )?;
+    let _ = sqlx::query("UPDATE control.api_tokens SET last_used_at = now() WHERE token_id = $1")
+        .bind(record.token_id)
+        .execute(pool)
+        .await;
     Ok(AuthenticatedToken {
         project_id: record.project_id,
         scopes: record.scopes.clone(),
@@ -118,6 +124,7 @@ mod tests {
 
     fn record(token: &str) -> ApiTokenRecord {
         ApiTokenRecord {
+            token_id: Uuid::nil(),
             project_id: Uuid::nil(),
             token_hash: hash_token(token),
             scopes: vec!["ingest:write".into()],

@@ -70,6 +70,7 @@ pub mod reports;
 pub mod retention;
 pub mod retention_benchmark;
 pub mod secret_matrix;
+pub mod secrets;
 pub mod signature_lookup;
 pub mod storage_benchmark;
 pub mod system_status;
@@ -87,6 +88,7 @@ use crate::control_plane::{
     create_environment, create_project, create_route, create_token, create_x402_spend_policy,
     disable_route, get_project_config, list_environments, list_routes, list_tokens,
     list_x402_payment_audit, list_x402_spend_policy, revoke_token, update_x402_spend_policy,
+    verify_route,
 };
 use crate::reports::{create_report, download_report, list_reports};
 use tower_http::{
@@ -127,6 +129,8 @@ pub struct AppState {
     /// Project that is intentionally readable through the public portfolio demo routes.
     /// No write, control-plane, payment, or RPC configuration routes use this identity.
     pub public_demo_project_id: Option<Uuid>,
+    /// Deployment-only cipher for private RPC endpoints; never serialized.
+    pub route_secret_cipher: Option<std::sync::Arc<secrets::RouteSecretCipher>>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -205,6 +209,7 @@ pub struct ApiError {
         control_plane::create_route,
         control_plane::list_routes,
         control_plane::disable_route,
+        control_plane::verify_route,
         control_plane::create_token,
         control_plane::list_tokens,
         control_plane::revoke_token,
@@ -234,6 +239,7 @@ pub struct ApiError {
         crate::control_plane::EnvironmentResponse,
         crate::control_plane::CreateRouteRequest,
         crate::control_plane::RouteResponse,
+        crate::control_plane::RouteVerificationResponse,
         crate::control_plane::CreateTokenRequest,
         crate::control_plane::CreatedTokenResponse,
         crate::control_plane::TokenResponse,
@@ -381,6 +387,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/disable",
             post(disable_route),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/environments/{environment_id}/routes/{route_id}/verify",
+            post(verify_route),
         )
         .route(
             "/v1/control/projects/{project_id}/tokens",
@@ -1477,6 +1487,7 @@ mod tests {
             pool: None,
             bootstrap_token_hash: None,
             public_demo_project_id: None,
+            route_secret_cipher: None,
         });
         let live = app
             .clone()
@@ -1686,6 +1697,7 @@ mod tests {
             pool: None,
             bootstrap_token_hash: None,
             public_demo_project_id: Some(uuid::Uuid::nil()),
+            route_secret_cipher: None,
         })
         .oneshot(
             Request::get("/demo/v1/overview")

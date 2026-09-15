@@ -87,6 +87,7 @@ mod tests {
     #[test]
     fn requires_admin_scope_and_marks_degraded_dependencies() {
         let token = ApiTokenRecord {
+            token_id: uuid::Uuid::nil(),
             project_id: uuid::Uuid::nil(),
             token_hash: hash_token("admin"),
             scopes: vec!["admin".into()],

@@ -11,6 +11,7 @@ import {
   type TraceDiagnostic,
   type TraceListItem,
   type TraceRecommendation,
+  type TokenResponse,
   type X402PaymentAuditRecord,
 } from "@landfall/api-client";
 import "./styles.css";
@@ -782,7 +783,9 @@ function Onboarding() {
   const [environmentName, setEnvironmentName] = React.useState("production");
   const [cluster, setCluster] = React.useState("mainnet-beta");
   const [routeName, setRouteName] = React.useState("mainnet-primary");
-  const [endpoint, setEndpoint] = React.useState("https://api.mainnet-beta.solana.com");
+  const [endpoint, setEndpoint] = React.useState("");
+  const [routeId, setRouteId] = React.useState("");
+  const [tokens, setTokens] = React.useState<TokenResponse[] | null>(null);
   const [sdkToken, setSdkToken] = React.useState<CreatedTokenResponse | null>(null);
   const [dashboardToken, setDashboardToken] = React.useState<CreatedTokenResponse | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -952,10 +955,10 @@ function Onboarding() {
           onSubmit={(event) => {
             event.preventDefault();
             void run(async () => {
-              await api.createRoute(projectId, environmentId, adminToken, routeName, endpoint);
-              setMessage(
-                "RPC route connected. Landfall will use it for eligible observation jobs.",
-              );
+              const route = await api.createRoute(projectId, environmentId, adminToken, routeName, endpoint);
+              setRouteId(route.route_id);
+              const verification = await api.verifyRoute(projectId, environmentId, route.route_id, adminToken);
+              setMessage(verification.reachable ? `Encrypted RPC route connected and verified in ${verification.latency_ms} ms.` : "Encrypted RPC route was saved, but its connection check failed. Verify its URL and provider access.");
             });
           }}
         >
@@ -978,12 +981,13 @@ function Onboarding() {
               type="url"
               value={endpoint}
               onChange={(event) => setEndpoint(event.target.value)}
+              placeholder="Your private HTTPS Solana RPC URL"
             />
           </label>
           <button disabled={busy} type="submit">
             Connect route
           </button>
-          <p className="muted">The endpoint is never shown again in the dashboard.</p>
+          <p className="muted">The endpoint is encrypted with AES-256-GCM before storage, never shown again, and decrypted only by the observer worker.</p>
         </form>
       )}
       {environmentId && (
@@ -1021,6 +1025,14 @@ function Onboarding() {
               Create SDK token
             </button>
           )}
+        </section>
+      )}
+      {projectId && (
+        <section className="state-card setup-form">
+          <div><p className="eyebrow">Token lifecycle</p><h2>Access tokens</h2></div>
+          <button disabled={busy} onClick={() => void run(async () => setTokens(await api.listTokens(projectId, adminToken)))} type="button">Refresh token inventory</button>
+          {tokens?.length ? <ul className="detail-list">{tokens.map((token) => <li key={token.token_id}><strong>{token.name} · {token.token_prefix}</strong><span>{token.scopes.join(", ")} · last used: {token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"} · {token.revoked_at ? "revoked" : "active"}</span>{!token.revoked_at && <button className="secondary-button" onClick={() => void run(async () => { await api.revokeToken(projectId, token.token_id, adminToken); setTokens(await api.listTokens(projectId, adminToken)); setMessage(`Token ${token.name} revoked.`); })} type="button">Revoke</button>}</li>)}</ul> : tokens ? <p className="muted">No tokens found.</p> : null}
+          {routeId && <p className="muted">Current route is protected by encryption key v1 and can be re-verified by reconnecting it if its provider configuration changes.</p>}
         </section>
       )}
       {message && (

@@ -143,6 +143,21 @@ export interface RouteResponse {
   name: string;
   enabled: boolean;
 }
+export interface RouteVerificationResponse {
+  route_id: string;
+  reachable: boolean;
+  latency_ms: number;
+  network_identity: string | null;
+}
+export interface TokenResponse {
+  token_id: string;
+  name: string;
+  token_prefix: string;
+  scopes: string[];
+  expires_at: string | null;
+  revoked_at: string | null;
+  last_used_at: string | null;
+}
 export interface X402PaymentAuditRecord {
   audit_id: string;
   policy_id: string | null;
@@ -253,6 +268,9 @@ export class LandfallApiClient {
       token,
     );
   }
+  async verifyRoute(projectId: string, environmentId: string, routeId: string, token: string): Promise<RouteVerificationResponse> {
+    return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes/${encodeURIComponent(routeId)}/verify`, {}, token);
+  }
   async createToken(
     projectId: string,
     token: string,
@@ -264,6 +282,12 @@ export class LandfallApiClient {
       { name, scopes },
       token,
     );
+  }
+  async listTokens(projectId: string, token: string): Promise<TokenResponse[]> {
+    return this.getWithToken(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens`, token);
+  }
+  async revokeToken(projectId: string, tokenId: string, token: string): Promise<void> {
+    await this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens/${encodeURIComponent(tokenId)}/revoke`, {}, token);
   }
   async getX402PaymentAudit(
     projectId: string,

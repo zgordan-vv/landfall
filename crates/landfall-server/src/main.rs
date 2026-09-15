@@ -7,6 +7,7 @@ use landfall_server::{
     auth::hash_token,
     observability::{ProcessRole, init_logging},
     router, run_observation_worker,
+    secrets::{RouteSecretCipher, encrypt_legacy_routes},
 };
 use landfall_storage::{DatabaseConfig, run_migrations};
 use tokio::net::TcpListener;
@@ -43,11 +44,16 @@ async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let database = DatabaseConfig::from_env()?;
     let pool = database.connect_lazy()?;
     run_migrations(&pool).await?;
+    let route_secret_cipher = RouteSecretCipher::from_env()?;
+    if let Some(cipher) = &route_secret_cipher {
+        encrypt_legacy_routes(&pool, cipher).await?;
+    }
     let app = router(AppState {
         ready: true,
         pool: Some(pool),
         bootstrap_token_hash: bootstrap_token_hash()?,
         public_demo_project_id: public_demo_project_id()?,
+        route_secret_cipher: route_secret_cipher.map(std::sync::Arc::new),
     });
 
     axum::serve(listener, app)
@@ -87,12 +93,17 @@ async fn run_worker() -> Result<(), Box<dyn std::error::Error>> {
     let database = DatabaseConfig::from_env()?;
     let pool = database.connect_lazy()?;
     run_migrations(&pool).await?;
+    let route_secret_cipher = RouteSecretCipher::from_env()?.map(std::sync::Arc::new);
+    if let Some(cipher) = &route_secret_cipher {
+        encrypt_legacy_routes(&pool, cipher).await?;
+    }
     let cancellation = CancellationToken::new();
     let worker = run_observation_worker(
         pool,
         ObservationWorkerConfig::from_env(),
         cancellation.clone(),
         std::sync::Arc::new(ObservationWorkerMetrics::default()),
+        route_secret_cipher,
     );
     tokio::pin!(worker);
     tokio::select! {

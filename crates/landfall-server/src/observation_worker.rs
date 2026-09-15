@@ -2,6 +2,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use crate::secrets::RouteSecretCipher;
 use landfall_observer::{
     JsonRpcClient, ReqwestRouteClient, execution_enriched_event, get_transaction,
     normalize_execution, normalize_signature_status, status_observed_event,
@@ -126,6 +127,7 @@ pub async fn run_observation_worker(
     config: ObservationWorkerConfig,
     cancellation: CancellationToken,
     metrics: Arc<ObservationWorkerMetrics>,
+    route_secret_cipher: Option<Arc<RouteSecretCipher>>,
 ) {
     let _ = reclaim_expired_observation_jobs(&pool).await;
     let mut tasks = JoinSet::new();
@@ -137,6 +139,7 @@ pub async fn run_observation_worker(
             config,
             cancellation.child_token(),
             Arc::clone(&metrics),
+            route_secret_cipher.clone(),
         ));
     }
     tasks.spawn(run_recovery_loop(
@@ -167,6 +170,7 @@ async fn run_poll_loop(
     config: ObservationWorkerConfig,
     cancellation: CancellationToken,
     metrics: Arc<ObservationWorkerMetrics>,
+    route_secret_cipher: Option<Arc<RouteSecretCipher>>,
 ) {
     loop {
         tokio::select! {
@@ -175,7 +179,7 @@ async fn run_poll_loop(
                 match claimed {
                     Ok(Some(job)) => {
                         metrics.claimed();
-                        match observe_job(&pool, job.trace_id, job.job_id).await {
+                        match observe_job(&pool, job.trace_id, job.job_id, route_secret_cipher.as_deref()).await {
                             Ok(()) => match complete_observation_job(&pool, job.job_id).await {
                                 Ok(()) => metrics.completed(),
                                 Err(error) => tracing::error!(%error, job_id = %job.job_id, "could not complete observation job"),
@@ -230,18 +234,32 @@ async fn observe_job(
     pool: &PgPool,
     trace_id: uuid::Uuid,
     job_id: uuid::Uuid,
+    route_secret_cipher: Option<&RouteSecretCipher>,
 ) -> Result<(), String> {
     let target = load_observation_target(pool, trace_id)
         .await
         .map_err(|_| "observation target lookup failed".to_owned())?
         .ok_or_else(|| "no enabled route or submission signature".to_owned())?;
+    let endpoint = match (
+        &target.endpoint_ciphertext,
+        &target.endpoint_nonce,
+        route_secret_cipher,
+    ) {
+        (Some(ciphertext), Some(nonce), Some(cipher)) => cipher
+            .decrypt(ciphertext, nonce)
+            .map_err(|_| "rpc endpoint decryption failed".to_owned())?,
+        (None, None, _) => target
+            .endpoint
+            .ok_or_else(|| "configured route has no endpoint".to_owned())?,
+        _ => return Err("encrypted RPC route requires route secret key".to_owned()),
+    };
     let client = ReqwestRouteClient::new(
         target.route_id.to_string(),
-        target.endpoint.clone(),
+        endpoint.clone(),
         Duration::from_secs(10),
     )
     .map_err(|_| "rpc client setup failed".to_owned())?;
-    let rpc = JsonRpcClient::new(target.endpoint, client);
+    let rpc = JsonRpcClient::new(endpoint, client);
     let status = rpc
         .get_signature_status(&target.signature)
         .await
