@@ -11,6 +11,7 @@ use landfall_server::{
 use landfall_storage::{DatabaseConfig, run_migrations};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
+use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
@@ -46,12 +47,29 @@ async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
         ready: true,
         pool: Some(pool),
         bootstrap_token_hash: bootstrap_token_hash()?,
+        public_demo_project_id: public_demo_project_id()?,
     });
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
+}
+
+fn public_demo_project_id() -> Result<Option<Uuid>, std::io::Error> {
+    let Some(value) = std::env::var("LANDFALL_PUBLIC_DEMO_PROJECT_ID").ok() else {
+        return Ok(None);
+    };
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    Uuid::parse_str(trimmed).map(Some).map_err(|error| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("LANDFALL_PUBLIC_DEMO_PROJECT_ID must be a UUID: {error}"),
+        )
+    })
 }
 
 fn bootstrap_token_hash() -> Result<Option<[u8; 32]>, std::io::Error> {

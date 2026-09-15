@@ -51,6 +51,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 const DashboardApiContext = React.createContext<LandfallApiClient | null>(null);
+type Access = { mode: "private"; token: string } | { mode: "demo" };
 
 function apiBaseUrl(): string {
   return import.meta.env["VITE_LANDFALL_API_URL"] ?? "";
@@ -100,7 +101,13 @@ function diagnosticCopy(claimKey: string, count: number) {
   };
 }
 
-function DashboardAccess({ onConnect }: { onConnect: (token: string) => void }) {
+function DashboardAccess({
+  onConnect,
+  onTryDemo,
+}: {
+  onConnect: (token: string) => void;
+  onTryDemo: () => void;
+}) {
   const [token, setToken] = React.useState("");
   return (
     <section className="state-card" aria-label="Dashboard access">
@@ -129,6 +136,12 @@ function DashboardAccess({ onConnect }: { onConnect: (token: string) => void }) 
         </label>
         <button type="submit">Open workspace</button>
       </form>
+      <button className="secondary-button" onClick={onTryDemo} type="button">
+        Try live demo
+      </button>
+      <p className="muted">
+        The demo is public and read-only. It shows a separate project with real devnet traces.
+      </p>
       <p className="muted">
         Need a token? Use <a href="#onboarding">Get started</a> or ask your project administrator.
       </p>
@@ -138,7 +151,7 @@ function DashboardAccess({ onConnect }: { onConnect: (token: string) => void }) 
 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
-  const [accessToken, setAccessToken] = React.useState("");
+  const [access, setAccess] = React.useState<Access | null>(null);
   React.useEffect(() => {
     const onHash = () => setRoute(routeFromLocation());
     window.addEventListener("hashchange", onHash);
@@ -153,23 +166,33 @@ function Dashboard() {
     reports: "Reports",
     "trace-detail": "Trace detail",
   };
+  const isDemo = access?.mode === "demo";
+  const activeRoute =
+    isDemo && !["overview", "traces", "comparison", "trace-detail"].includes(route)
+      ? "overview"
+      : route;
   const api = React.useMemo(
     () =>
-      accessToken ? new LandfallApiClient({ baseUrl: apiBaseUrl(), token: accessToken }) : null,
-    [accessToken],
+      access === null
+        ? null
+        : new LandfallApiClient({
+            baseUrl: access.mode === "demo" ? `${apiBaseUrl().replace(/\/$/, "")}/demo` : apiBaseUrl(),
+            ...(access.mode === "private" ? { token: access.token } : {}),
+          }),
+    [access],
   );
   const workspace =
-    route === "overview" ? (
+    activeRoute === "overview" ? (
       <OverviewMetrics />
-    ) : route === "traces" ? (
+    ) : activeRoute === "traces" ? (
       <TraceList />
-    ) : route === "trace-detail" ? (
+    ) : activeRoute === "trace-detail" ? (
       <TraceDetail />
-    ) : route === "comparison" ? (
+    ) : activeRoute === "comparison" ? (
       <ComparisonView />
-    ) : route === "payments" ? (
+    ) : activeRoute === "payments" ? (
       <X402PaymentAudit />
-    ) : route === "reports" ? (
+    ) : activeRoute === "reports" ? (
       <ReportExports />
     ) : (
       <Onboarding />
@@ -184,7 +207,7 @@ function Dashboard() {
         {api && (
           <button
             className="secondary-button logout"
-            onClick={() => setAccessToken("")}
+            onClick={() => setAccess(null)}
             type="button"
           >
             Disconnect
@@ -195,11 +218,15 @@ function Dashboard() {
         <nav aria-label="Primary navigation">
           <p className="nav-caption">Workspace</p>
           {(Object.keys(labels) as Route[])
-            .filter((key) => key !== "trace-detail")
+            .filter(
+              (key) =>
+                key !== "trace-detail" &&
+                (!isDemo || key === "overview" || key === "traces" || key === "comparison"),
+            )
             .map((key) => (
               <a
-                className={route === key ? "nav-link active" : "nav-link"}
-                aria-current={route === key ? "page" : undefined}
+                className={activeRoute === key ? "nav-link active" : "nav-link"}
+                aria-current={activeRoute === key ? "page" : undefined}
                 href={`#${key}`}
                 key={key}
               >
@@ -208,27 +235,30 @@ function Dashboard() {
             ))}
         </nav>
         <main className="content">
-          <p className="eyebrow">{labels[route]}</p>
+          <p className="eyebrow">{isDemo ? "Public demo" : labels[activeRoute]}</p>
           <h1>
-            {route === "overview"
+            {activeRoute === "overview"
               ? "Lifecycle evidence at a glance"
-              : route === "onboarding"
+              : activeRoute === "onboarding"
                 ? "Connect your first transaction flow"
-                : route === "payments"
+                : activeRoute === "payments"
                   ? "Controlled x402 payment activity"
-                  : route === "reports"
+                  : activeRoute === "reports"
                     ? "Export lifecycle evidence"
-                    : labels[route]}
+                    : labels[activeRoute]}
           </h1>
           <p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>
-          {route === "onboarding" ? (
+          {activeRoute === "onboarding" ? (
             <Onboarding />
-          ) : route === "payments" || route === "reports" ? (
+          ) : activeRoute === "payments" || activeRoute === "reports" ? (
             workspace
           ) : api ? (
             <DashboardApiContext.Provider value={api}>{workspace}</DashboardApiContext.Provider>
           ) : (
-            <DashboardAccess onConnect={setAccessToken} />
+            <DashboardAccess
+              onConnect={(token) => setAccess({ mode: "private", token })}
+              onTryDemo={() => setAccess({ mode: "demo" })}
+            />
           )}
         </main>
       </div>

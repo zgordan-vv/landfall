@@ -118,6 +118,9 @@ pub struct AppState {
     pub pool: Option<sqlx::PgPool>,
     /// Hash of the deployment-local bootstrap credential for first-project provisioning.
     pub bootstrap_token_hash: Option<[u8; 32]>,
+    /// Project that is intentionally readable through the public portfolio demo routes.
+    /// No write, control-plane, payment, or RPC configuration routes use this identity.
+    pub public_demo_project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -307,6 +310,23 @@ pub fn router(state: AppState) -> Router {
             authenticate_api,
         ));
     let bootstrap = Router::new().route("/v1/control/projects", post(create_project));
+    let public_demo = Router::new()
+        .route("/demo/v1/traces/{trace_id}", get(trace_detail))
+        .route(
+            "/demo/v1/traces/{trace_id}/diagnostics",
+            get(trace_diagnostics),
+        )
+        .route(
+            "/demo/v1/traces/{trace_id}/recommendations",
+            get(trace_recommendations),
+        )
+        .route("/demo/v1/traces", get(trace_list))
+        .route("/demo/v1/overview", get(overview))
+        .route("/demo/v1/comparison", get(comparison))
+        .layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            authenticate_public_demo,
+        ));
     let control = Router::new()
         .route(
             "/v1/control/projects/{project_id}/environments",
@@ -360,6 +380,7 @@ pub fn router(state: AppState) -> Router {
         .merge(api)
         .merge(bootstrap)
         .merge(control)
+        .merge(public_demo)
         .route("/health/live", axum::routing::get(liveness))
         .route("/health/ready", axum::routing::get(readiness))
         .route("/metrics", axum::routing::get(metrics))
@@ -445,6 +466,31 @@ async fn authenticate_api(
         )
             .into_response(),
     }
+}
+
+/// Scopes public portfolio traffic to one explicitly configured demo project.
+/// This route family never grants a bearer credential and is not mounted for
+/// writes, control-plane management, RPC configuration, reports, or x402.
+async fn authenticate_public_demo(
+    State(state): State<Arc<AppState>>,
+    mut request: Request<axum::body::Body>,
+    next: Next,
+) -> axum::response::Response {
+    let Some(project_id) = state.public_demo_project_id else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                code: "public_demo_unavailable",
+                message: "public demo is not configured",
+            }),
+        )
+            .into_response();
+    };
+    request.extensions_mut().insert(AuthenticatedToken {
+        project_id,
+        scopes: vec!["traces:read".to_owned(), "diagnostics:read".to_owned()],
+    });
+    next.run(request).await
 }
 
 async fn security_headers_and_cors(
@@ -1390,6 +1436,7 @@ mod tests {
             ready: false,
             pool: None,
             bootstrap_token_hash: None,
+            public_demo_project_id: None,
         });
         let live = app
             .clone()
@@ -1580,6 +1627,34 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn public_demo_routes_are_disabled_without_a_project_and_scoped_when_enabled() {
+        let disabled = router(super::AppState::default())
+            .oneshot(
+                Request::get("/demo/v1/overview")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(disabled.status(), StatusCode::NOT_FOUND);
+
+        let enabled = router(super::AppState {
+            ready: true,
+            pool: None,
+            bootstrap_token_hash: None,
+            public_demo_project_id: Some(uuid::Uuid::nil()),
+        })
+        .oneshot(
+            Request::get("/demo/v1/overview")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(enabled.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[test]
