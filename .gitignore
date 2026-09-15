@@ -41,3 +41,6 @@ test-results/
 
 # Deployment-only material
 deployments/
+.terraform/
+*.tfstate
+*.tfstate.*

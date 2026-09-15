@@ -1,0 +1,29 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - docker.io
+  - docker-compose-v2
+  - nginx
+  - ufw
+
+write_files:
+  - path: /etc/landfall/README
+    owner: root:root
+    permissions: "0644"
+    content: |
+      This host is provisioned for Landfall. Deploy only a pinned GHCR image
+      through scripts/deploy-release.sh with LANDFALL_DEPLOY_TARGET=managed-postgres.
+      Database credentials must be a VPC-only TLS URI stored in a root-readable
+      Docker secret file; never put them in this file or in shell history.
+
+runcmd:
+  - install -d -m 0700 /srv/landfall/secrets
+  - install -d -m 0755 /srv/landfall
+  - install -d -m 0755 /etc/landfall
+  - systemctl enable --now docker
+  - systemctl enable --now nginx
+  - ufw --force enable

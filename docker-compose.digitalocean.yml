@@ -1,0 +1,17 @@
+# DigitalOcean production overlay.
+#
+# This is combined with docker-compose.production.yml when PostgreSQL is a
+# DigitalOcean Managed Database. The database URL remains a Docker secret; the
+# application containers use its VPC-only TLS URI through DATABASE_URL_FILE.
+services:
+  postgres-production:
+    # The base production profile starts the self-hosted PostgreSQL container.
+    # Keep that service out of this target entirely: DigitalOcean owns database
+    # availability, backups, and point-in-time recovery.
+    profiles: [self-hosted-postgres]
+
+  server:
+    depends_on: !reset []
+
+  observer-worker:
+    depends_on: !reset []

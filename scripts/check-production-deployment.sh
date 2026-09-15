@@ -19,18 +19,17 @@ image_reference="$(sed -nE 's/^LANDFALL_SERVER_IMAGE=(.+)$/\1/p' "$LANDFALL_DEPL
     exit 2
 }
 
-docker compose \
-    --env-file "$LANDFALL_DEPLOY_ENV_FILE" \
-    --file docker-compose.yml \
-    --file docker-compose.production.yml \
-    --profile production \
-    --profile monitoring \
-    config --quiet
+compose_files=(--file docker-compose.yml --file docker-compose.production.yml)
+if [[ "${LANDFALL_DEPLOY_TARGET:-self-hosted-postgres}" == "managed-postgres" ]]; then
+    compose_files+=(--file docker-compose.digitalocean.yml)
+fi
+
+docker compose --env-file "$LANDFALL_DEPLOY_ENV_FILE" "${compose_files[@]}" \
+    --profile production --profile monitoring config --quiet
 
 rendered="$(docker compose \
     --env-file "$LANDFALL_DEPLOY_ENV_FILE" \
-    --file docker-compose.yml \
-    --file docker-compose.production.yml \
+    "${compose_files[@]}" \
     --profile production \
     --profile monitoring config)"
 
@@ -38,6 +37,12 @@ grep -Fq "image: $image_reference" <<<"$rendered" || { printf 'Rendered Compose 
 grep -Fq 'read_only: true' <<<"$rendered" || { printf 'Production services must use a read-only root filesystem.\n' >&2; exit 1; }
 if awk '/^  server:/{inside=1; next} /^  [a-zA-Z]/{inside=0} inside && /^    build:/{found=1} END{exit found ? 0 : 1}' <<<"$rendered"; then
     printf 'Production server must not build an image from the host checkout.\n' >&2
+    exit 1
+fi
+
+if [[ "${LANDFALL_DEPLOY_TARGET:-self-hosted-postgres}" == "managed-postgres" ]] \
+    && ! awk '/^  postgres-production:/{inside=1; next} /^  [a-zA-Z-]+:/{inside=0} inside && /self-hosted-postgres/{found=1} END{exit found ? 0 : 1}' <<<"$rendered"; then
+    printf 'Managed PostgreSQL target must keep the local PostgreSQL service out of the production profile.\n' >&2
     exit 1
 fi
 if ! grep -Fq 'published: "8080"' <<<"$rendered" || ! grep -Fq 'host_ip: 127.0.0.1' <<<"$rendered"; then

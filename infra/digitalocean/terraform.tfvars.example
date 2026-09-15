@@ -1,0 +1,10 @@
+# Copy to terraform.tfvars locally; do not commit the real file.
+name                = "landfall-production"
+region              = "fra1"
+droplet_size        = "s-2vcpu-4gb"
+database_size       = "db-s-1vcpu-1gb"
+database_version    = "16"
+domain_name         = "app.example.com"
+dns_zone_name       = "example.com"
+ssh_key_fingerprints = ["replace-with-existing-do-ssh-key-fingerprint"]
+admin_ipv4_cidrs     = ["203.0.113.10/32"]

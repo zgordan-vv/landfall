@@ -16,10 +16,16 @@ LANDFALL_BOOTSTRAP_TOKEN_SECRET_FILE="$LANDFALL_BOOTSTRAP_TOKEN_SECRET_FILE" \
     "$repository_root/scripts/check-production-deployment.sh"
 
 compose=(docker compose --project-name "$deployment_name" --env-file "$LANDFALL_DEPLOY_ENV_FILE" \
-    --file docker-compose.yml --file docker-compose.production.yml --profile production --profile monitoring)
+    --file docker-compose.yml --file docker-compose.production.yml)
+if [[ "${LANDFALL_DEPLOY_TARGET:-self-hosted-postgres}" == "managed-postgres" ]]; then
+    compose+=(--file docker-compose.digitalocean.yml)
+fi
+compose+=(--profile production --profile monitoring)
 
 "${compose[@]}" pull server observer-worker prometheus
-"${compose[@]}" up --detach --wait postgres-production
+if [[ "${LANDFALL_DEPLOY_TARGET:-self-hosted-postgres}" != "managed-postgres" ]]; then
+    "${compose[@]}" up --detach --wait postgres-production
+fi
 "${compose[@]}" up --detach --no-deps server observer-worker prometheus
 
 printf 'Deployment applied. Verify /health/ready through the trusted TLS proxy before routing traffic.\n'
