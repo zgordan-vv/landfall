@@ -7,6 +7,7 @@ fn embedded_migration_set_is_non_empty_and_ordered() {
     let versions = expected_migration_versions();
     assert!(!versions.is_empty());
     assert!(versions.windows(2).all(|pair| pair[0] < pair[1]));
+    assert_eq!(versions.last(), Some(&14));
     assert_eq!(MIGRATION_SET_VERSION, "storage-migrations-v1");
 }
 

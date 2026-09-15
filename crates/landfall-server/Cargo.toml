@@ -31,6 +31,8 @@ utoipa.workspace = true
 tokio-util.workspace = true
 sqlx.workspace = true
 getrandom.workspace = true
+argon2.workspace = true
+password-hash.workspace = true
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

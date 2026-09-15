@@ -1,6 +1,7 @@
 //! Composition root and public application-service surface for Landfall.
 #![allow(missing_docs)]
 
+pub mod accounts;
 pub mod auth;
 pub mod control_plane;
 pub mod workers;
@@ -76,6 +77,11 @@ pub mod trace_detail;
 pub mod trace_filters;
 pub mod workload;
 pub mod x402_payments;
+use crate::accounts::{
+    accept_invitation, authenticate_user, create_workspace, create_workspace_project,
+    invite_member, list_audit_log, list_members, list_workspace_projects, list_workspaces, login,
+    logout, me, register, update_member_role,
+};
 use crate::auth::AuthenticatedToken;
 use crate::control_plane::{
     create_environment, create_project, create_route, create_token, create_x402_spend_policy,
@@ -310,6 +316,38 @@ pub fn router(state: AppState) -> Router {
             authenticate_api,
         ));
     let bootstrap = Router::new().route("/v1/control/projects", post(create_project));
+    let account_public = Router::new()
+        .route("/v1/auth/register", post(register))
+        .route("/v1/auth/login", post(login));
+    let account_private = Router::new()
+        .route("/v1/auth/logout", post(logout))
+        .route("/v1/account/me", get(me))
+        .route(
+            "/v1/workspaces",
+            get(list_workspaces).post(create_workspace),
+        )
+        .route("/v1/workspaces/{workspace_id}/members", get(list_members))
+        .route(
+            "/v1/workspaces/{workspace_id}/members/{member_id}",
+            put(update_member_role),
+        )
+        .route(
+            "/v1/workspaces/{workspace_id}/invitations",
+            post(invite_member),
+        )
+        .route("/v1/invitations/accept", post(accept_invitation))
+        .route(
+            "/v1/workspaces/{workspace_id}/projects",
+            get(list_workspace_projects).post(create_workspace_project),
+        )
+        .route(
+            "/v1/workspaces/{workspace_id}/audit-log",
+            get(list_audit_log),
+        )
+        .route_layer(middleware::from_fn_with_state(
+            Arc::clone(&state),
+            authenticate_user,
+        ));
     let public_demo = Router::new()
         .route("/demo/v1/traces/{trace_id}", get(trace_detail))
         .route(
@@ -379,6 +417,8 @@ pub fn router(state: AppState) -> Router {
     let router = Router::new()
         .merge(api)
         .merge(bootstrap)
+        .merge(account_public)
+        .merge(account_private)
         .merge(control)
         .merge(public_demo)
         .route("/health/live", axum::routing::get(liveness))

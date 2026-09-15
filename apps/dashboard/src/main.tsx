@@ -16,7 +16,21 @@ import {
 import "./styles.css";
 
 type Route =
-  "overview" | "onboarding" | "traces" | "comparison" | "payments" | "reports" | "trace-detail";
+  | "overview"
+  | "onboarding"
+  | "traces"
+  | "comparison"
+  | "payments"
+  | "reports"
+  | "account"
+  | "trace-detail";
+
+type AccountSession = {
+  user: { user_id: string; email: string; display_name: string };
+  access_token: string;
+  expires_at: string;
+  workspace: { workspace_id: string; name: string; slug: string; role: string };
+};
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
@@ -26,7 +40,8 @@ function routeFromLocation(): Route {
     value === "comparison" ||
     value === "onboarding" ||
     value === "payments" ||
-    value === "reports"
+    value === "reports" ||
+    value === "account"
     ? value
     : "overview";
 }
@@ -150,9 +165,181 @@ function DashboardAccess({
   );
 }
 
+function AccountPortal({
+  session,
+  onSession,
+}: {
+  session: AccountSession | null;
+  onSession: (value: AccountSession | null) => void;
+}) {
+  const [mode, setMode] = React.useState<"login" | "register">("register");
+  const [email, setEmail] = React.useState("");
+  const [displayName, setDisplayName] = React.useState("");
+  const [workspaceName, setWorkspaceName] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [workspaces, setWorkspaces] = React.useState<AccountSession["workspace"][]>([]);
+  const [selectedWorkspace, setSelectedWorkspace] = React.useState<AccountSession["workspace"] | null>(
+    session?.workspace ?? null,
+  );
+  const [projects, setProjects] = React.useState<{ project_id: string; name: string }[]>([]);
+  const [members, setMembers] = React.useState<
+    { user_id: string; email: string; display_name: string; role: string }[]
+  >([]);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const request = React.useCallback(
+    async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
+      const response = await fetch(`${apiBaseUrl()}${path}`, {
+        ...init,
+        headers: {
+          "content-type": "application/json",
+          ...(session ? { authorization: `Bearer ${session.access_token}` } : {}),
+          ...init.headers,
+        },
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message ?? `Request failed: ${response.status}`);
+      }
+      return (response.status === 204 ? undefined : response.json()) as T;
+    },
+    [session],
+  );
+  const reloadWorkspace = React.useCallback(async () => {
+    if (!session) return;
+    const available = await request<AccountSession["workspace"][]>("/v1/workspaces");
+    setWorkspaces(available);
+    const current = selectedWorkspace
+      ? available.find((workspace) => workspace.workspace_id === selectedWorkspace.workspace_id)
+      : available[0];
+    setSelectedWorkspace(current ?? null);
+  }, [request, selectedWorkspace, session]);
+  React.useEffect(() => {
+    void reloadWorkspace().catch((reason: unknown) =>
+      setMessage(reason instanceof Error ? reason.message : "Could not load workspaces"),
+    );
+  }, [reloadWorkspace]);
+  React.useEffect(() => {
+    if (!session || !selectedWorkspace) return;
+    void Promise.all([
+      request<{ project_id: string; name: string }[]>(
+        `/v1/workspaces/${selectedWorkspace.workspace_id}/projects`,
+      ),
+      request<{ user_id: string; email: string; display_name: string; role: string }[]>(
+        `/v1/workspaces/${selectedWorkspace.workspace_id}/members`,
+      ),
+    ])
+      .then(([projectList, memberList]) => {
+        setProjects(projectList);
+        setMembers(memberList);
+      })
+      .catch((reason: unknown) =>
+        setMessage(reason instanceof Error ? reason.message : "Could not load workspace details"),
+      );
+  }, [request, selectedWorkspace, session]);
+  if (!session)
+    return (
+      <section className="state-card" aria-label="Account access">
+        <p className="eyebrow">Landfall account</p>
+        <h2>{mode === "register" ? "Create your workspace" : "Sign in"}</h2>
+        <p className="muted">
+          Accounts own workspaces. A workspace contains your projects, environments, team members,
+          and access tokens.
+        </p>
+        <form
+          className="setup-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setBusy(true);
+            setMessage(null);
+            const body =
+              mode === "register"
+                ? { email, display_name: displayName, password, workspace_name: workspaceName }
+                : { email, password };
+            void request<AccountSession>(`/v1/auth/${mode === "register" ? "register" : "login"}`, {
+              method: "POST",
+              body: JSON.stringify(body),
+            })
+              .then((value) => {
+                onSession(value);
+                setSelectedWorkspace(value.workspace);
+              })
+              .catch((reason: unknown) =>
+                setMessage(reason instanceof Error ? reason.message : "Account request failed"),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          {mode === "register" && (
+            <>
+              <label>
+                Your name
+                <input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+              </label>
+              <label>
+                Workspace name
+                <input required value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder="Acme" />
+              </label>
+            </>
+          )}
+          <label>
+            Email
+            <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
+          </label>
+          <label>
+            Password
+            <input required minLength={12} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} />
+          </label>
+          <button disabled={busy} type="submit">{mode === "register" ? "Create account" : "Sign in"}</button>
+        </form>
+        <button className="secondary-button" onClick={() => setMode(mode === "register" ? "login" : "register")} type="button">
+          {mode === "register" ? "I already have an account" : "Create an account"}
+        </button>
+        {message && <p className="setup-message" role="alert">{message}</p>}
+      </section>
+    );
+  const createWorkspace = async () => {
+    const name = window.prompt("Workspace name");
+    if (!name?.trim()) return;
+    const created = await request<AccountSession["workspace"]>("/v1/workspaces", { method: "POST", body: JSON.stringify({ name }) });
+    await reloadWorkspace(); setSelectedWorkspace(created); setMessage(`Workspace ${created.name} created.`);
+  };
+  const createProject = async () => {
+    if (!selectedWorkspace) return;
+    const name = window.prompt("Project name");
+    if (!name?.trim()) return;
+    const created = await request<{ name: string; initial_token: string }>(`/v1/workspaces/${selectedWorkspace.workspace_id}/projects`, { method: "POST", body: JSON.stringify({ name, initial_token_name: "workspace-admin" }) });
+    setMessage(`Project ${created.name} created. Save its administrator token now: ${created.initial_token}`);
+    const projectList = await request<{ project_id: string; name: string }[]>(`/v1/workspaces/${selectedWorkspace.workspace_id}/projects`); setProjects(projectList);
+  };
+  const invite = async () => {
+    if (!selectedWorkspace) return;
+    const inviteEmail = window.prompt("Teammate email");
+    if (!inviteEmail?.trim()) return;
+    const role = window.prompt("Role: admin, developer, or viewer", "developer") ?? "developer";
+    const created = await request<{ invitation_token: string }>(`/v1/workspaces/${selectedWorkspace.workspace_id}/invitations`, { method: "POST", body: JSON.stringify({ email: inviteEmail, role }) });
+    setMessage(`Invitation created. Send this one-time invitation token securely: ${created.invitation_token}`);
+  };
+  return (
+    <section aria-label="Account and workspace">
+      <section className="state-card">
+        <div className="section-heading"><div><p className="eyebrow">Signed in</p><h2>{session.user.display_name}</h2><p className="muted">{session.user.email}</p></div><button className="secondary-button" onClick={() => { void request<void>("/v1/auth/logout", { method: "POST" }).finally(() => onSession(null)); }} type="button">Sign out</button></div>
+        <label>Workspace<select value={selectedWorkspace?.workspace_id ?? ""} onChange={(event) => setSelectedWorkspace(workspaces.find((workspace) => workspace.workspace_id === event.target.value) ?? null)}>{workspaces.map((workspace) => <option key={workspace.workspace_id} value={workspace.workspace_id}>{workspace.name} · {workspace.role}</option>)}</select></label>
+        <button className="secondary-button" onClick={() => void createWorkspace().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Workspace creation failed"))} type="button">Create workspace</button>
+      </section>
+      {selectedWorkspace && <>
+        <section className="state-card"><div className="section-heading"><div><p className="eyebrow">Projects</p><h2>{selectedWorkspace.name}</h2></div><button onClick={() => void createProject().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Project creation failed"))} type="button">Create project</button></div>{projects.length ? <ul className="detail-list">{projects.map((project) => <li key={project.project_id}><strong>{project.name}</strong><span>{project.project_id}</span></li>)}</ul> : <p className="muted">No projects yet.</p>}</section>
+        <section className="state-card"><div className="section-heading"><div><p className="eyebrow">Team</p><h2>Workspace members</h2></div>{["owner", "admin"].includes(selectedWorkspace.role) && <button onClick={() => void invite().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Invitation failed"))} type="button">Invite teammate</button>}</div><ul className="detail-list">{members.map((member) => <li key={member.user_id}><strong>{member.display_name}</strong><span>{member.email} · {member.role}</span></li>)}</ul></section>
+      </>}
+      {message && <p className="setup-message" role="status">{message}</p>}
+    </section>
+  );
+}
+
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
   const [showAbout, setShowAbout] = React.useState(false);
+  const [accountSession, setAccountSession] = React.useState<AccountSession | null>(null);
   const [access, setAccess] = React.useState<Access | null>(() =>
     window.location.hash === "#demo" ? { mode: "demo" } : null,
   );
@@ -171,6 +358,7 @@ function Dashboard() {
     comparison: "Comparison",
     payments: "x402 payments",
     reports: "Reports",
+    account: "Account",
     "trace-detail": "Trace detail",
   };
   const isDemo = access?.mode === "demo";
@@ -290,7 +478,9 @@ function Dashboard() {
               )}
             </section>
           )}
-          {activeRoute === "onboarding" ? (
+          {activeRoute === "account" ? (
+            <AccountPortal session={accountSession} onSession={setAccountSession} />
+          ) : activeRoute === "onboarding" ? (
             <Onboarding />
           ) : activeRoute === "payments" || activeRoute === "reports" ? (
             workspace

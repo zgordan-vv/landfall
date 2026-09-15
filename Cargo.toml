@@ -41,6 +41,8 @@ thiserror = "2.0"
 time = { version = "0.3", features = ["formatting", "parsing"] }
 uuid = { version = "1.0", default-features = false, features = ["std", "v7", "serde"] }
 getrandom = "0.3"
+argon2 = "0.5"
+password-hash = { version = "0.5", features = ["getrandom"] }
 
 [workspace.lints.rust]
 future_incompatible = { level = "warn", priority = -1 }

@@ -23,7 +23,9 @@ pub async fn reset_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {
             reporting.submission_attempts, reporting.trace_aliases, reporting.traces,
             reporting.business_actions, work.jobs, telemetry.raw_events, telemetry.event_dedup,
             telemetry.ingest_batches,
-            control.api_tokens, control.routes, control.environments, control.projects
+            control.api_tokens, control.routes, control.environments, control.projects,
+            control.audit_log, control.workspace_invitations, control.workspace_members,
+            control.workspaces, identity.sessions, identity.password_credentials, identity.users
          RESTART IDENTITY CASCADE",
     )
     .execute(pool)
