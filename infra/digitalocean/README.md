@@ -7,7 +7,8 @@ This is deployable infrastructure, not a local demo. `terraform apply` creates:
 - a database firewall that accepts only the VPC range;
 - a Droplet firewall exposing only HTTPS, HTTP for certificate issuance, and
   SSH from the administrator CIDRs; and
-- an `A` DNS record in a domain zone already delegated to DigitalOcean DNS.
+- an `A` DNS record in a domain zone already delegated to DigitalOcean DNS,
+  when a domain is supplied.
 
 The application never receives the database's public connection URI. The
 deployment uses the Managed PostgreSQL VPC-only TLS URI as a Docker secret.
@@ -19,6 +20,8 @@ deployment uses the Managed PostgreSQL VPC-only TLS URI as a Docker secret.
    it in Git or send it in chat.
 2. Register a domain if needed, then delegate its DNS zone to DigitalOcean.
    The zone must exist in the account before Terraform can create its record.
+   You may leave both domain values blank for a private/staging deployment;
+   HTTPS and public customer access remain disabled until DNS is added.
 3. Copy `terraform.tfvars.example` to `terraform.tfvars`, replace every
    example value, and restrict `admin_ipv4_cidrs` to your public IP or VPN.
 4. From this directory, authenticate only in the current terminal and review

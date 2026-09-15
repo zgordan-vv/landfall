@@ -54,21 +54,23 @@ variable "admin_ipv4_cidrs" {
 }
 
 variable "domain_name" {
-  description = "Already-registered hostname to point at the public Droplet IP, for example app.example.com."
+  description = "Optional already-registered hostname to point at the public Droplet IP, for example app.example.com. Leave empty until DNS is ready."
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.domain_name))
-    error_message = "domain_name must be a lowercase hostname without a protocol or path."
+    condition     = var.domain_name == "" || can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.domain_name))
+    error_message = "domain_name must be empty or a lowercase hostname without a protocol or path."
   }
 }
 
 variable "dns_zone_name" {
-  description = "Apex domain already delegated to DigitalOcean DNS, for example example.com."
+  description = "Apex domain already delegated to DigitalOcean DNS, for example example.com. Leave empty with domain_name."
   type        = string
+  default     = ""
 
   validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.dns_zone_name)) && (var.domain_name == var.dns_zone_name || endswith(var.domain_name, ".${var.dns_zone_name}"))
-    error_message = "dns_zone_name must be the delegated apex zone and domain_name must belong to it."
+    condition     = (var.domain_name == "" && var.dns_zone_name == "") || (can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.dns_zone_name)) && (var.domain_name == var.dns_zone_name || endswith(var.domain_name, ".${var.dns_zone_name}")))
+    error_message = "Set both domain values, with domain_name inside dns_zone_name, or leave both empty."
   }
 }

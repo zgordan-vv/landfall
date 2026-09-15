@@ -97,6 +97,7 @@ resource "digitalocean_firewall" "application" {
 }
 
 resource "digitalocean_record" "application" {
+  count  = var.domain_name == "" ? 0 : 1
   domain = var.dns_zone_name
   type   = "A"
   name   = var.domain_name == var.dns_zone_name ? "@" : trimsuffix(var.domain_name, ".${var.dns_zone_name}")
