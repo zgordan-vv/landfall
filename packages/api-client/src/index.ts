@@ -276,10 +276,11 @@ export class LandfallApiClient {
     token: string,
     name: string,
     scopes: string[],
+    expiresAt?: string,
   ): Promise<CreatedTokenResponse> {
     return this.post(
       `/v1/control/projects/${encodeURIComponent(projectId)}/tokens`,
-      { name, scopes },
+      { name, scopes, ...(expiresAt === undefined ? {} : { expires_at: expiresAt }) },
       token,
     );
   }

@@ -785,6 +785,7 @@ function Onboarding() {
   const [routeName, setRouteName] = React.useState("mainnet-primary");
   const [endpoint, setEndpoint] = React.useState("");
   const [routeId, setRouteId] = React.useState("");
+  const [tokenLifetime, setTokenLifetime] = React.useState("90");
   const [tokens, setTokens] = React.useState<TokenResponse[] | null>(null);
   const [sdkToken, setSdkToken] = React.useState<CreatedTokenResponse | null>(null);
   const [dashboardToken, setDashboardToken] = React.useState<CreatedTokenResponse | null>(null);
@@ -804,6 +805,12 @@ function Onboarding() {
   const copy = async (value: string) => {
     await navigator.clipboard.writeText(value);
     setMessage("Copied to clipboard. Store the token in your secret manager now.");
+  };
+  const tokenExpiry = () => {
+    const days = Number(tokenLifetime);
+    return Number.isInteger(days) && days > 0
+      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
   };
   return (
     <section className="onboarding" aria-label="Landfall setup">
@@ -872,6 +879,15 @@ function Onboarding() {
               <p className="eyebrow">Workspace access</p>
               <h2>Create a dashboard token</h2>
             </div>
+            <label>
+              Token lifetime
+              <select value={tokenLifetime} onChange={(event) => setTokenLifetime(event.target.value)}>
+                <option value="30">30 days</option>
+                <option value="90">90 days (recommended)</option>
+                <option value="365">1 year</option>
+                <option value="never">No expiration</option>
+              </select>
+            </label>
             {dashboardToken ? (
               <>
                 <code>{dashboardToken.token}</code>
@@ -894,7 +910,7 @@ function Onboarding() {
                     const token = await api.createToken(projectId, adminToken, "dashboard-reader", [
                       "traces:read",
                       "diagnostics:read",
-                    ]);
+                    ], tokenExpiry());
                     setDashboardToken(token);
                     setMessage(
                       "Dashboard token created. Copy it now; it will not be displayed again.",
@@ -1006,7 +1022,7 @@ function Onboarding() {
               >
                 Copy SDK token
               </button>
-              <pre className="command">{`LANDFALL_TOKEN=${sdkToken.token}\n# Configure your SDK collector with this token.`}</pre>
+              <pre className="command">{`# Store this value in your application's secret manager\nexport LANDFALL_TOKEN=${sdkToken.token}\nnpm install @landfall/sdk\n\nimport { LandfallSdk } from "@landfall/sdk";\nconst landfall = new LandfallSdk({\n  collectorUrl: "${window.location.origin}",\n  ingestToken: process.env.LANDFALL_TOKEN,\n});`}</pre>
             </>
           ) : (
             <button
@@ -1015,7 +1031,7 @@ function Onboarding() {
                 void run(async () => {
                   const token = await api.createToken(projectId, adminToken, "sdk-production", [
                     "ingest:write",
-                  ]);
+                  ], tokenExpiry());
                   setSdkToken(token);
                   setMessage("SDK token created. Copy it now; it will not be displayed again.");
                 })
@@ -1030,6 +1046,7 @@ function Onboarding() {
       {projectId && (
         <section className="state-card setup-form">
           <div><p className="eyebrow">Token lifecycle</p><h2>Access tokens</h2></div>
+          <p className="muted">New dashboard and SDK tokens use the selected lifetime. Revoke a token immediately if it is exposed.</p>
           <button disabled={busy} onClick={() => void run(async () => setTokens(await api.listTokens(projectId, adminToken)))} type="button">Refresh token inventory</button>
           {tokens?.length ? <ul className="detail-list">{tokens.map((token) => <li key={token.token_id}><strong>{token.name} · {token.token_prefix}</strong><span>{token.scopes.join(", ")} · last used: {token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"} · {token.revoked_at ? "revoked" : "active"}</span>{!token.revoked_at && <button className="secondary-button" onClick={() => void run(async () => { await api.revokeToken(projectId, token.token_id, adminToken); setTokens(await api.listTokens(projectId, adminToken)); setMessage(`Token ${token.name} revoked.`); })} type="button">Revoke</button>}</li>)}</ul> : tokens ? <p className="muted">No tokens found.</p> : null}
           {routeId && <p className="muted">Current route is protected by encryption key v1 and can be re-verified by reconnecting it if its provider configuration changes.</p>}
