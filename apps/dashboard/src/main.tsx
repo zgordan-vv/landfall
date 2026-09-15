@@ -20,6 +20,7 @@ type Route =
 
 function routeFromLocation(): Route {
   const value = window.location.hash.slice(1);
+  if (value === "demo") return "overview";
   if (value.startsWith("traces/") || value === "trace-detail") return "trace-detail";
   return value === "traces" ||
     value === "comparison" ||
@@ -151,9 +152,14 @@ function DashboardAccess({
 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
-  const [access, setAccess] = React.useState<Access | null>(null);
+  const [access, setAccess] = React.useState<Access | null>(() =>
+    window.location.hash === "#demo" ? { mode: "demo" } : null,
+  );
   React.useEffect(() => {
-    const onHash = () => setRoute(routeFromLocation());
+    const onHash = () => {
+      if (window.location.hash === "#demo") setAccess({ mode: "demo" });
+      setRoute(routeFromLocation());
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -257,7 +263,10 @@ function Dashboard() {
           ) : (
             <DashboardAccess
               onConnect={(token) => setAccess({ mode: "private", token })}
-              onTryDemo={() => setAccess({ mode: "demo" })}
+              onTryDemo={() => {
+                window.location.hash = "demo";
+                setAccess({ mode: "demo" });
+              }}
             />
           )}
         </main>
