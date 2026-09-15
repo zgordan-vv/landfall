@@ -152,6 +152,7 @@ function DashboardAccess({
 
 function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
+  const [showAbout, setShowAbout] = React.useState(false);
   const [access, setAccess] = React.useState<Access | null>(() =>
     window.location.hash === "#demo" ? { mode: "demo" } : null,
   );
@@ -210,6 +211,9 @@ function Dashboard() {
           Landfall
         </a>
         <span className="eyebrow">transaction observability</span>
+        <button className="secondary-button about-button" onClick={() => setShowAbout(true)} type="button">
+          About Landfall
+        </button>
         {api && (
           <button
             className="secondary-button logout"
@@ -254,6 +258,38 @@ function Dashboard() {
                     : labels[activeRoute]}
           </h1>
           <p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>
+          {showAbout && (
+            <section className="about-card" aria-labelledby="about-landfall-title" role="dialog">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">About</p>
+                  <h2 id="about-landfall-title">Solana transaction observability</h2>
+                </div>
+                <button
+                  aria-label="Close About Landfall"
+                  className="secondary-button"
+                  onClick={() => setShowAbout(false)}
+                  type="button"
+                >
+                  Close
+                </button>
+              </div>
+              <p>
+                Landfall tracks a Solana transaction from signing through submission and on-chain
+                confirmation, showing what succeeded, failed, or remains unknown.
+              </p>
+              <p className="muted">
+                It helps Web3 teams diagnose transaction issues with lifecycle evidence,
+                recommendations, environment comparison, and controlled x402 payment auditing.
+              </p>
+              {isDemo && (
+                <p className="demo-boundary">
+                  This public workspace is read-only and contains real Solana devnet activity. No
+                  customer credentials, RPC endpoints, ingestion, or payment controls are exposed.
+                </p>
+              )}
+            </section>
+          )}
           {activeRoute === "onboarding" ? (
             <Onboarding />
           ) : activeRoute === "payments" || activeRoute === "reports" ? (
