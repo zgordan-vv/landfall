@@ -45,7 +45,10 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      # A host can run several isolated Landfall projects. Keep the default
+      # local developer address, while allowing a reverse-proxied deployment
+      # to choose an unused loopback port such as 8081.
+      - "${LANDFALL_SERVER_HOST_IP:-127.0.0.1}:${LANDFALL_SERVER_HOST_PORT:-8080}:8080"
     networks:
       - data
       - egress
