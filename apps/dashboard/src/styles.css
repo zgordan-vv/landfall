@@ -35,9 +35,6 @@ body {
 .about-button {
   margin-left: auto;
 }
-.account-mode-toggle {
-  margin-top: 0.9rem;
-}
 .eyebrow,
 .nav-caption {
   color: var(--muted);
@@ -202,6 +199,9 @@ h1 {
 .setup-form .secondary-button {
   color: #d5deeb;
   background: transparent;
+}
+.setup-form + .secondary-button {
+  margin-top: 0.9rem;
 }
 .setup-message {
   margin-top: 1rem;

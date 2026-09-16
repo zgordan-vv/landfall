@@ -322,7 +322,7 @@ function AccountPortal({
           </button>
         </form>
         <button
-          className="secondary-button account-mode-toggle"
+          className="secondary-button"
           onClick={() => setMode(mode === "register" ? "login" : "register")}
           type="button"
         >
