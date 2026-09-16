@@ -3,7 +3,7 @@
 Use the section that matches your goal:
 
 - [Getting started](getting-started/) — quick start, deployment images,
-  Compose profiles, demo and release workflow.
+  Compose profiles, customer onboarding, support, demo and release workflow.
 - [Architecture](architecture/) — system design, implementation plan, ADR
   context, contracts, and support boundaries.
 - [Product](product/) — validation strategy, PRD, metrics, and diagnostic

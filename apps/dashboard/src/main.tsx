@@ -24,6 +24,7 @@ type Route =
   | "payments"
   | "reports"
   | "account"
+  | "support"
   | "trace-detail";
 
 type AccountSession = {
@@ -42,7 +43,8 @@ function routeFromLocation(): Route {
     value === "onboarding" ||
     value === "payments" ||
     value === "reports" ||
-    value === "account"
+    value === "account" ||
+    value === "support"
     ? value
     : "overview";
 }
@@ -161,6 +163,8 @@ function DashboardAccess({
       </p>
       <p className="muted">
         Need a token? Use <a href="#onboarding">Get started</a> or ask your project administrator.
+        If you are evaluating Landfall, open <a href="#support">Support</a> for a quick map of
+        projects, tokens, and demo limits.
       </p>
     </section>
   );
@@ -179,9 +183,9 @@ function AccountPortal({
   const [workspaceName, setWorkspaceName] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [workspaces, setWorkspaces] = React.useState<AccountSession["workspace"][]>([]);
-  const [selectedWorkspace, setSelectedWorkspace] = React.useState<AccountSession["workspace"] | null>(
-    session?.workspace ?? null,
-  );
+  const [selectedWorkspace, setSelectedWorkspace] = React.useState<
+    AccountSession["workspace"] | null
+  >(session?.workspace ?? null);
   const [projects, setProjects] = React.useState<{ project_id: string; name: string }[]>([]);
   const [members, setMembers] = React.useState<
     { user_id: string; email: string; display_name: string; role: string }[]
@@ -275,64 +279,224 @@ function AccountPortal({
             <>
               <label>
                 Your name
-                <input required value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+                <input
+                  required
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                />
               </label>
               <label>
                 Workspace name
-                <input required value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder="Acme" />
+                <input
+                  required
+                  value={workspaceName}
+                  onChange={(event) => setWorkspaceName(event.target.value)}
+                  placeholder="Acme"
+                />
               </label>
             </>
           )}
           <label>
             Email
-            <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" />
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+            />
           </label>
           <label>
             Password
-            <input required minLength={12} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "register" ? "new-password" : "current-password"} />
+            <input
+              required
+              minLength={12}
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={mode === "register" ? "new-password" : "current-password"}
+            />
           </label>
-          <button disabled={busy} type="submit">{mode === "register" ? "Create account" : "Sign in"}</button>
+          <button disabled={busy} type="submit">
+            {mode === "register" ? "Create account" : "Sign in"}
+          </button>
         </form>
-        <button className="secondary-button" onClick={() => setMode(mode === "register" ? "login" : "register")} type="button">
+        <button
+          className="secondary-button"
+          onClick={() => setMode(mode === "register" ? "login" : "register")}
+          type="button"
+        >
           {mode === "register" ? "I already have an account" : "Create an account"}
         </button>
-        {message && <p className="setup-message" role="alert">{message}</p>}
+        {message && (
+          <p className="setup-message" role="alert">
+            {message}
+          </p>
+        )}
       </section>
     );
   const createWorkspace = async () => {
     const name = window.prompt("Workspace name");
     if (!name?.trim()) return;
-    const created = await request<AccountSession["workspace"]>("/v1/workspaces", { method: "POST", body: JSON.stringify({ name }) });
-    await reloadWorkspace(); setSelectedWorkspace(created); setMessage(`Workspace ${created.name} created.`);
+    const created = await request<AccountSession["workspace"]>("/v1/workspaces", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    await reloadWorkspace();
+    setSelectedWorkspace(created);
+    setMessage(`Workspace ${created.name} created.`);
   };
   const createProject = async () => {
     if (!selectedWorkspace) return;
     const name = window.prompt("Project name");
     if (!name?.trim()) return;
-    const created = await request<{ name: string; initial_token: string }>(`/v1/workspaces/${selectedWorkspace.workspace_id}/projects`, { method: "POST", body: JSON.stringify({ name, initial_token_name: "workspace-admin" }) });
-    setMessage(`Project ${created.name} created. Save its administrator token now: ${created.initial_token}`);
-    const projectList = await request<{ project_id: string; name: string }[]>(`/v1/workspaces/${selectedWorkspace.workspace_id}/projects`); setProjects(projectList);
+    const created = await request<{ name: string; initial_token: string }>(
+      `/v1/workspaces/${selectedWorkspace.workspace_id}/projects`,
+      { method: "POST", body: JSON.stringify({ name, initial_token_name: "workspace-admin" }) },
+    );
+    setMessage(
+      `Project ${created.name} created. Save its administrator token now: ${created.initial_token}`,
+    );
+    const projectList = await request<{ project_id: string; name: string }[]>(
+      `/v1/workspaces/${selectedWorkspace.workspace_id}/projects`,
+    );
+    setProjects(projectList);
   };
   const invite = async () => {
     if (!selectedWorkspace) return;
     const inviteEmail = window.prompt("Teammate email");
     if (!inviteEmail?.trim()) return;
     const role = window.prompt("Role: admin, developer, or viewer", "developer") ?? "developer";
-    const created = await request<{ invitation_token: string }>(`/v1/workspaces/${selectedWorkspace.workspace_id}/invitations`, { method: "POST", body: JSON.stringify({ email: inviteEmail, role }) });
-    setMessage(`Invitation created. Send this one-time invitation token securely: ${created.invitation_token}`);
+    const created = await request<{ invitation_token: string }>(
+      `/v1/workspaces/${selectedWorkspace.workspace_id}/invitations`,
+      { method: "POST", body: JSON.stringify({ email: inviteEmail, role }) },
+    );
+    setMessage(
+      `Invitation created. Send this one-time invitation token securely: ${created.invitation_token}`,
+    );
   };
   return (
     <section aria-label="Account and workspace">
       <section className="state-card">
-        <div className="section-heading"><div><p className="eyebrow">Signed in</p><h2>{session.user.display_name}</h2><p className="muted">{session.user.email}</p></div><button className="secondary-button" onClick={() => { void request<void>("/v1/auth/logout", { method: "POST" }).finally(() => onSession(null)); }} type="button">Sign out</button></div>
-        <label>Workspace<select value={selectedWorkspace?.workspace_id ?? ""} onChange={(event) => setSelectedWorkspace(workspaces.find((workspace) => workspace.workspace_id === event.target.value) ?? null)}>{workspaces.map((workspace) => <option key={workspace.workspace_id} value={workspace.workspace_id}>{workspace.name} · {workspace.role}</option>)}</select></label>
-        <button className="secondary-button" onClick={() => void createWorkspace().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Workspace creation failed"))} type="button">Create workspace</button>
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Signed in</p>
+            <h2>{session.user.display_name}</h2>
+            <p className="muted">{session.user.email}</p>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => {
+              void request<void>("/v1/auth/logout", { method: "POST" }).finally(() =>
+                onSession(null),
+              );
+            }}
+            type="button"
+          >
+            Sign out
+          </button>
+        </div>
+        <label>
+          Workspace
+          <select
+            value={selectedWorkspace?.workspace_id ?? ""}
+            onChange={(event) =>
+              setSelectedWorkspace(
+                workspaces.find((workspace) => workspace.workspace_id === event.target.value) ??
+                  null,
+              )
+            }
+          >
+            {workspaces.map((workspace) => (
+              <option key={workspace.workspace_id} value={workspace.workspace_id}>
+                {workspace.name} · {workspace.role}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="secondary-button"
+          onClick={() =>
+            void createWorkspace().catch((reason: unknown) =>
+              setMessage(reason instanceof Error ? reason.message : "Workspace creation failed"),
+            )
+          }
+          type="button"
+        >
+          Create workspace
+        </button>
       </section>
-      {selectedWorkspace && <>
-        <section className="state-card"><div className="section-heading"><div><p className="eyebrow">Projects</p><h2>{selectedWorkspace.name}</h2></div><button onClick={() => void createProject().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Project creation failed"))} type="button">Create project</button></div>{projects.length ? <ul className="detail-list">{projects.map((project) => <li key={project.project_id}><strong>{project.name}</strong><span>{project.project_id}</span></li>)}</ul> : <p className="muted">No projects yet.</p>}</section>
-        <section className="state-card"><div className="section-heading"><div><p className="eyebrow">Team</p><h2>Workspace members</h2></div>{["owner", "admin"].includes(selectedWorkspace.role) && <button onClick={() => void invite().catch((reason: unknown) => setMessage(reason instanceof Error ? reason.message : "Invitation failed"))} type="button">Invite teammate</button>}</div><ul className="detail-list">{members.map((member) => <li key={member.user_id}><strong>{member.display_name}</strong><span>{member.email} · {member.role}</span></li>)}</ul></section>
-      </>}
-      {message && <p className="setup-message" role="status">{message}</p>}
+      {selectedWorkspace && (
+        <>
+          <section className="state-card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Projects</p>
+                <h2>{selectedWorkspace.name}</h2>
+              </div>
+              <button
+                onClick={() =>
+                  void createProject().catch((reason: unknown) =>
+                    setMessage(
+                      reason instanceof Error ? reason.message : "Project creation failed",
+                    ),
+                  )
+                }
+                type="button"
+              >
+                Create project
+              </button>
+            </div>
+            {projects.length ? (
+              <ul className="detail-list">
+                {projects.map((project) => (
+                  <li key={project.project_id}>
+                    <strong>{project.name}</strong>
+                    <span>{project.project_id}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No projects yet.</p>
+            )}
+          </section>
+          <section className="state-card">
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Team</p>
+                <h2>Workspace members</h2>
+              </div>
+              {["owner", "admin"].includes(selectedWorkspace.role) && (
+                <button
+                  onClick={() =>
+                    void invite().catch((reason: unknown) =>
+                      setMessage(reason instanceof Error ? reason.message : "Invitation failed"),
+                    )
+                  }
+                  type="button"
+                >
+                  Invite teammate
+                </button>
+              )}
+            </div>
+            <ul className="detail-list">
+              {members.map((member) => (
+                <li key={member.user_id}>
+                  <strong>{member.display_name}</strong>
+                  <span>
+                    {member.email} · {member.role}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
+      {message && (
+        <p className="setup-message" role="status">
+          {message}
+        </p>
+      )}
     </section>
   );
 }
@@ -360,11 +524,12 @@ function Dashboard() {
     payments: "x402 payments",
     reports: "Reports",
     account: "Account",
+    support: "Support",
     "trace-detail": "Trace detail",
   };
   const isDemo = access?.mode === "demo";
   const activeRoute =
-    isDemo && !["overview", "traces", "comparison", "trace-detail"].includes(route)
+    isDemo && !["overview", "traces", "comparison", "support", "trace-detail"].includes(route)
       ? "overview"
       : route;
   const api = React.useMemo(
@@ -372,7 +537,8 @@ function Dashboard() {
       access === null
         ? null
         : new LandfallApiClient({
-            baseUrl: access.mode === "demo" ? `${apiBaseUrl().replace(/\/$/, "")}/demo` : apiBaseUrl(),
+            baseUrl:
+              access.mode === "demo" ? `${apiBaseUrl().replace(/\/$/, "")}/demo` : apiBaseUrl(),
             ...(access.mode === "private" ? { token: access.token } : {}),
           }),
     [access],
@@ -390,6 +556,8 @@ function Dashboard() {
       <X402PaymentAudit />
     ) : activeRoute === "reports" ? (
       <ReportExports />
+    ) : activeRoute === "support" ? (
+      <SupportCenter />
     ) : (
       <Onboarding />
     );
@@ -400,15 +568,15 @@ function Dashboard() {
           Landfall
         </a>
         <span className="eyebrow">transaction observability</span>
-        <button className="secondary-button about-button" onClick={() => setShowAbout(true)} type="button">
+        <button
+          className="secondary-button about-button"
+          onClick={() => setShowAbout(true)}
+          type="button"
+        >
           About Landfall
         </button>
         {api && (
-          <button
-            className="secondary-button logout"
-            onClick={() => setAccess(null)}
-            type="button"
-          >
+          <button className="secondary-button logout" onClick={() => setAccess(null)} type="button">
             Disconnect
           </button>
         )}
@@ -420,7 +588,11 @@ function Dashboard() {
             .filter(
               (key) =>
                 key !== "trace-detail" &&
-                (!isDemo || key === "overview" || key === "traces" || key === "comparison"),
+                (!isDemo ||
+                  key === "overview" ||
+                  key === "traces" ||
+                  key === "comparison" ||
+                  key === "support"),
             )
             .map((key) => (
               <a
@@ -444,7 +616,9 @@ function Dashboard() {
                   ? "Controlled x402 payment activity"
                   : activeRoute === "reports"
                     ? "Export lifecycle evidence"
-                    : labels[activeRoute]}
+                    : activeRoute === "support"
+                      ? "Get unstuck quickly"
+                      : labels[activeRoute]}
           </h1>
           <p className="lede">Understand what landed, what succeeded, and what remains unknown.</p>
           {showAbout && (
@@ -483,6 +657,8 @@ function Dashboard() {
             <AccountPortal session={accountSession} onSession={setAccountSession} />
           ) : activeRoute === "onboarding" ? (
             <Onboarding />
+          ) : activeRoute === "support" ? (
+            <SupportCenter />
           ) : activeRoute === "payments" || activeRoute === "reports" ? (
             workspace
           ) : api ? (
@@ -499,6 +675,93 @@ function Dashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+function SupportCenter() {
+  const currentUrl = typeof window === "undefined" ? "" : window.location.href;
+  const supportItems = [
+    {
+      title: "What is a project?",
+      detail:
+        "A project is one application or product you want to observe. It owns environments, RPC routes, traces, dashboard tokens, SDK tokens, reports, and x402 audit records.",
+    },
+    {
+      title: "Demo vs live workspace",
+      detail:
+        "Demo mode is public and read-only. A live workspace uses your own project tokens and private RPC route, so it can show your real traces and payment decisions.",
+    },
+    {
+      title: "Which token do I need?",
+      detail:
+        "Use a dashboard token for Overview, Traces, and Comparison. Use an administrator token only for setup, reports, token management, private RPC routes, and x402 audit reads.",
+    },
+    {
+      title: "Why is Comparison empty?",
+      detail:
+        "Comparison needs at least two environments with traces in the same project, for example devnet and mainnet-beta, or primary RPC and fallback RPC.",
+    },
+    {
+      title: "How can I test x402 without money?",
+      detail:
+        "Use the payment audit page with a project administrator token after recording policy decisions in safe mode. It shows approvals, denials, and settlement references without requiring a real payment rail.",
+    },
+  ];
+  return (
+    <section aria-label="Support center">
+      <section className="state-card">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Help</p>
+            <h2>Fast answers for setup and demos</h2>
+          </div>
+          <a className="secondary-button" href="#onboarding">
+            Open setup
+          </a>
+        </div>
+        <div className="support-grid">
+          {supportItems.map((item) => (
+            <article className="support-card" key={item.title}>
+              <h3>{item.title}</h3>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="state-card">
+        <p className="eyebrow">Request help</p>
+        <h2>Diagnostic package</h2>
+        <p className="muted">
+          When you ask for help, share only non-secret context. Do not send bearer tokens, private
+          RPC URLs, wallet seed phrases, or raw signed transaction bytes.
+        </p>
+        <ul className="detail-list support-list">
+          <li>
+            <strong>Current page</strong>
+            <span>{currentUrl}</span>
+          </li>
+          <li>
+            <strong>Project/environment</strong>
+            <span>
+              Project ID, environment name, and Solana cluster are useful. Tokens are not.
+            </span>
+          </li>
+          <li>
+            <strong>Trace</strong>
+            <span>
+              Trace ID, transaction signature, and visible diagnosis text are enough for triage.
+            </span>
+          </li>
+          <li>
+            <strong>What changed</strong>
+            <span>
+              Tell whether this is first setup, a new RPC provider, a new SDK release, or a
+              payment-policy test.
+            </span>
+          </li>
+        </ul>
+      </section>
+    </section>
   );
 }
 
@@ -628,7 +891,10 @@ function ReportExports() {
             <span className="muted">{reports.length} reports</span>
           </div>
           {reports.length === 0 ? (
-            <p className="empty-state">No reports have been created for this project.</p>
+            <p className="empty-state">
+              No reports have been created for this project. Create the first report after traces
+              exist, then download the JSON or HTML artifact for sharing.
+            </p>
           ) : (
             <ul className="recommendation-list">
               {reports.map((report) => (
@@ -738,7 +1004,13 @@ function X402PaymentAudit() {
             <span className="muted">{records.length} records</span>
           </div>
           {records.length === 0 ? (
-            <p className="empty-state">No x402 payment decisions have been recorded yet.</p>
+            <div className="empty-state">
+              <p>No x402 payment decisions have been recorded yet.</p>
+              <p>
+                For a no-money test, run the x402 policy flow in safe mode so Landfall records
+                approvals or denials without settlement.
+              </p>
+            </div>
           ) : (
             <div className="payment-table" role="table" aria-label="x402 payment decisions">
               {records.map((record) => (
@@ -814,10 +1086,26 @@ function Onboarding() {
   };
   return (
     <section className="onboarding" aria-label="Landfall setup">
-      <p className="muted">
-        This wizard writes real configuration through the control-plane API. Tokens are shown only
-        when created and are not saved in the browser.
-      </p>
+      <section className="state-card onboarding-intro">
+        <p className="eyebrow">First run</p>
+        <h2>From empty install to observable transactions</h2>
+        <p className="muted">
+          Landfall needs one project, one Solana environment, one RPC route for observation, and one
+          SDK token for your app. After that, your app sends lifecycle events and the observer
+          checks what happened on-chain.
+        </p>
+        <div className="setup-steps" aria-label="Setup checklist">
+          <span>Project</span>
+          <span>Dashboard token</span>
+          <span>Environment</span>
+          <span>Private RPC</span>
+          <span>SDK token</span>
+        </div>
+        <p className="demo-boundary">
+          Just evaluating? Use <a href="#demo">Try live demo</a> on the access screen. Real setup
+          below requires an operator bootstrap token.
+        </p>
+      </section>
       <form
         className="state-card setup-form"
         onSubmit={(event) => {
@@ -835,6 +1123,10 @@ function Onboarding() {
         <div>
           <p className="eyebrow">1 · Project</p>
           <h2>Create a project</h2>
+          <p className="muted">
+            A project represents one application or product. It keeps that product's traces,
+            environments, tokens, reports, and x402 audit records together.
+          </p>
         </div>
         <label>
           Bootstrap token
@@ -881,7 +1173,10 @@ function Onboarding() {
             </div>
             <label>
               Token lifetime
-              <select value={tokenLifetime} onChange={(event) => setTokenLifetime(event.target.value)}>
+              <select
+                value={tokenLifetime}
+                onChange={(event) => setTokenLifetime(event.target.value)}
+              >
                 <option value="30">30 days</option>
                 <option value="90">90 days (recommended)</option>
                 <option value="365">1 year</option>
@@ -907,10 +1202,13 @@ function Onboarding() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const token = await api.createToken(projectId, adminToken, "dashboard-reader", [
-                      "traces:read",
-                      "diagnostics:read",
-                    ], tokenExpiry());
+                    const token = await api.createToken(
+                      projectId,
+                      adminToken,
+                      "dashboard-reader",
+                      ["traces:read", "diagnostics:read"],
+                      tokenExpiry(),
+                    );
                     setDashboardToken(token);
                     setMessage(
                       "Dashboard token created. Copy it now; it will not be displayed again.",
@@ -971,10 +1269,25 @@ function Onboarding() {
           onSubmit={(event) => {
             event.preventDefault();
             void run(async () => {
-              const route = await api.createRoute(projectId, environmentId, adminToken, routeName, endpoint);
+              const route = await api.createRoute(
+                projectId,
+                environmentId,
+                adminToken,
+                routeName,
+                endpoint,
+              );
               setRouteId(route.route_id);
-              const verification = await api.verifyRoute(projectId, environmentId, route.route_id, adminToken);
-              setMessage(verification.reachable ? `Encrypted RPC route connected and verified in ${verification.latency_ms} ms.` : "Encrypted RPC route was saved, but its connection check failed. Verify its URL and provider access.");
+              const verification = await api.verifyRoute(
+                projectId,
+                environmentId,
+                route.route_id,
+                adminToken,
+              );
+              setMessage(
+                verification.reachable
+                  ? `Encrypted RPC route connected and verified in ${verification.latency_ms} ms.`
+                  : "Encrypted RPC route was saved, but its connection check failed. Verify its URL and provider access.",
+              );
             });
           }}
         >
@@ -1003,7 +1316,10 @@ function Onboarding() {
           <button disabled={busy} type="submit">
             Connect route
           </button>
-          <p className="muted">The endpoint is encrypted with AES-256-GCM before storage, never shown again, and decrypted only by the observer worker.</p>
+          <p className="muted">
+            The endpoint is encrypted with AES-256-GCM before storage, never shown again, and
+            decrypted only by the observer worker.
+          </p>
         </form>
       )}
       {environmentId && (
@@ -1029,9 +1345,13 @@ function Onboarding() {
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const token = await api.createToken(projectId, adminToken, "sdk-production", [
-                    "ingest:write",
-                  ], tokenExpiry());
+                  const token = await api.createToken(
+                    projectId,
+                    adminToken,
+                    "sdk-production",
+                    ["ingest:write"],
+                    tokenExpiry(),
+                  );
                   setSdkToken(token);
                   setMessage("SDK token created. Copy it now; it will not be displayed again.");
                 })
@@ -1045,11 +1365,62 @@ function Onboarding() {
       )}
       {projectId && (
         <section className="state-card setup-form">
-          <div><p className="eyebrow">Token lifecycle</p><h2>Access tokens</h2></div>
-          <p className="muted">New dashboard and SDK tokens use the selected lifetime. Revoke a token immediately if it is exposed.</p>
-          <button disabled={busy} onClick={() => void run(async () => setTokens(await api.listTokens(projectId, adminToken)))} type="button">Refresh token inventory</button>
-          {tokens?.length ? <ul className="detail-list">{tokens.map((token) => <li key={token.token_id}><strong>{token.name} · {token.token_prefix}</strong><span>{token.scopes.join(", ")} · last used: {token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"} · {token.revoked_at ? "revoked" : "active"}</span>{!token.revoked_at && <button className="secondary-button" onClick={() => void run(async () => { await api.revokeToken(projectId, token.token_id, adminToken); setTokens(await api.listTokens(projectId, adminToken)); setMessage(`Token ${token.name} revoked.`); })} type="button">Revoke</button>}</li>)}</ul> : tokens ? <p className="muted">No tokens found.</p> : null}
-          {routeId && <p className="muted">Current route is protected by encryption key v1 and can be re-verified by reconnecting it if its provider configuration changes.</p>}
+          <div>
+            <p className="eyebrow">Token lifecycle</p>
+            <h2>Access tokens</h2>
+          </div>
+          <p className="muted">
+            New dashboard and SDK tokens use the selected lifetime. Revoke a token immediately if it
+            is exposed.
+          </p>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void run(async () => setTokens(await api.listTokens(projectId, adminToken)))
+            }
+            type="button"
+          >
+            Refresh token inventory
+          </button>
+          {tokens?.length ? (
+            <ul className="detail-list">
+              {tokens.map((token) => (
+                <li key={token.token_id}>
+                  <strong>
+                    {token.name} · {token.token_prefix}
+                  </strong>
+                  <span>
+                    {token.scopes.join(", ")} · last used:{" "}
+                    {token.last_used_at ? new Date(token.last_used_at).toLocaleString() : "never"} ·{" "}
+                    {token.revoked_at ? "revoked" : "active"}
+                  </span>
+                  {!token.revoked_at && (
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        void run(async () => {
+                          await api.revokeToken(projectId, token.token_id, adminToken);
+                          setTokens(await api.listTokens(projectId, adminToken));
+                          setMessage(`Token ${token.name} revoked.`);
+                        })
+                      }
+                      type="button"
+                    >
+                      Revoke
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : tokens ? (
+            <p className="muted">No tokens found.</p>
+          ) : null}
+          {routeId && (
+            <p className="muted">
+              Current route is protected by encryption key v1 and can be re-verified by reconnecting
+              it if its provider configuration changes.
+            </p>
+          )}
         </section>
       )}
       {message && (
@@ -1213,7 +1584,9 @@ function TraceList() {
         ))}
         {visible.length === 0 && (
           <div className="empty-state" role="status">
-            No traces match this filter.
+            {traces.length === 0
+              ? "No traces have been recorded yet. Install the SDK in your app or run the demo ingestion flow, then refresh this page."
+              : "No traces match this filter."}
           </div>
         )}
       </div>
@@ -1399,7 +1772,16 @@ function ComparisonView() {
       <section className="state-card" role="alert">
         <h2>Comparison unavailable</h2>
         <p className="muted">
-          {error}. Create traces in at least two environments to compare them.
+          {error}. Create traces in at least two environments in the same project, then return here
+          to compare landing rate, execution success, and evidence coverage.
+        </p>
+        <p>
+          <a className="secondary-button" href="#onboarding">
+            Add another environment
+          </a>{" "}
+          <a className="secondary-button" href="#support">
+            Learn how comparison works
+          </a>
         </p>
       </section>
     );

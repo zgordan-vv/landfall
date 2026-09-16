@@ -110,6 +110,49 @@ h1 {
 .onboarding {
   max-width: 46rem;
 }
+.onboarding-intro {
+  margin-top: 2.5rem;
+}
+.setup-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+.setup-steps span {
+  padding: 0.45rem 0.65rem;
+  color: #d9fff5;
+  border: 1px solid #315849;
+  border-radius: 0.4rem;
+  background: #132a25;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+.support-card {
+  padding: 1rem;
+  border: 1px solid #2d3c54;
+  border-radius: 0.5rem;
+  background: #1c2738;
+}
+.support-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+.support-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.support-list span {
+  overflow-wrap: anywhere;
+}
 .setup-form {
   display: grid;
   gap: 1rem;
@@ -540,12 +583,17 @@ h2 {
   font-size: 0.72rem;
 }
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #40516c;
   border-radius: 0.4rem;
   padding: 0.55rem 0.7rem;
   color: #d5deeb;
   background: transparent;
   cursor: pointer;
+  font: inherit;
+  text-decoration: none;
 }
 .secondary-button:hover,
 .secondary-button:focus-visible {
@@ -628,7 +676,8 @@ h2 {
   .trend-grid,
   .detail-grid,
   .select-grid,
-  .comparison-grid {
+  .comparison-grid,
+  .support-grid {
     grid-template-columns: 1fr;
   }
   .trace-row,

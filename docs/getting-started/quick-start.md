@@ -24,6 +24,9 @@ bootstrap token above, create a project, environment, HTTPS RPC route, and an
 to the real Landfall server on port 8080, so no browser CORS exception is
 needed. Store each newly displayed token in a secret manager: it is shown once.
 
+For the user-facing setup path, token types, empty states, and safe support
+handoff, read the [customer onboarding and support guide](customer-onboarding-and-support.md).
+
 ## Stop and reset
 
 Stop the database while preserving its volume:
