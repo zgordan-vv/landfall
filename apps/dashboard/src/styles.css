@@ -35,6 +35,9 @@ body {
 .about-button {
   margin-left: auto;
 }
+.account-mode-toggle {
+  margin-top: 0.9rem;
+}
 .eyebrow,
 .nav-caption {
   color: var(--muted);
