@@ -50,6 +50,28 @@ The dashboard should explain what to do when data is missing:
   settlement;
 - no reports: create a report after traces exist.
 
+## Paid pilot payment
+
+Landfall does not provide card checkout yet. The first paid pilots should use
+manual payment outside the product while Landfall remains the delivery system
+for instrumentation, diagnosis, and reports.
+
+Before accepting payment, agree on:
+
+- transaction flow and Solana environment;
+- audit window and expected traffic volume;
+- private RPC or public RPC boundary;
+- report format and support channel;
+- fixed price and payment method.
+
+Acceptable manual channels include an Upwork contract, invoice, bank transfer,
+Wise, Payoneer, or crypto by explicit agreement. Do not store card data, bank
+credentials, payment credentials, or customer secrets in Landfall.
+
+After payment, create the Landfall project, configure the environment and RPC
+route, issue SDK/dashboard tokens, run the audit, and export the lifecycle
+evidence report.
+
 ## Safe support handoff
 
 When asking for help, users may share:

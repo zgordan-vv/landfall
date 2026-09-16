@@ -706,6 +706,11 @@ function SupportCenter() {
       detail:
         "Use the payment audit page with a project administrator token after recording policy decisions in safe mode. It shows approvals, denials, and settlement references without requiring a real payment rail.",
     },
+    {
+      title: "How do pilot payments work?",
+      detail:
+        "Landfall does not run card checkout yet. For the first pilots, agree the audit scope and accept payment through Upwork, invoice, bank transfer, Wise, Payoneer, or another manual channel.",
+    },
   ];
   return (
     <section aria-label="Support center">
@@ -727,6 +732,37 @@ function SupportCenter() {
             </article>
           ))}
         </div>
+      </section>
+      <section className="state-card">
+        <p className="eyebrow">Paid pilot</p>
+        <h2>Manual payment acceptance</h2>
+        <p className="muted">
+          Use Landfall to deliver the transaction reliability audit; accept the commercial payment
+          outside the product until a real billing provider is selected.
+        </p>
+        <ul className="detail-list support-list">
+          <li>
+            <strong>Before payment</strong>
+            <span>
+              Agree the transaction flow, target environment, audit window, deliverables, price, and
+              support channel.
+            </span>
+          </li>
+          <li>
+            <strong>Accepted channels</strong>
+            <span>
+              Upwork contract, invoice, bank transfer, Wise, Payoneer, or crypto by explicit
+              agreement. Landfall itself stores no card data.
+            </span>
+          </li>
+          <li>
+            <strong>After payment</strong>
+            <span>
+              Create the project, configure private RPC, install the SDK, run the audit, and export
+              the lifecycle evidence report.
+            </span>
+          </li>
+        </ul>
       </section>
       <section className="state-card">
         <p className="eyebrow">Request help</p>

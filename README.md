@@ -244,6 +244,10 @@ Audit** supported by the self-hosted product. Paid pilots and repeated customer
 evidence determine whether Landfall should later become a hosted multi-tenant
 service; SaaS infrastructure is deliberately outside P0.
 
+Payments for early pilots are intentionally manual: Upwork contract, invoice,
+bank transfer, Wise, Payoneer, or crypto by explicit agreement. Landfall does
+not process cards, store payment credentials, or provide automated billing yet.
+
 ## License
 
 Landfall is licensed under the [Apache License 2.0](LICENSE).
