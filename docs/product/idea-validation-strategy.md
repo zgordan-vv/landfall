@@ -583,6 +583,36 @@ These are test prices, not committed public pricing. Usage-based pricing may be 
 
 No mass automated direct messaging should be used during validation. Thirty relevant, researched messages are more useful than one thousand generic messages in a narrow technical market.
 
+### 8.5 No-budget channel strategy
+
+Prioritize channels by ICP proximity and evidence quality, not by vanity traffic.
+
+| Channel | Use now? | Role | Execution |
+|---|---:|---|---|
+| LinkedIn personal profile | Yes | Founder-led credibility and direct access to founders, CTOs, Web3 backend engineers, and agencies | Update the profile headline, publish two or three technical posts per week, connect with qualified ICP accounts, and use personalized feedback requests rather than sales pitches |
+| Upwork | Yes | High-intent buyer discovery and interview credibility | Track Solana, RPC, payment, wallet, and transaction-debugging jobs; use Landfall as the portfolio artifact and offer a scoped reliability audit |
+| GitHub | Yes | Technical account research | Search active Solana apps, SDK users, wallets, bots, and infrastructure repos; qualify teams by recent commits, issues, and transaction-related problems |
+| X/Twitter | Yes | Web3-native discovery and lightweight conversations | Post concise technical observations, reply to transaction/RPC/debugging threads, and invite builders to inspect the public demo |
+| Solana Discord, Telegram, Stack Exchange, and forums | Yes | Closest problem communities | Answer real questions, avoid spam, and link Landfall only when it directly clarifies lifecycle evidence |
+| CodeHummus blog | Yes | Owned credibility channel for portfolio, SEO, and linkable explanations | Publish practical posts explaining Solana transaction lifecycle, missing evidence, RPC ambiguity, and Landfall demo stories; use these posts in outreach follow-ups |
+| Product Hunt | Later | One-time launch event and early-adopter visibility | Prepare after 4-6 weeks of conversations, feedback calls, polished demo copy, screenshots/video, and at least 5-10 warm supporters |
+
+LinkedIn should use the founder's personal voice rather than a cold company page.
+Useful post formats:
+
+- "Signed, submitted, landed, finalized: four different states in Solana apps";
+- "Why explorer silence is not enough evidence";
+- "What a Solana transaction reliability audit actually checks";
+- "Demo: one trace where signing exists but on-chain observation is missing".
+
+The CodeHummus blog should be used as a reusable library of explanations, not a
+generic content farm. Each post should answer one real customer pain and end
+with a soft call to inspect the demo or request a diagnostic review.
+
+Product Hunt should not be treated as validation by itself. It is useful only if
+launch traffic produces qualified conversations, demo users, pilot requests, or
+introductions to the target ICP.
+
 ## 9. Weekly operating cadence
 
 ### Daily
@@ -591,6 +621,8 @@ No mass automated direct messaging should be used during validation. Thirty rele
 - qualify at least 5;
 - send 3–5 personalized messages;
 - follow up on due conversations;
+- write or refine one reusable outreach asset, such as a short LinkedIn post,
+  CodeHummus blog outline, or diagnostic checklist;
 - record evidence immediately after calls;
 - spend no more than 60 minutes building functionality not required by an active diagnostic or pilot.
 
@@ -599,7 +631,8 @@ No mass automated direct messaging should be used during validation. Thirty rele
 - conduct 3–5 interviews;
 - review conversion by source and segment;
 - update the assumption scorecard;
-- publish one useful technical observation when evidence can be shared safely;
+- publish one useful technical observation when evidence can be shared safely,
+  alternating between LinkedIn/X short posts and deeper CodeHummus blog posts;
 - ask every relevant participant for one introduction;
 - decide which requested feature is repeated and which is a one-customer customization;
 - maintain a written list of evidence against the idea.
@@ -611,6 +644,8 @@ Track separately by source and segment:
 - accounts researched;
 - qualified leads;
 - messages sent;
+- content posts published;
+- CodeHummus blog visits or demo clicks from posts;
 - reply rate;
 - interview acceptance rate;
 - completed interview rate;
@@ -721,6 +756,8 @@ Do not treat the following as validation:
 ### Week 1
 
 - create the first 50-account lead list;
+- update the LinkedIn profile headline and featured link to the public demo;
+- publish the first CodeHummus blog post explaining the transaction lifecycle pain;
 - complete 5 interviews;
 - produce one synthetic lifecycle report;
 - refine the problem language using customer words;
@@ -731,6 +768,7 @@ Do not treat the following as validation:
 - reach 15 total qualified interviews;
 - score Gate A;
 - choose the strongest subsegment;
+- publish two short LinkedIn/X posts based on the strongest repeated pains;
 - perform the first two concierge diagnostics;
 - define the minimum event schema required by real evidence.
 
@@ -739,6 +777,8 @@ Do not treat the following as validation:
 - complete five concierge diagnostics;
 - score Gate B;
 - build only the collector/adapter functionality required to reduce repeated manual work;
+- prepare a Product Hunt launch draft but do not launch unless warm supporters
+  and a clear demo CTA exist;
 - send at least three fixed-scope pilot proposals.
 
 ### Week 4
@@ -746,6 +786,8 @@ Do not treat the following as validation:
 - close the first paid pilot or document why proposals failed;
 - install instrumentation for the pilot;
 - define the baseline and success metric;
+- decide whether Product Hunt is justified by qualified feedback, supporters,
+  and a polished demo story;
 - decide whether to proceed with the PRD's MVP, narrow it, or keep the project portfolio-only.
 
 ## 16. Validation scorecard
