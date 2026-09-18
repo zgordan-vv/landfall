@@ -587,12 +587,17 @@ No mass automated direct messaging should be used during validation. Thirty rele
 
 Prioritize channels by ICP proximity and evidence quality, not by vanity traffic.
 
+The first execution mode is **portfolio visibility**, not customer discovery.
+The immediate goal is to make Landfall visible to people who can hire the
+builder as a Solana developer. Commercial validation can start later after the
+portfolio story has produced attention, conversations, and warm leads.
+
 | Channel | Use now? | Role | Execution |
 |---|---:|---|---|
-| LinkedIn personal profile | Yes | Founder-led credibility and direct access to founders, CTOs, Web3 backend engineers, and agencies | Update the profile headline, publish two or three technical posts per week, connect with qualified ICP accounts, and use personalized feedback requests rather than sales pitches |
-| Upwork | Yes | High-intent buyer discovery and interview credibility | Track Solana, RPC, payment, wallet, and transaction-debugging jobs; use Landfall as the portfolio artifact and offer a scoped reliability audit |
-| GitHub | Yes | Technical account research | Search active Solana apps, SDK users, wallets, bots, and infrastructure repos; qualify teams by recent commits, issues, and transaction-related problems |
-| X/Twitter | Yes | Web3-native discovery and lightweight conversations | Post concise technical observations, reply to transaction/RPC/debugging threads, and invite builders to inspect the public demo |
+| LinkedIn personal profile | Yes | Portfolio credibility and direct access to founders, CTOs, Web3 backend engineers, and agencies | Update the profile headline, publish two or three technical posts per week, connect with relevant Solana/Web3 people, and use the public demo as proof of work |
+| Upwork | Yes | High-intent hiring and interview credibility | Track Solana, RPC, payment, wallet, and transaction-debugging jobs; use Landfall as the portfolio artifact and case study |
+| GitHub | Yes | Technical credibility and account research | Search active Solana apps, SDK users, wallets, bots, and infrastructure repos; use issues/repos to understand what hiring teams care about |
+| X/Twitter | Yes | Web3-native visibility and lightweight conversations | Post concise technical observations, reply to transaction/RPC/debugging threads, and invite builders to inspect the public demo |
 | Solana Discord, Telegram, Stack Exchange, and forums | Yes | Closest problem communities | Answer real questions, avoid spam, and link Landfall only when it directly clarifies lifecycle evidence |
 | CodeHummus blog | Yes | Owned credibility channel for portfolio, SEO, and linkable explanations | Publish practical posts explaining Solana transaction lifecycle, missing evidence, RPC ambiguity, and Landfall demo stories; use these posts in outreach follow-ups |
 | Product Hunt | Later | One-time launch event and early-adopter visibility | Prepare after 4-6 weeks of conversations, feedback calls, polished demo copy, screenshots/video, and at least 5-10 warm supporters |
@@ -612,6 +617,19 @@ with a soft call to inspect the demo or request a diagnostic review.
 Product Hunt should not be treated as validation by itself. It is useful only if
 launch traffic produces qualified conversations, demo users, pilot requests, or
 introductions to the target ICP.
+
+For the portfolio-first pass, measure weaker but still useful signals:
+
+- profile views from Solana/Web3 people;
+- replies from founders, CTOs, hiring managers, or agencies;
+- demo clicks from LinkedIn, X, Threads, Upwork, and CodeHummus;
+- invitations to interview or discuss contract work;
+- requests for implementation details or architecture walkthroughs;
+- GitHub stars or comments only when they come from relevant builders.
+
+Move from portfolio visibility to commercial validation only after the project
+creates at least a few conversations with people who have real Solana
+transaction flows.
 
 ## 9. Weekly operating cadence
 
