@@ -11,7 +11,7 @@ Use the section that matches your goal:
   [diagnostics guide](product/diagnostics-guide.md). The planned
   [Solana transaction storybook](product/solana-transaction-storybook-plan.md)
   explains the product to readers new to blockchain. The
-  [portfolio visibility posting plan](product/portfolio-visibility-posting-plan.md)
+  [Landfall public visibility plan](product/landfall-public-visibility-plan.md)
   contains LinkedIn, Threads/X, and CodeHummus drafts.
 - [API](api/) — OpenAPI and query endpoint contracts.
 - [SDK](sdk/) — TypeScript SDK configuration, buffering, privacy, events, and
@@ -25,7 +25,7 @@ Use the section that matches your goal:
   resilience checks; start with the [privacy field matrix](security/privacy-field-matrix.md).
 - [Benchmarks](benchmarks/) — workload, throughput, latency, and size methods.
 - [Contributing](contributing.md) and [release notes](release-notes.md) — change
-  workflow and current portfolio scope.
+  workflow and current project scope.
 - [Upwork case study](getting-started/upwork-case-study.md) — client problem,
   engineering decisions, evidence, and pilot metrics.
 - [ADRs](adr/) and [spikes](spikes/) — architectural decisions and experiments.
