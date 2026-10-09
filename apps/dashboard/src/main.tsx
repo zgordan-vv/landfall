@@ -529,7 +529,16 @@ function Dashboard() {
   };
   const isDemo = access?.mode === "demo";
   const activeRoute =
-    isDemo && !["overview", "traces", "comparison", "support", "trace-detail"].includes(route)
+    isDemo &&
+    ![
+      "overview",
+      "traces",
+      "comparison",
+      "payments",
+      "reports",
+      "support",
+      "trace-detail",
+    ].includes(route)
       ? "overview"
       : route;
   const api = React.useMemo(
@@ -553,9 +562,9 @@ function Dashboard() {
     ) : activeRoute === "comparison" ? (
       <ComparisonView />
     ) : activeRoute === "payments" ? (
-      <X402PaymentAudit />
+      <X402PaymentAudit demo={isDemo} />
     ) : activeRoute === "reports" ? (
-      <ReportExports />
+      <ReportExports demo={isDemo} />
     ) : activeRoute === "support" ? (
       <SupportCenter />
     ) : (
@@ -592,6 +601,8 @@ function Dashboard() {
                   key === "overview" ||
                   key === "traces" ||
                   key === "comparison" ||
+                  key === "payments" ||
+                  key === "reports" ||
                   key === "support"),
             )
             .map((key) => (
@@ -801,7 +812,7 @@ function SupportCenter() {
   );
 }
 
-function ReportExports() {
+function ReportExports({ demo = false }: { demo?: boolean }) {
   const api = React.useMemo(
     () => new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }),
     [],
@@ -813,6 +824,17 @@ function ReportExports() {
   const [reports, setReports] = React.useState<ReportResponse[] | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const loadDemo = React.useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl().replace(/\/$/, "")}/demo/v1/reports`);
+    if (!response.ok) throw new Error(`Demo reports request failed: ${response.status}`);
+    setReports((await response.json()) as ReportResponse[]);
+  }, []);
+  React.useEffect(() => {
+    if (demo)
+      void loadDemo().catch((reason: unknown) =>
+        setMessage(reason instanceof Error ? reason.message : "Demo reports request failed"),
+      );
+  }, [demo, loadDemo]);
   const load = async () => {
     setReports(await api.listReports(projectId.trim(), token));
   };
@@ -854,66 +876,71 @@ function ReportExports() {
     <section aria-label="report exports">
       <section className="state-card">
         <p className="muted">
-          Create an immutable report from the traces currently stored for one project. A shareable
-          report hides trace IDs; an internal report retains them.
+          {demo
+            ? "Public demo reports are read-only sample exports from the demo project. No administrator token is required."
+            : "Create an immutable report from the traces currently stored for one project. A shareable report hides trace IDs; an internal report retains them."}
         </p>
-        <form className="setup-form" onSubmit={(event) => void create(event)}>
-          <label>
-            Project ID
-            <input
-              required
-              value={projectId}
-              onChange={(event) => setProjectId(event.target.value)}
-              placeholder="UUID"
-            />
-          </label>
-          <label>
-            Administrator token
-            <input
-              required
-              type="password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <label>
-            Report title
-            <input
-              required
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={240}
-            />
-          </label>
-          <label>
-            Privacy profile
-            <select
-              value={privacyProfile}
-              onChange={(event) =>
-                setPrivacyProfile(event.target.value as "internal" | "shareable")
+        {!demo && (
+          <>
+            <form className="setup-form" onSubmit={(event) => void create(event)}>
+              <label>
+                Project ID
+                <input
+                  required
+                  value={projectId}
+                  onChange={(event) => setProjectId(event.target.value)}
+                  placeholder="UUID"
+                />
+              </label>
+              <label>
+                Administrator token
+                <input
+                  required
+                  type="password"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value)}
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                Report title
+                <input
+                  required
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  maxLength={240}
+                />
+              </label>
+              <label>
+                Privacy profile
+                <select
+                  value={privacyProfile}
+                  onChange={(event) =>
+                    setPrivacyProfile(event.target.value as "internal" | "shareable")
+                  }
+                >
+                  <option value="shareable">Shareable — redact trace IDs</option>
+                  <option value="internal">Internal — include trace IDs</option>
+                </select>
+              </label>
+              <button disabled={busy} type="submit">
+                {busy ? "Working…" : "Create report"}
+              </button>
+            </form>
+            <button
+              className="secondary-button"
+              disabled={busy || !projectId.trim() || !token}
+              type="button"
+              onClick={() =>
+                void load().catch((reason: unknown) =>
+                  setMessage(reason instanceof Error ? reason.message : "Report listing failed"),
+                )
               }
             >
-              <option value="shareable">Shareable — redact trace IDs</option>
-              <option value="internal">Internal — include trace IDs</option>
-            </select>
-          </label>
-          <button disabled={busy} type="submit">
-            {busy ? "Working…" : "Create report"}
-          </button>
-        </form>
-        <button
-          className="secondary-button"
-          disabled={busy || !projectId.trim() || !token}
-          type="button"
-          onClick={() =>
-            void load().catch((reason: unknown) =>
-              setMessage(reason instanceof Error ? reason.message : "Report listing failed"),
-            )
-          }
-        >
-          Load existing reports
-        </button>
+              Load existing reports
+            </button>
+          </>
+        )}
         {message && (
           <p className="setup-message" role="status">
             {message}
@@ -941,22 +968,26 @@ function ReportExports() {
                     {new Date(report.created_at).toLocaleString()}
                   </span>
                   <p>
-                    <button
-                      className="secondary-button"
-                      disabled={busy}
-                      type="button"
-                      onClick={() => void download(report, "json")}
-                    >
-                      Download JSON
-                    </button>{" "}
-                    <button
-                      className="secondary-button"
-                      disabled={busy}
-                      type="button"
-                      onClick={() => void download(report, "html")}
-                    >
-                      Download HTML
-                    </button>
+                    {!demo && (
+                      <>
+                        <button
+                          className="secondary-button"
+                          disabled={busy}
+                          type="button"
+                          onClick={() => void download(report, "json")}
+                        >
+                          Download JSON
+                        </button>{" "}
+                        <button
+                          className="secondary-button"
+                          disabled={busy}
+                          type="button"
+                          onClick={() => void download(report, "html")}
+                        >
+                          Download HTML
+                        </button>
+                      </>
+                    )}
                   </p>
                 </li>
               ))}
@@ -968,7 +999,7 @@ function ReportExports() {
   );
 }
 
-function X402PaymentAudit() {
+function X402PaymentAudit({ demo = false }: { demo?: boolean }) {
   const api = React.useMemo(
     () => new LandfallApiClient({ baseUrl: import.meta.env["VITE_LANDFALL_API_URL"] ?? "" }),
     [],
@@ -978,6 +1009,17 @@ function X402PaymentAudit() {
   const [records, setRecords] = React.useState<X402PaymentAuditRecord[] | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const loadDemo = React.useCallback(async () => {
+    const response = await fetch(`${apiBaseUrl().replace(/\/$/, "")}/demo/v1/x402/audit`);
+    if (!response.ok) throw new Error(`Demo x402 audit request failed: ${response.status}`);
+    setRecords((await response.json()) as X402PaymentAuditRecord[]);
+  }, []);
+  React.useEffect(() => {
+    if (demo)
+      void loadDemo().catch((reason: unknown) =>
+        setMessage(reason instanceof Error ? reason.message : "Demo x402 audit request failed"),
+      );
+  }, [demo, loadDemo]);
   const load = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setBusy(true);
@@ -995,38 +1037,41 @@ function X402PaymentAudit() {
     <section aria-label="x402 payment audit">
       <section className="state-card">
         <p className="muted">
-          Use a project administrator token to read this project’s payment ledger. It is used only
-          for this request and is not saved by the browser.
+          {demo
+            ? "Public demo x402 activity is read-only sample policy/audit data. No administrator token is required."
+            : "Use a project administrator token to read this project’s payment ledger. It is used only for this request and is not saved by the browser."}
         </p>
-        <form
-          className="setup-form"
-          onSubmit={(event) => {
-            void load(event);
-          }}
-        >
-          <label>
-            Project ID
-            <input
-              required
-              value={projectId}
-              onChange={(event) => setProjectId(event.target.value)}
-              placeholder="UUID"
-            />
-          </label>
-          <label>
-            Administrator token
-            <input
-              required
-              type="password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <button disabled={busy} type="submit">
-            {busy ? "Loading…" : "Load payment activity"}
-          </button>
-        </form>
+        {!demo && (
+          <form
+            className="setup-form"
+            onSubmit={(event) => {
+              void load(event);
+            }}
+          >
+            <label>
+              Project ID
+              <input
+                required
+                value={projectId}
+                onChange={(event) => setProjectId(event.target.value)}
+                placeholder="UUID"
+              />
+            </label>
+            <label>
+              Administrator token
+              <input
+                required
+                type="password"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <button disabled={busy} type="submit">
+              {busy ? "Loading…" : "Load payment activity"}
+            </button>
+          </form>
+        )}
         {message && (
           <p className="setup-message" role="alert">
             {message}

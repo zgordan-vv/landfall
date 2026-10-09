@@ -367,6 +367,8 @@ pub fn router(state: AppState) -> Router {
         .route("/demo/v1/traces", get(trace_list))
         .route("/demo/v1/overview", get(overview))
         .route("/demo/v1/comparison", get(comparison))
+        .route("/demo/v1/reports", get(demo_reports))
+        .route("/demo/v1/x402/audit", get(demo_x402_payment_audit))
         .layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             authenticate_public_demo,
@@ -520,7 +522,8 @@ async fn authenticate_api(
 
 /// Scopes public portfolio traffic to one explicitly configured demo project.
 /// This route family never grants a bearer credential and is not mounted for
-/// writes, control-plane management, RPC configuration, reports, or x402.
+/// writes, control-plane management, RPC configuration, or secret-bearing
+/// project operations.
 async fn authenticate_public_demo(
     State(state): State<Arc<AppState>>,
     mut request: Request<axum::body::Body>,
@@ -1047,6 +1050,127 @@ async fn comparison(
             Json(ApiError {
                 code: "storage_unavailable",
                 message: "comparison query failed",
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn demo_reports(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+) -> impl IntoResponse {
+    let Some(Extension(principal)) = principal else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiError {
+                code: "unauthorized",
+                message: "public demo project context is required",
+            }),
+        )
+            .into_response();
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "demo reports require durable storage",
+            }),
+        )
+            .into_response();
+    };
+    match sqlx::query("SELECT r.report_id, r.status, m.title, m.trace_count, m.created_at, (SELECT privacy_profile FROM reporting.report_artifacts a WHERE a.report_id = r.report_id ORDER BY a.created_at LIMIT 1) AS privacy_profile FROM reporting.report_runs r JOIN reporting.report_metadata m ON m.report_id = r.report_id WHERE m.project_id = $1 ORDER BY m.created_at DESC, r.report_id DESC LIMIT 20")
+        .bind(principal.project_id)
+        .fetch_all(pool)
+        .await
+    {
+        Ok(rows) => (
+            StatusCode::OK,
+            Json(
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "report_id": row.get::<Uuid, _>("report_id").to_string(),
+                            "title": row.get::<String, _>("title"),
+                            "status": row.get::<String, _>("status"),
+                            "privacy_profile": row.get::<Option<String>, _>("privacy_profile").unwrap_or_else(|| "shareable".to_owned()),
+                            "trace_count": row.get::<i32, _>("trace_count") as i64,
+                            "created_at": row.get::<time::OffsetDateTime, _>("created_at").format(&time::format_description::well_known::Rfc3339).unwrap_or_default(),
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "demo reports query failed",
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn demo_x402_payment_audit(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+) -> impl IntoResponse {
+    let Some(Extension(principal)) = principal else {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiError {
+                code: "unauthorized",
+                message: "public demo project context is required",
+            }),
+        )
+            .into_response();
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "demo x402 audit requires durable storage",
+            }),
+        )
+            .into_response();
+    };
+    match sqlx::query("SELECT audit_id, policy_id, agent_id, merchant_origin, network, asset, amount_atomic::text AS amount_atomic, decision, reason_code, settlement_reference, decided_at FROM telemetry.x402_payment_audit WHERE project_id = $1 ORDER BY decided_at DESC, audit_id DESC LIMIT 50")
+        .bind(principal.project_id)
+        .fetch_all(pool)
+        .await
+    {
+        Ok(rows) => (
+            StatusCode::OK,
+            Json(
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "audit_id": row.get::<Uuid, _>("audit_id").to_string(),
+                            "policy_id": row.get::<Option<Uuid>, _>("policy_id").map(|value| value.to_string()),
+                            "agent_id": row.get::<String, _>("agent_id"),
+                            "merchant_origin": row.get::<String, _>("merchant_origin"),
+                            "network": row.get::<String, _>("network"),
+                            "asset": row.get::<String, _>("asset"),
+                            "amount_atomic": row.get::<String, _>("amount_atomic"),
+                            "decision": row.get::<String, _>("decision"),
+                            "reason_code": row.get::<String, _>("reason_code"),
+                            "settlement_reference": row.get::<Option<String>, _>("settlement_reference"),
+                            "decided_at": row.get::<time::OffsetDateTime, _>("decided_at").format(&time::format_description::well_known::Rfc3339).unwrap_or_default(),
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "demo x402 audit query failed",
             }),
         )
             .into_response(),
