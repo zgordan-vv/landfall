@@ -28,7 +28,10 @@ INSERT INTO control.environments (environment_id, project_id, name, cluster)
 VALUES
     (:'environment_id'::uuid, :'project_id'::uuid, 'devnet-primary', 'devnet'),
     (:'candidate_environment_id'::uuid, :'project_id'::uuid, 'devnet-fallback', 'devnet')
-ON CONFLICT (environment_id) DO UPDATE SET name = EXCLUDED.name, cluster = EXCLUDED.cluster;
+ON CONFLICT (environment_id) DO UPDATE SET
+    project_id = EXCLUDED.project_id,
+    name = EXCLUDED.name,
+    cluster = EXCLUDED.cluster;
 
 INSERT INTO reporting.business_actions (business_action_id, project_id, environment_id, created_at)
 VALUES
@@ -38,7 +41,10 @@ VALUES
     ('0198ef00-0000-7000-8000-000000000304'::uuid, :'project_id'::uuid, :'candidate_environment_id'::uuid, now() - interval '35 minutes'),
     ('0198ef00-0000-7000-8000-000000000305'::uuid, :'project_id'::uuid, :'candidate_environment_id'::uuid, now() - interval '22 minutes'),
     ('0198ef00-0000-7000-8000-000000000306'::uuid, :'project_id'::uuid, :'candidate_environment_id'::uuid, now() - interval '10 minutes')
-ON CONFLICT (business_action_id) DO NOTHING;
+ON CONFLICT (business_action_id) DO UPDATE SET
+    project_id = EXCLUDED.project_id,
+    environment_id = EXCLUDED.environment_id,
+    created_at = EXCLUDED.created_at;
 
 INSERT INTO reporting.traces (
     trace_id, project_id, environment_id, business_action_id, lifecycle_state,
@@ -52,7 +58,9 @@ VALUES
     ('0198ef00-0000-7000-8000-000000000405'::uuid, :'project_id'::uuid, :'candidate_environment_id'::uuid, '0198ef00-0000-7000-8000-000000000305'::uuid, 'observed', 'finalized', 'success', 'success', 'observed', now() - interval '22 minutes'),
     ('0198ef00-0000-7000-8000-000000000406'::uuid, :'project_id'::uuid, :'candidate_environment_id'::uuid, '0198ef00-0000-7000-8000-000000000306'::uuid, 'signed', 'not_observed', 'unknown', 'unknown', 'in_progress', now() - interval '10 minutes')
 ON CONFLICT (trace_id) DO UPDATE SET
+    project_id = EXCLUDED.project_id,
     environment_id = EXCLUDED.environment_id,
+    business_action_id = EXCLUDED.business_action_id,
     lifecycle_state = EXCLUDED.lifecycle_state,
     landing_state = EXCLUDED.landing_state,
     execution_state = EXCLUDED.execution_state,
