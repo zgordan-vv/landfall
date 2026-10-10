@@ -315,7 +315,7 @@ function AccountPortal({
             Password
             <input
               required
-              minLength={12}
+              minLength={mode === "register" ? 12 : undefined}
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
