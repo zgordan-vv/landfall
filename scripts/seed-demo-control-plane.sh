@@ -4,7 +4,7 @@ set -euo pipefail
 service="${LANDFALL_DB_SERVICE:-postgres}"
 db_user="${LANDFALL_POSTGRES_USER:-landfall}"
 db_name="${LANDFALL_POSTGRES_DB:-landfall}"
-project_id="0198ef00-0000-7000-8000-000000000100"
+project_id="${LANDFALL_PUBLIC_DEMO_PROJECT_ID:-0198ef00-0000-7000-8000-000000000100}"
 environment_id="0198ef00-0000-7000-8000-000000000200"
 candidate_environment_id="0198ef00-0000-7000-8000-000000000201"
 policy_id="0198ef00-0000-7000-8000-000000000900"
