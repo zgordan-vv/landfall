@@ -88,7 +88,15 @@ VALUES
     ('0198ef00-0000-7000-8000-000000000901'::uuid, :'project_id'::uuid, :'policy_id'::uuid, 'landfall-demo-agent', 'https://api.demo-merchant.invalid', 'solana-devnet', 'USDC', 1200000, decode('0000000000000000000000000000000000000000000000000000000000000901', 'hex'), 'settled', 'policy_approved', 'demo-settlement-901', now() - interval '30 minutes'),
     ('0198ef00-0000-7000-8000-000000000902'::uuid, :'project_id'::uuid, :'policy_id'::uuid, 'landfall-demo-agent', 'https://reports.demo-merchant.invalid', 'solana-devnet', 'USDC', 500000, decode('0000000000000000000000000000000000000000000000000000000000000902', 'hex'), 'approved', 'policy_approved', NULL, now() - interval '12 minutes'),
     ('0198ef00-0000-7000-8000-000000000903'::uuid, :'project_id'::uuid, :'policy_id'::uuid, 'landfall-demo-agent', 'https://api.demo-merchant.invalid', 'solana-devnet', 'USDC', 9000000, decode('0000000000000000000000000000000000000000000000000000000000000903', 'hex'), 'denied', 'amount_exceeds_policy', NULL, now() - interval '5 minutes')
-ON CONFLICT (project_id, idempotency_key_hash) DO UPDATE SET
+ON CONFLICT (audit_id) DO UPDATE SET
+    project_id = EXCLUDED.project_id,
+    policy_id = EXCLUDED.policy_id,
+    agent_id = EXCLUDED.agent_id,
+    merchant_origin = EXCLUDED.merchant_origin,
+    network = EXCLUDED.network,
+    asset = EXCLUDED.asset,
+    amount_atomic = EXCLUDED.amount_atomic,
+    idempotency_key_hash = EXCLUDED.idempotency_key_hash,
     decision = EXCLUDED.decision,
     reason_code = EXCLUDED.reason_code,
     settlement_reference = EXCLUDED.settlement_reference,
@@ -106,7 +114,10 @@ VALUES (
     'Demo lifecycle evidence export', 'demo-v1', 6, now() - interval '4 minutes'
 )
 ON CONFLICT (report_id) DO UPDATE SET
+    project_id = EXCLUDED.project_id,
+    environment_id = EXCLUDED.environment_id,
     title = EXCLUDED.title,
+    semantics_version = EXCLUDED.semantics_version,
     trace_count = EXCLUDED.trace_count,
     created_at = EXCLUDED.created_at;
 
