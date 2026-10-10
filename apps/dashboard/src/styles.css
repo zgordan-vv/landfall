@@ -65,11 +65,21 @@ nav {
   text-decoration: none;
 }
 .nav-link:hover,
-.nav-link:focus-visible,
+.nav-link:focus-visible {
+  color: #d7e0ef;
+  background: #151f31;
+  outline: none;
+}
 .nav-link.active {
   color: #fff;
-  background: #202c40;
+  background: #263650;
+  box-shadow: inset 3px 0 0 var(--accent);
   outline: none;
+}
+.nav-link.active:hover,
+.nav-link.active:focus-visible {
+  color: #fff;
+  background: #2b3d5b;
 }
 .content {
   max-width: 64rem;
