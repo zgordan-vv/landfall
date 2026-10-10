@@ -136,7 +136,7 @@ pub async fn authenticate_user(
         return unavailable("interactive authentication requires durable storage");
     };
     let Some(token) = bearer(&request) else {
-        return unauthorized();
+        return unauthorized("sign in to access this workspace");
     };
     let token_hash = auth::hash_token(token);
     let user_id = sqlx::query_scalar::<_, Uuid>(
@@ -158,7 +158,7 @@ pub async fn authenticate_user(
                 .insert(AuthenticatedUser { user_id });
             next.run(request).await
         }
-        _ => unauthorized(),
+        _ => unauthorized("sign in to access this workspace"),
     }
 }
 
@@ -233,11 +233,11 @@ pub async fn login(
     let row = sqlx::query("SELECT u.user_id, u.email, u.display_name, c.password_hash FROM identity.users u JOIN identity.password_credentials c ON c.user_id = u.user_id WHERE lower(u.email) = lower($1) AND u.disabled_at IS NULL")
         .bind(normalize_email(&request.email)).fetch_optional(pool).await;
     let Ok(Some(row)) = row else {
-        return unauthorized();
+        return unauthorized("invalid email or password");
     };
     let password_hash: String = row.get("password_hash");
     if !verify_password(&request.password, &password_hash) {
-        return unauthorized();
+        return unauthorized("invalid email or password");
     }
     let user_id: Uuid = row.get("user_id");
     let workspace = match first_workspace(pool, user_id).await {
@@ -291,7 +291,7 @@ pub async fn logout(
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.strip_prefix("Bearer "))
     else {
-        return unauthorized();
+        return unauthorized("sign in to access this workspace");
     };
     match sqlx::query("UPDATE identity.sessions SET revoked_at = now() WHERE user_id = $1 AND token_hash = $2 AND revoked_at IS NULL")
         .bind(user.user_id).bind(auth::hash_token(token).to_vec()).execute(pool).await {
@@ -317,7 +317,7 @@ pub async fn me(
             &row.get::<String, _>("display_name"),
         ))
         .into_response(),
-        _ => unauthorized(),
+        _ => unauthorized("sign in to access this workspace"),
     }
 }
 
@@ -695,12 +695,12 @@ fn bad_request(message: &'static str) -> axum::response::Response {
     )
         .into_response()
 }
-fn unauthorized() -> axum::response::Response {
+fn unauthorized(message: &'static str) -> axum::response::Response {
     (
         StatusCode::UNAUTHORIZED,
         Json(ApiError {
             code: "unauthorized",
-            message: "valid account authentication is required",
+            message,
         }),
     )
         .into_response()
