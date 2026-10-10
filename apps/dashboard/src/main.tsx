@@ -173,9 +173,11 @@ function DashboardAccess({
 function AccountPortal({
   session,
   onSession,
+  preferredMode = "register",
 }: {
   session: AccountSession | null;
   onSession: (value: AccountSession | null) => void;
+  preferredMode?: "login" | "register";
 }) {
   const [mode, setMode] = React.useState<"login" | "register">("register");
   const [email, setEmail] = React.useState("");
@@ -192,6 +194,9 @@ function AccountPortal({
   >([]);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => {
+    if (!session) setMode(preferredMode);
+  }, [preferredMode, session]);
   const request = React.useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
       const response = await fetch(`${apiBaseUrl()}${path}`, {
@@ -505,6 +510,7 @@ function Dashboard() {
   const [route, setRoute] = React.useState<Route>(routeFromLocation);
   const [showAbout, setShowAbout] = React.useState(false);
   const [accountSession, setAccountSession] = React.useState<AccountSession | null>(null);
+  const [accountMode, setAccountMode] = React.useState<"login" | "register">("register");
   const [access, setAccess] = React.useState<Access | null>(() =>
     window.location.hash === "#demo" ? { mode: "demo" } : null,
   );
@@ -584,6 +590,13 @@ function Dashboard() {
         >
           About Landfall
         </button>
+        <a
+          className="secondary-button topbar-account-button"
+          href="#account"
+          onClick={() => setAccountMode(accountSession ? "register" : "login")}
+        >
+          {accountSession ? "Account" : "Sign in"}
+        </a>
         {api && (
           <button className="secondary-button logout" onClick={() => setAccess(null)} type="button">
             Disconnect
@@ -665,7 +678,11 @@ function Dashboard() {
             </section>
           )}
           {activeRoute === "account" ? (
-            <AccountPortal session={accountSession} onSession={setAccountSession} />
+            <AccountPortal
+              session={accountSession}
+              onSession={setAccountSession}
+              preferredMode={accountMode}
+            />
           ) : activeRoute === "onboarding" ? (
             <Onboarding />
           ) : activeRoute === "support" ? (

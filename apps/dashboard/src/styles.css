@@ -35,6 +35,9 @@ body {
 .about-button {
   margin-left: auto;
 }
+.topbar-account-button {
+  text-decoration: none;
+}
 .eyebrow,
 .nav-caption {
   color: var(--muted);
