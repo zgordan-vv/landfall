@@ -11,9 +11,18 @@ import {
   type TraceDiagnostic,
   type TraceListItem,
   type TraceRecommendation,
+  type TraceTimeline,
   type TokenResponse,
   type X402PaymentAuditRecord,
 } from "@landfall/api-client";
+import {
+  diagnosisCopy,
+  evidenceLabel,
+  groupDiagnoses,
+  stateTone,
+  timelineFacts,
+  TraceTimelineView,
+} from "./trace-story";
 import "./styles.css";
 
 type Route =
@@ -101,23 +110,34 @@ function recommendationCopy(recommendationKey: string, trace: ApiTraceDetail) {
         "Add the missing SDK or observer event so Landfall can determine the transaction outcome rather than leaving it unknown.",
     };
   }
-  return { title: recommendationKey.replaceAll("_", " "), detail: "Review this recommendation." };
-}
-
-function diagnosticCopy(claimKey: string, count: number) {
-  if (claimKey === "missing_evidence") {
-    return {
-      title: "Missing lifecycle evidence",
+  const copy: Record<string, { title: string; detail: string }> = {
+    increase_compute_headroom: {
+      title: "Raise the compute-unit limit",
       detail:
-        count > 1
-          ? "Two independent checks could not establish the transaction outcome. Review the evidence checklist and the recommendation below."
-          : "Landfall cannot establish the transaction outcome from the evidence received so far.",
-    };
-  }
-  return {
-    title: claimKey.replaceAll("_", " "),
-    detail: "Review this diagnostic together with the captured lifecycle evidence.",
+        "Set the compute-unit limit from a representative simulation plus headroom, so normal variation does not exhaust it.",
+    },
+    reduce_signing_delay: {
+      title: "Shorten the signing path",
+      detail:
+        "Sign sooner after fetching the blockhash, or fetch the blockhash closer to submission, so the validity window is not spent waiting on the signer.",
+    },
+    review_rpc_route: {
+      title: "Investigate or fail over the RPC route",
+      detail:
+        "Attempts on one route timed out or failed while another succeeded. Check the route's health and prefer the healthy route.",
+    },
+    tighten_retry_policy: {
+      title: "Stop retrying once the transaction is observed",
+      detail:
+        "Check the signature's status before re-sending, and stop retrying once the configured commitment is reached.",
+    },
   };
+  return (
+    copy[recommendationKey] ?? {
+      title: recommendationKey.replaceAll("_", " "),
+      detail: "Review this recommendation.",
+    }
+  );
 }
 
 function DashboardAccess({
@@ -1598,6 +1618,11 @@ function OverviewMetrics() {
   );
 }
 
+function landingLabel(state: string): string {
+  if (state === "not_observed") return "not landed";
+  return state.replaceAll("_", " ");
+}
+
 function TraceList() {
   const api = useDashboardApi();
   const [query, setQuery] = React.useState(
@@ -1613,20 +1638,20 @@ function TraceList() {
         setApiError(error instanceof Error ? error.message : "Trace API request failed"),
       );
   }, [api]);
-  const traces =
-    apiTraces?.map((trace) => ({
-      id: trace.trace_id,
-      flow: "trace",
-      status: trace.landing_state,
-      certainty: trace.execution_state === "unknown" ? "incomplete" : "confirmed",
-      route: "read-model",
-      time: trace.updated_at,
-    })) ?? [];
-  const visible = traces.filter(
-    (trace) =>
-      !query ||
-      `${trace.id} ${trace.flow} ${trace.route}`.toLowerCase().includes(query.toLowerCase()),
-  );
+  const traces = apiTraces ?? [];
+  const visible = traces.filter((trace) => {
+    if (!query) return true;
+    const diagnosis = trace.top_diagnosis;
+    const haystack = [
+      trace.trace_id,
+      trace.flow ?? "",
+      trace.environment_name,
+      trace.landing_state,
+      trace.execution_state,
+      diagnosis ? `${diagnosis.rule_id} ${diagnosisCopy(diagnosis.claim_key).title}` : "",
+    ].join(" ");
+    return haystack.toLowerCase().includes(query.toLowerCase());
+  });
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     window.location.hash = `traces${query ? `?q=${encodeURIComponent(query)}` : ""}`;
@@ -1648,13 +1673,13 @@ function TraceList() {
   return (
     <section aria-labelledby="trace-list-title">
       <form className="search-bar" onSubmit={submit}>
-        <label htmlFor="trace-query">Search traces, signatures, or business actions</label>
+        <label htmlFor="trace-query">Search traces by flow, environment, diagnosis, or ID</label>
         <div>
           <input
             id="trace-query"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="e.g. trace UUID"
+            placeholder="e.g. checkout-transfer, RULE-RETRY-001, or a trace UUID"
           />
           <button type="submit">Search</button>
         </div>
@@ -1666,20 +1691,51 @@ function TraceList() {
         </span>
       </div>
       <div className="trace-table" role="table" aria-label="Trace list">
-        {visible.map((trace) => (
-          <a className="trace-row" role="row" href={`#traces/${trace.id}`} key={trace.id}>
-            <div role="cell">
-              <strong>{trace.id}</strong>
-              <span>
-                {trace.flow} · {trace.route}
+        {visible.map((trace) => {
+          const diagnosis = trace.top_diagnosis;
+          const others = trace.diagnosis_count - (diagnosis ? 1 : 0);
+          return (
+            <a
+              className="trace-row"
+              role="row"
+              href={`#traces/${trace.trace_id}`}
+              key={trace.trace_id}
+            >
+              <div role="cell" className="trace-row-story">
+                <strong>
+                  {trace.flow ?? "Unnamed flow"}
+                  <span className="environment-chip">{trace.environment_name}</span>
+                </strong>
+                {diagnosis ? (
+                  <span
+                    className={`trace-row-diagnosis ${diagnosis.certainty === "unknown" ? "" : "notable"}`}
+                  >
+                    {diagnosisCopy(diagnosis.claim_key).title}
+                    <small>
+                      {" "}
+                      {diagnosis.rule_id} · {diagnosis.certainty}
+                      {others > 0 ? ` · +${others} more` : ""}
+                    </small>
+                  </span>
+                ) : (
+                  <span>No diagnoses</span>
+                )}
+                <span className="trace-row-id">{trace.trace_id}</span>
+              </div>
+              <span role="cell" className="trace-row-badges">
+                <span className={`status-label ${stateTone(trace.landing_state)}`}>
+                  {landingLabel(trace.landing_state)}
+                </span>
+                <span className={`status-label ${stateTone(trace.execution_state)}`}>
+                  execution {trace.execution_state}
+                </span>
               </span>
-            </div>
-            <span className={`status-label ${trace.certainty}`} role="cell">
-              {trace.status}
-            </span>
-            <time role="cell">{trace.time}</time>
-          </a>
-        ))}
+              <time role="cell" dateTime={trace.updated_at}>
+                {new Date(trace.updated_at).toLocaleString()}
+              </time>
+            </a>
+          );
+        })}
         {visible.length === 0 && (
           <div className="empty-state" role="status">
             {traces.length === 0
@@ -1699,6 +1755,9 @@ function TraceDetail() {
   const [apiError, setApiError] = React.useState<string | null>(null);
   const [diagnostics, setDiagnostics] = React.useState<TraceDiagnostic[] | null>(null);
   const [recommendations, setRecommendations] = React.useState<TraceRecommendation[] | null>(null);
+  const [timeline, setTimeline] = React.useState<TraceTimeline | null>(null);
+  const [timelineError, setTimelineError] = React.useState<string | null>(null);
+  const [focusedRule, setFocusedRule] = React.useState<string | null>(null);
   React.useEffect(() => {
     let active = true;
     if (!traceId) {
@@ -1723,10 +1782,31 @@ function TraceDetail() {
         if (active)
           setApiError(error instanceof Error ? error.message : "Trace API request failed");
       });
+    api
+      .getTraceTimeline(traceId)
+      .then((value) => {
+        if (active) setTimeline(value);
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setTimelineError(error instanceof Error ? error.message : "Timeline request failed");
+      });
     return () => {
       active = false;
     };
   }, [api, traceId]);
+  const diagnoses = React.useMemo(() => groupDiagnoses(diagnostics ?? []), [diagnostics]);
+  const focusedEventIds = React.useMemo(
+    () =>
+      new Set(diagnoses.find((group) => group.rule_id === focusedRule)?.evidence_event_ids ?? []),
+    [diagnoses, focusedRule],
+  );
+  function showEvidence(ruleId: string, eventId: string) {
+    setFocusedRule(ruleId);
+    document
+      .getElementById(`event-${eventId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   if (apiError)
     return (
       <section className="state-card" role="alert">
@@ -1752,21 +1832,8 @@ function TraceDetail() {
   const visibleRecommendations = recommendations
     ? [...new Map(recommendations.map((advice) => [advice.recommendation_key, advice])).values()]
     : [];
-  const visibleDiagnostics = diagnostics
-    ? [
-        ...new Map(
-          diagnostics.map((finding) => {
-            const key = `${finding.claim_key}:${finding.certainty}`;
-            const existing = diagnostics.filter(
-              (candidate) =>
-                candidate.claim_key === finding.claim_key &&
-                candidate.certainty === finding.certainty,
-            );
-            return [key, { finding, count: existing.length }] as const;
-          }),
-        ).values(),
-      ]
-    : [];
+  const lifecycleSteps = ["created", "signed", "submitted", "observed"];
+  const reached = lifecycleSteps.indexOf(lifecycle);
   return (
     <section aria-labelledby="detail-title">
       <a className="back-link" href="#traces">
@@ -1774,81 +1841,152 @@ function TraceDetail() {
       </a>
       <div className="detail-header">
         <div>
-          <p className="eyebrow">Trace</p>
-          <h2 id="detail-title">{apiTrace.trace_id}</h2>
+          <p className="eyebrow">Trace · {apiTrace.environment_name}</p>
+          <h2 id="detail-title">{apiTrace.flow ?? "Unnamed flow"}</h2>
+          <p className="muted trace-id-line">{apiTrace.trace_id}</p>
         </div>
-        <span className="status-label confirmed">{landing} · API</span>
+        <span className="trace-row-badges">
+          <span className={`status-label ${stateTone(landing)}`}>{landingLabel(landing)}</span>
+          <span className={`status-label ${stateTone(apiTrace.execution_state)}`}>
+            execution {apiTrace.execution_state}
+          </span>
+        </span>
       </div>
       <div className="detail-grid">
         <section className="state-card">
           <h2>Lifecycle summary</h2>
           <div className="lifecycle">
-            <span>Created</span>
-            <span>Signed</span>
-            <span>Submitted</span>
-            <span className="current">{lifecycle}</span>
+            {lifecycleSteps.map((step, index) => (
+              <span
+                key={step}
+                className={step === lifecycle ? "current" : index < reached ? "reached" : undefined}
+              >
+                {step[0]?.toUpperCase()}
+                {step.slice(1)}
+              </span>
+            ))}
           </div>
           <p className="muted">
-            Execution: {apiTrace.execution_state} · Observation: {apiTrace.observation_state}
+            Landing: {landingLabel(landing)} · Execution: {apiTrace.execution_state} · Application:{" "}
+            {apiTrace.application_state} · Observation: {apiTrace.observation_state}
           </p>
         </section>
         <section className="state-card">
-          <h2>Attempts & observations</h2>
-          <ul className="detail-list">
-            <li>Read model source · PostgreSQL API</li>
-            <li>Landing · {landing}</li>
-            <li>Application · {apiTrace.application_state}</li>
-          </ul>
-        </section>
-        <section className="state-card">
-          <h2>Diagnoses & recommendations</h2>
-          {visibleDiagnostics.length ? (
-            <ul className="detail-list">
-              {visibleDiagnostics.map(({ finding, count }) => {
-                const copy = diagnosticCopy(finding.claim_key, count);
-                return (
-                  <li key={`${finding.claim_key}:${finding.certainty}`}>
-                    <strong>{copy.title}</strong>
-                    <span>{copy.detail}</span>
-                    <span
-                      className={`status-label ${finding.certainty === "unknown" ? "incomplete" : "confirmed"}`}
-                    >
-                      {finding.certainty}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+          <h2>At a glance</h2>
+          {timeline ? (
+            <dl className="fact-list">
+              {timelineFacts(timeline).map((fact) => (
+                <div key={fact.label}>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
           ) : (
-            <p className="muted">No findings recorded for this trace.</p>
+            <p className="muted">
+              {timelineError
+                ? `Timeline unavailable: ${timelineError}`
+                : "Reading lifecycle evidence…"}
+            </p>
           )}
-          {visibleRecommendations.length ? (
-            <ul className="detail-list">
-              {visibleRecommendations.map((advice) => {
-                const copy = recommendationCopy(advice.recommendation_key, apiTrace);
-                return (
-                  <li key={advice.recommendation_id}>
-                    <strong>{copy.title}</strong>
-                    <span>{copy.detail}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="muted">No recommendations recorded for this trace.</p>
-          )}
-        </section>
-        <section className="state-card">
-          <h2>Evidence checklist</h2>
-          <ul className="detail-list checklist">
-            <li>{apiTrace.evidence.trace_created ? "✓" : "!"} Trace created</li>
-            <li>{apiTrace.evidence.signing_completed ? "✓" : "!"} Signing completed</li>
-            <li>{apiTrace.evidence.submission_completed ? "✓" : "!"} Submission completed</li>
-            <li>{apiTrace.evidence.status_observed ? "✓" : "!"} On-chain status observed</li>
-            <li>{apiTrace.evidence.simulation_completed ? "✓" : "!"} Simulation completed</li>
-          </ul>
         </section>
       </div>
+      <section className="state-card" aria-labelledby="diagnoses-title">
+        <h2 id="diagnoses-title">Diagnoses & recommendations</h2>
+        {diagnoses.length ? (
+          <ul className="detail-list diagnosis-list">
+            {diagnoses.map((group) => {
+              const copy = diagnosisCopy(group.claim_key);
+              const evidence = timeline
+                ? timeline.events
+                    .map((event) => event.event_id)
+                    .filter((eventId) => group.evidence_event_ids.includes(eventId))
+                    .flatMap((eventId) => {
+                      const label = evidenceLabel(timeline, eventId);
+                      return label ? [{ eventId, label }] : [];
+                    })
+                : [];
+              return (
+                <li
+                  key={`${group.rule_id}:${group.certainty}`}
+                  className={focusedRule === group.rule_id ? "focused" : undefined}
+                >
+                  <strong>
+                    {copy.title}
+                    <span className={`status-label ${group.certainty}`}>{group.certainty}</span>
+                    <span className="rule-chip">{group.rule_id}</span>
+                  </strong>
+                  <span>{copy.detail}</span>
+                  {evidence.length > 0 && (
+                    <span className="evidence-links">
+                      Evidence:{" "}
+                      {evidence.map(({ eventId, label }) => (
+                        <button
+                          type="button"
+                          className="evidence-link"
+                          key={eventId}
+                          onClick={() => showEvidence(group.rule_id, eventId)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="muted">No findings recorded for this trace.</p>
+        )}
+        <h3 className="subheading">Recommendations</h3>
+        {visibleRecommendations.length ? (
+          <ul className="detail-list">
+            {visibleRecommendations.map((advice) => {
+              const copy = recommendationCopy(advice.recommendation_key, apiTrace);
+              return (
+                <li key={advice.recommendation_id}>
+                  <strong>{copy.title}</strong>
+                  <span>{copy.detail}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="muted">No recommendations recorded for this trace.</p>
+        )}
+      </section>
+      <section className="state-card" aria-labelledby="timeline-title">
+        <div className="section-heading">
+          <h2 id="timeline-title">Lifecycle timeline</h2>
+          {timeline && (
+            <span className="muted">
+              {timeline.ordering === "canonical"
+                ? "Canonical order used by the reducer"
+                : "Ordered by producer time (canonical order unavailable)"}
+            </span>
+          )}
+        </div>
+        {timelineError ? (
+          <p className="muted" role="alert">
+            The dashboard could not read this trace's events from the API: {timelineError}
+          </p>
+        ) : timeline ? (
+          timeline.events.length ? (
+            <TraceTimelineView
+              timeline={timeline}
+              diagnoses={diagnoses}
+              focusedEventIds={focusedEventIds}
+            />
+          ) : (
+            <p className="muted">No events have been recorded for this trace.</p>
+          )
+        ) : (
+          <p className="muted" role="status">
+            Reading lifecycle evidence…
+          </p>
+        )}
+      </section>
     </section>
   );
 }

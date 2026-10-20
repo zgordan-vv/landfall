@@ -77,6 +77,8 @@ export interface TraceDiagnostic {
   rule_id: string;
   claim_key: string;
   certainty: "confirmed" | "probable" | "unknown";
+  /** Raw event IDs the rule evaluated; they match `TraceTimelineEvent.event_id`. */
+  evidence_event_ids: string[];
 }
 export interface TraceRecommendation {
   recommendation_id: string;
@@ -85,6 +87,9 @@ export interface TraceRecommendation {
 }
 export interface TraceDetail {
   trace_id: string;
+  environment_id: string;
+  environment_name: string;
+  flow: string | null;
   lifecycle_state: string;
   landing_state: string;
   execution_state: string;
@@ -100,12 +105,90 @@ export interface TraceEvidence {
   status_observed: boolean;
   simulation_completed: boolean;
 }
+export interface TraceListDiagnosis {
+  rule_id: string;
+  claim_key: string;
+  certainty: "confirmed" | "probable" | "unknown";
+}
 export interface TraceListItem {
   trace_id: string;
+  environment_id: string;
+  environment_name: string;
+  flow: string | null;
   lifecycle_state: string;
   landing_state: string;
   execution_state: string;
+  application_state: string;
   updated_at: string;
+  top_diagnosis: TraceListDiagnosis | null;
+  diagnosis_count: number;
+}
+/** Normalized error without its free-form message. */
+export interface TraceTimelineError {
+  category: string;
+  code?: string;
+  instruction_index?: number;
+  custom_code?: number;
+}
+/**
+ * Allowlisted, privacy-safe event attributes. Decimal values (durations in
+ * nanoseconds, slots, lamports, compute units) are strings to keep u64 precision.
+ */
+export interface TraceTimelineAttributes {
+  flow?: string;
+  transaction_version?: string;
+  result?: string;
+  transport_result?: string;
+  rpc_result?: string;
+  source_result?: string;
+  execution_result?: string;
+  outcome?: string;
+  reason?: string;
+  commitment?: string;
+  observed_commitment?: string;
+  preflight_commitment?: string;
+  duration_ns?: string;
+  delay_ns?: string;
+  timeout_ns?: string;
+  slot?: string;
+  context_slot?: string;
+  block_height?: string;
+  last_valid_block_height?: string;
+  confirmations?: string;
+  block_time?: string;
+  units_consumed?: string;
+  compute_units_consumed?: string;
+  fee_lamports?: string;
+  route_id?: string;
+  route_name?: string;
+  next_route_id?: string;
+  next_route_name?: string;
+  attempt_id?: string;
+  previous_attempt_id?: string;
+  attempt_sequence?: number;
+  retry_sequence?: number;
+  max_retries?: number;
+  required_signatures?: number;
+  skip_preflight?: boolean;
+  logs_present?: boolean;
+  quality_category?: string;
+  quality_severity?: string;
+  quality_impact?: string;
+  error?: TraceTimelineError;
+}
+export interface TraceTimelineEvent {
+  event_id: string;
+  event_type: string;
+  occurred_at: string;
+  source_kind: string | null;
+  source_name: string | null;
+  attributes: TraceTimelineAttributes;
+}
+export interface TraceTimeline {
+  trace_id: string;
+  /** `canonical` when the reducer order was applied, `occurred_at` otherwise. */
+  ordering: "canonical" | "occurred_at";
+  events: TraceTimelineEvent[];
 }
 export interface OverviewSummary {
   window_hours: number;
@@ -227,6 +310,9 @@ export class LandfallApiClient {
   async getTraceRecommendations(traceId: string): Promise<TraceRecommendation[]> {
     return this.get(`/v1/traces/${encodeURIComponent(traceId)}/recommendations`);
   }
+  async getTraceTimeline(traceId: string): Promise<TraceTimeline> {
+    return this.get(`/v1/traces/${encodeURIComponent(traceId)}/timeline`);
+  }
   async getTraceDetail(traceId: string): Promise<TraceDetail> {
     return this.get(`/v1/traces/${encodeURIComponent(traceId)}`);
   }
@@ -268,8 +354,17 @@ export class LandfallApiClient {
       token,
     );
   }
-  async verifyRoute(projectId: string, environmentId: string, routeId: string, token: string): Promise<RouteVerificationResponse> {
-    return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes/${encodeURIComponent(routeId)}/verify`, {}, token);
+  async verifyRoute(
+    projectId: string,
+    environmentId: string,
+    routeId: string,
+    token: string,
+  ): Promise<RouteVerificationResponse> {
+    return this.post(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes/${encodeURIComponent(routeId)}/verify`,
+      {},
+      token,
+    );
   }
   async createToken(
     projectId: string,
@@ -288,7 +383,11 @@ export class LandfallApiClient {
     return this.getWithToken(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens`, token);
   }
   async revokeToken(projectId: string, tokenId: string, token: string): Promise<void> {
-    await this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens/${encodeURIComponent(tokenId)}/revoke`, {}, token);
+    await this.post(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/tokens/${encodeURIComponent(tokenId)}/revoke`,
+      {},
+      token,
+    );
   }
   async getX402PaymentAudit(
     projectId: string,
