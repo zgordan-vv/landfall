@@ -104,14 +104,37 @@ function recommendationCopy(recommendationKey: string, trace: ApiTraceDetail) {
   return { title: recommendationKey.replaceAll("_", " "), detail: "Review this recommendation." };
 }
 
-function diagnosticCopy(claimKey: string, count: number) {
+const unknownReasonCopy: Record<string, string> = {
+  missing_trace_created:
+    "The trace-created event was not received, so the trace has no recorded starting point.",
+  missing_signing_evidence:
+    "Later lifecycle stages were reported, but no signing evidence was received.",
+  missing_submission_evidence:
+    "Later lifecycle stages were reported, but no submission to an RPC route was received.",
+  missing_submission_response: "A submission started, but its RPC response was never recorded.",
+  missing_last_valid_block_height:
+    "The blockhash validity boundary is missing, so expiry cannot be determined.",
+  missing_observer_coverage:
+    "The transaction was submitted, but no observer has reported its on-chain status yet.",
+  missing_execution_metadata:
+    "The transaction was included, but its execution result has not been captured.",
+  missing_simulation_evidence:
+    "No simulation evidence was received, so pre-flight failures cannot be ruled out.",
+  missing_signed_identity:
+    "The transaction signature is unavailable, so network observations cannot be correlated.",
+  missing_business_action_correlation:
+    "No business action is linked to this trace, so its application outcome cannot be correlated.",
+  clock_quality_issue: "Event clocks are uncertain, so the lifecycle order may be inexact.",
+  observer_disagreement: "Observers reported conflicting results for this transaction.",
+};
+
+function diagnosticCopy(claimKey: string, unknownReason: string | null) {
   if (claimKey === "missing_evidence") {
     return {
       title: "Missing lifecycle evidence",
       detail:
-        count > 1
-          ? "Two independent checks could not establish the transaction outcome. Review the evidence checklist and the recommendation below."
-          : "Landfall cannot establish the transaction outcome from the evidence received so far.",
+        (unknownReason ? unknownReasonCopy[unknownReason] : undefined) ??
+        "Landfall cannot establish the transaction outcome from the evidence received so far.",
     };
   }
   return {
@@ -1752,20 +1775,10 @@ function TraceDetail() {
   const visibleRecommendations = recommendations
     ? [...new Map(recommendations.map((advice) => [advice.recommendation_key, advice])).values()]
     : [];
+  const diagnosticKey = (finding: TraceDiagnostic) =>
+    `${finding.claim_key}:${finding.certainty}:${finding.unknown_reason ?? ""}`;
   const visibleDiagnostics = diagnostics
-    ? [
-        ...new Map(
-          diagnostics.map((finding) => {
-            const key = `${finding.claim_key}:${finding.certainty}`;
-            const existing = diagnostics.filter(
-              (candidate) =>
-                candidate.claim_key === finding.claim_key &&
-                candidate.certainty === finding.certainty,
-            );
-            return [key, { finding, count: existing.length }] as const;
-          }),
-        ).values(),
-      ]
+    ? [...new Map(diagnostics.map((finding) => [diagnosticKey(finding), finding])).values()]
     : [];
   return (
     <section aria-labelledby="detail-title">
@@ -1804,10 +1817,10 @@ function TraceDetail() {
           <h2>Diagnoses & recommendations</h2>
           {visibleDiagnostics.length ? (
             <ul className="detail-list">
-              {visibleDiagnostics.map(({ finding, count }) => {
-                const copy = diagnosticCopy(finding.claim_key, count);
+              {visibleDiagnostics.map((finding) => {
+                const copy = diagnosticCopy(finding.claim_key, finding.unknown_reason);
                 return (
-                  <li key={`${finding.claim_key}:${finding.certainty}`}>
+                  <li key={diagnosticKey(finding)}>
                     <strong>{copy.title}</strong>
                     <span>{copy.detail}</span>
                     <span

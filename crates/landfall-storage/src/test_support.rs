@@ -17,6 +17,8 @@ pub async fn reset_test_data(pool: &PgPool) -> Result<(), sqlx::Error> {
     sqlx::query(
         "TRUNCATE TABLE
         reporting.report_artifacts, reporting.report_metadata, reporting.recommendation_dispositions,
+            reporting.diagnostic_evaluation_recommendations,
+            reporting.diagnostic_evaluation_diagnostics, reporting.diagnostic_evaluations,
             reporting.recommendation_evidence, reporting.recommendation_diagnostics,
             reporting.recommendations, reporting.diagnostic_evidence, reporting.diagnostics,
             reporting.execution_metadata, reporting.status_observations, reporting.simulations,
