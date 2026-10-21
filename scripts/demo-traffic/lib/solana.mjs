@@ -177,10 +177,27 @@ export class TransportError extends Error {
   }
 }
 
-/** JSON-RPC client with an explicit per-request timeout. */
-export function createRpc(endpoint, { timeoutMs = 15_000 } = {}) {
+/**
+ * JSON-RPC client with an explicit per-request timeout. HTTP 429 responses are
+ * retried with exponential backoff (honoring Retry-After): a rate-limited
+ * request was not processed, so resending it, including sendTransaction, is safe.
+ */
+export function createRpc(endpoint, { timeoutMs = 15_000, maxRateLimitRetries = 6 } = {}) {
   let id = 0;
   return async function rpc(method, params = [], options = {}) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await once(method, params, options);
+      } catch (error) {
+        if (!(error instanceof RpcError) || error.httpStatus !== 429) throw error;
+        if (attempt >= maxRateLimitRetries) throw error;
+        const backoffMs = error.retryAfterMs ?? Math.min(1_000 * 2 ** attempt, 30_000);
+        await sleep(backoffMs + Math.random() * 250);
+      }
+    }
+  };
+
+  async function once(method, params, options) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? timeoutMs);
     let response;
@@ -200,7 +217,14 @@ export function createRpc(endpoint, { timeoutMs = 15_000 } = {}) {
     } finally {
       clearTimeout(timer);
     }
-    if (response.status === 429) throw new RpcError("rate limited", { httpStatus: 429 });
+    if (response.status === 429) {
+      const retryAfterSeconds = Number(response.headers.get("retry-after"));
+      const error = new RpcError("rate limited", { httpStatus: 429 });
+      if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+        error.retryAfterMs = retryAfterSeconds * 1_000;
+      }
+      throw error;
+    }
     if (!response.ok)
       throw new RpcError(`HTTP ${response.status}`, { httpStatus: response.status });
     const body = await response.json();
@@ -211,7 +235,7 @@ export function createRpc(endpoint, { timeoutMs = 15_000 } = {}) {
       });
     }
     return body.result;
-  };
+  }
 }
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
