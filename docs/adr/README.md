@@ -21,6 +21,7 @@ choice was made and preserve that reasoning as the implementation evolves.
 | [006](006-solana-kit-first-adapter-and-compatibility-roadmap.md) | Solana Kit first adapter and compatibility roadmap | Accepted | 2026-08-30 | — |
 | [007](007-postgresql-job-queue-instead-of-external-broker.md) | PostgreSQL job queue instead of an external broker | Accepted | 2026-09-01 | — |
 | [008](008-code-first-openapi-with-utoipa.md) | Code-first OpenAPI with Utoipa | Accepted | 2026-09-01 | — |
+| [009](009-explicit-comparison-cohorts.md) | Explicit comparison cohorts | Accepted | 2026-10-21 | — |
 
 No additional records are currently planned. A future planned record is not a
 decision; it becomes authoritative only after its ADR file exists and its status

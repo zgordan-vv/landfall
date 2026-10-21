@@ -37,6 +37,7 @@ aes-gcm.workspace = true
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
+tokio = { workspace = true, features = ["sync"] }
 
 [lints]
 workspace = true

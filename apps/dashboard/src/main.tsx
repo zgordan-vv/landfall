@@ -3,7 +3,10 @@ import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LandfallApiClient,
-  type ComparisonSummary,
+  type CohortSummary,
+  type ComparisonReport,
+  type MetricComparison,
+  type MetricValue,
   type CreatedTokenResponse,
   type OverviewSummary,
   type ReportResponse,
@@ -747,7 +750,7 @@ function SupportCenter() {
     {
       title: "Why is Comparison empty?",
       detail:
-        "Comparison needs at least two environments with traces in the same project, for example devnet and mainnet-beta, or primary RPC and fallback RPC.",
+        "Comparison answers whether a change to how you send transactions improved reliability. Designate a baseline and a candidate environment with PUT /v1/control/projects/{project_id}/comparison-cohorts, and describe each one with PUT …/environments/{environment_id}/description so the page says what differs.",
     },
     {
       title: "How can I test x402 without money?",
@@ -1991,14 +1994,72 @@ function TraceDetail() {
   );
 }
 
+const OUTCOME_LABELS: Record<MetricComparison["outcome"], string> = {
+  improved: "Improved",
+  regressed: "Regressed",
+  unchanged: "No change",
+  changed: "Changed (not rated)",
+  no_evidence: "No evidence",
+};
+
+function formatWindow(hours: number): string {
+  if (hours % 24 === 0) return hours === 24 ? "last 24 hours" : `last ${hours / 24} days`;
+  return hours === 1 ? "last hour" : `last ${hours} hours`;
+}
+
+function formatMilliseconds(value: number): string {
+  return Math.abs(value) >= 1000 ? `${(value / 1000).toFixed(2)} s` : `${Math.round(value)} ms`;
+}
+
+function formatMetricValue(metric: MetricComparison, side: MetricValue): string {
+  if (side.value === null) return "No evidence";
+  switch (metric.unit) {
+    case "ratio":
+      return `${(side.value * 100).toFixed(1)}% (${side.numerator ?? 0}/${side.sample_size})`;
+    case "milliseconds":
+      return `${formatMilliseconds(side.value)} (n=${side.sample_size})`;
+    case "lamports":
+      return `${Math.round(side.value).toLocaleString()} lamports (n=${side.sample_size})`;
+  }
+}
+
+function formatDelta(metric: MetricComparison): string {
+  if (metric.delta === null) return "—";
+  const sign = metric.delta > 0 ? "+" : metric.delta < 0 ? "−" : "±";
+  const magnitude = Math.abs(metric.delta);
+  switch (metric.unit) {
+    case "ratio":
+      return `${sign}${(magnitude * 100).toFixed(1)} pp`;
+    case "milliseconds":
+      return `${sign}${formatMilliseconds(magnitude)}`;
+    case "lamports":
+      return `${sign}${Math.round(magnitude).toLocaleString()} lamports`;
+  }
+}
+
+function CohortCard({ role, cohort }: { role: string; cohort: CohortSummary }) {
+  return (
+    <div className="state-card cohort-card">
+      <p className="eyebrow">{role}</p>
+      <h3>{cohort.environment.name}</h3>
+      <p className={cohort.environment.description ? "" : "muted"}>
+        {cohort.environment.description ?? "No description of what this environment changes."}
+      </p>
+      <p className="muted">
+        {cohort.environment.cluster} · {cohort.traces} traces · {cohort.submitted_traces} submitted
+      </p>
+    </div>
+  );
+}
+
 function ComparisonView() {
   const api = useDashboardApi();
-  const [summary, setSummary] = React.useState<ComparisonSummary | null>(null);
+  const [report, setReport] = React.useState<ComparisonReport | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   React.useEffect(() => {
     api
       .getComparison()
-      .then(setSummary)
+      .then(setReport)
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Comparison API request failed"),
       );
@@ -2007,62 +2068,126 @@ function ComparisonView() {
     return (
       <section className="state-card" role="alert">
         <h2>Comparison unavailable</h2>
-        <p className="muted">
-          {error}. Create traces in at least two environments in the same project, then return here
-          to compare landing rate, execution success, and evidence coverage.
-        </p>
+        <p className="muted">{error}.</p>
         <p>
-          <a className="secondary-button" href="#onboarding">
-            Add another environment
-          </a>{" "}
           <a className="secondary-button" href="#support">
             Learn how comparison works
           </a>
         </p>
       </section>
     );
-  if (summary === null)
+  if (report === null)
     return (
       <section className="state-card" role="status">
         <h2>Loading comparison…</h2>
-        <p className="muted">Reading cohort totals from durable traces.</p>
+        <p className="muted">Reading cohort evidence from durable traces.</p>
       </section>
     );
-  const baselineRate = summary.baseline_traces
-    ? summary.baseline_landed / summary.baseline_traces
-    : 0;
-  const candidateRate = summary.candidate_traces
-    ? summary.candidate_landed / summary.candidate_traces
-    : 0;
-  const change = (candidateRate - baselineRate) * 100;
+  if (report.status === "not_configured" || !report.baseline || !report.candidate)
+    return (
+      <section className="state-card" aria-labelledby="comparison-title">
+        <p className="eyebrow">Environment cohorts</p>
+        <h2 id="comparison-title">No baseline and candidate are designated</h2>
+        <p className="muted">
+          Comparison measures whether a change to how transactions are sent (compute limit, RPC
+          route, retry policy, fees) improved reliability. Landfall does not guess which environment
+          is which: a project administrator designates both roles.
+        </p>
+        {report.environments.length > 0 && (
+          <ul className="detail-list">
+            {report.environments.map((environment) => (
+              <li key={environment.environment_id}>
+                <strong>{environment.name}</strong>
+                <span>
+                  {environment.description ?? "No description"} ·{" "}
+                  <code>{environment.environment_id}</code>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <code className="command">
+          PUT /v1/control/projects/&#123;project_id&#125;/comparison-cohorts
+          &#123;&quot;baseline_environment_id&quot;: …, &quot;candidate_environment_id&quot;:
+          …&#125;
+        </code>
+      </section>
+    );
+  const { baseline, candidate } = report;
   return (
     <section aria-labelledby="comparison-title">
       <div className="cohort-builder">
         <p className="eyebrow">Environment cohorts</p>
-        <h2 id="comparison-title">Compare observed traces</h2>
+        <h2 id="comparison-title">
+          Did {candidate.environment.name} improve on {baseline.environment.name}?
+        </h2>
         <p className="muted">
-          Baseline {summary.baseline_environment_id} · candidate {summary.candidate_environment_id}
+          Traces whose first event falls in the {formatWindow(report.window.hours)} (
+          {new Date(report.window.start).toLocaleString()} –{" "}
+          {new Date(report.window.end).toLocaleString()}
+          ). Roles come from{" "}
+          {report.role_source === "query" ? "the request" : "the project's designated cohorts"}.
         </p>
-      </div>
-      <div className="comparison-grid">
-        <div className="state-card">
-          <p className="eyebrow">Landing-rate change</p>
-          <div className="comparison-number">
-            {change >= 0 ? "+" : ""}
-            {change.toFixed(1)} pp
-          </div>
-          <p className="muted">
-            {(baselineRate * 100).toFixed(1)}% → {(candidateRate * 100).toFixed(1)}%
-          </p>
-        </div>
-        <div className="state-card">
-          <p className="eyebrow">Sample sizes</p>
-          <div className="comparison-number">
-            {summary.baseline_traces} → {summary.candidate_traces}
-          </div>
-          <p className="muted">Durable traces per environment</p>
+        <div className="comparison-grid">
+          <CohortCard role="Baseline" cohort={baseline} />
+          <CohortCard role="Candidate" cohort={candidate} />
         </div>
       </div>
+      {!report.sufficient_sample && (
+        <div className="warning-box comparison-notice" role="note">
+          <strong>Too few traces to conclude.</strong>
+          <span>
+            Each cohort needs at least {report.minimum_sample} traces in the window before a
+            difference is more than noise (baseline {baseline.traces}, candidate {candidate.traces}
+            ). The values below are descriptive only.
+          </span>
+        </div>
+      )}
+      <div className="metric-comparison" role="table" aria-label="Metrics by cohort">
+        <div className="metric-comparison-row metric-comparison-head" role="row">
+          <span role="columnheader">Metric</span>
+          <span role="columnheader">Baseline</span>
+          <span role="columnheader">Candidate</span>
+          <span role="columnheader">Change</span>
+        </div>
+        {report.metrics.map((metric) => (
+          <div
+            key={metric.key}
+            className={`metric-comparison-row outcome-${metric.outcome}`}
+            role="row"
+          >
+            <span role="rowheader">
+              <strong>{metric.label}</strong>
+              <small className="muted">
+                {metric.better_when === "neutral"
+                  ? "No preferred direction"
+                  : `${metric.better_when === "higher" ? "Higher" : "Lower"} is better`}
+              </small>
+              <small className="metric-definition">{metric.definition}</small>
+            </span>
+            <span role="cell" data-label="Baseline">
+              {formatMetricValue(metric, metric.baseline)}
+            </span>
+            <span role="cell" data-label="Candidate">
+              {formatMetricValue(metric, metric.candidate)}
+            </span>
+            <span role="cell" data-label="Change" className="metric-change">
+              <b>{formatDelta(metric)}</b>
+              <small>
+                {OUTCOME_LABELS[metric.outcome]}
+                {metric.outcome !== "no_evidence" && !metric.sufficient_sample
+                  ? " · too few to conclude"
+                  : ""}
+              </small>
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="muted comparison-footnote">
+        Definitions {report.definitions_version}. Rates count traces, not attempts; a metric shows
+        “No evidence” when a cohort has no traces it applies to. Descriptive only: no statistical
+        significance is claimed.
+      </p>
     </section>
   );
 }

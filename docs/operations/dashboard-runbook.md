@@ -15,8 +15,11 @@ development only, `npm run dev:dashboard` serves the same application at
 2. Open `#overview` and confirm live summary data render without raw JSON.
 3. Open `#traces`, use an actual trace UUID, then confirm its evidence,
    diagnostics, and recommendations reflect the API response.
-4. Open `#comparison` after ingesting traces in two environments. A clear
-   `422` message before that is expected: there is not yet a valid comparison.
+4. Open `#comparison`. Until a project administrator designates a baseline and
+   a candidate environment (`PUT .../comparison-cohorts`, see
+   `docs/api/api-cohort-comparison.md`), the page says roles are not configured.
+   Afterwards it shows both environments by name and description, one row per
+   metric, and a "too few traces to conclude" notice below 30 traces per cohort.
 5. Navigate with keyboard only; focused links/buttons must remain visible and
    status text must not rely on color alone.
 

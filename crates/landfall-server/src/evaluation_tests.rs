@@ -201,6 +201,7 @@ async fn readers_serve_only_the_latest_evaluation() {
     let Ok(url) = std::env::var("LANDFALL_TEST_DATABASE_URL") else {
         return;
     };
+    let _guard = super::DATABASE_TEST_LOCK.lock().await;
     let pool = sqlx::PgPool::connect(&url).await.unwrap();
     run_migrations(&pool).await.unwrap();
 

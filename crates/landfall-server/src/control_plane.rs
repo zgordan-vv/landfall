@@ -75,6 +75,9 @@ pub struct CreatedProjectResponse {
 pub struct CreateEnvironmentRequest {
     pub name: String,
     pub cluster: String,
+    /// Optional note on what this environment changes; shown on the Comparison page.
+    #[serde(default)]
+    pub description: Option<String>,
 }
 
 /// Durable environment metadata.
@@ -84,6 +87,32 @@ pub struct EnvironmentResponse {
     pub project_id: String,
     pub name: String,
     pub cluster: String,
+    pub description: Option<String>,
+}
+
+/// Replaces an environment's description; `null` clears it.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateEnvironmentDescriptionRequest {
+    /// One line of at most 280 characters, for example
+    /// "tuned: compute limit from simulation + headroom". Visible to anyone who
+    /// can read comparisons, including the public demo, so never put secrets here.
+    pub description: Option<String>,
+}
+
+/// Designates which environment is the baseline and which the candidate.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ComparisonCohortsRequest {
+    pub baseline_environment_id: String,
+    pub candidate_environment_id: String,
+}
+
+/// The project's designated comparison roles.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ComparisonCohortsResponse {
+    pub project_id: String,
+    pub baseline_environment_id: String,
+    pub candidate_environment_id: String,
+    pub updated_at: String,
 }
 
 /// Request to register one customer-controlled Solana JSON-RPC route.
@@ -280,6 +309,10 @@ fn error(
 fn valid_text(value: &str, maximum: usize) -> bool {
     let length = value.chars().count();
     (1..=maximum).contains(&length)
+}
+
+fn valid_description(value: &str) -> bool {
+    valid_text(value, 280) && value.trim() == value && !value.chars().any(char::is_control)
 }
 
 fn valid_scopes(scopes: &[String]) -> bool {
@@ -699,6 +732,13 @@ pub async fn create_environment(
             "environment name and cluster must be non-empty and within their limits",
         );
     }
+    if !request.description.as_deref().is_none_or(valid_description) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_control_input",
+            "environment description must be one line of 1 to 280 characters",
+        );
+    }
     let Some(pool) = state.pool.as_ref() else {
         return error(
             StatusCode::SERVICE_UNAVAILABLE,
@@ -707,8 +747,8 @@ pub async fn create_environment(
         );
     };
     let environment_id = Uuid::now_v7();
-    match sqlx::query("INSERT INTO control.environments (environment_id, project_id, name, cluster) VALUES ($1, $2, $3, $4)").bind(environment_id).bind(project_id).bind(&request.name).bind(&request.cluster).execute(pool).await {
-        Ok(_) => (StatusCode::CREATED, Json(EnvironmentResponse { environment_id: environment_id.to_string(), project_id: project_id.to_string(), name: request.name, cluster: request.cluster })).into_response(),
+    match sqlx::query("INSERT INTO control.environments (environment_id, project_id, name, cluster, description) VALUES ($1, $2, $3, $4, $5)").bind(environment_id).bind(project_id).bind(&request.name).bind(&request.cluster).bind(&request.description).execute(pool).await {
+        Ok(_) => (StatusCode::CREATED, Json(EnvironmentResponse { environment_id: environment_id.to_string(), project_id: project_id.to_string(), name: request.name, cluster: request.cluster, description: request.description })).into_response(),
         Err(_) => error(StatusCode::CONFLICT, "environment_conflict", "environment name already exists or project was not found"),
     }
 }
@@ -734,9 +774,202 @@ pub async fn list_environments(
             "environment listing requires durable storage",
         );
     };
-    match sqlx::query("SELECT environment_id, project_id, name, cluster FROM control.environments WHERE project_id = $1 ORDER BY created_at, environment_id").bind(project_id).fetch_all(pool).await {
-        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| EnvironmentResponse { environment_id: row.get::<Uuid, _>("environment_id").to_string(), project_id: row.get::<Uuid, _>("project_id").to_string(), name: row.get("name"), cluster: row.get("cluster") }).collect::<Vec<_>>())).into_response(),
+    match sqlx::query("SELECT environment_id, project_id, name, cluster, description FROM control.environments WHERE project_id = $1 ORDER BY created_at, environment_id").bind(project_id).fetch_all(pool).await {
+        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| EnvironmentResponse { environment_id: row.get::<Uuid, _>("environment_id").to_string(), project_id: row.get::<Uuid, _>("project_id").to_string(), name: row.get("name"), cluster: row.get("cluster"), description: row.get("description") }).collect::<Vec<_>>())).into_response(),
         Err(_) => error(StatusCode::SERVICE_UNAVAILABLE, "storage_unavailable", "environment listing failed"),
+    }
+}
+
+/// Sets or clears the description shown for an environment on the Comparison page.
+#[utoipa::path(put, path = "/v1/control/projects/{project_id}/environments/{environment_id}/description", params(("project_id" = String, Path), ("environment_id" = String, Path)), request_body = UpdateEnvironmentDescriptionRequest, responses((status = 200, body = EnvironmentResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, body = ApiError), (status = 503, body = ApiError)))]
+pub async fn update_environment_description(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path((project_id, environment_id)): Path<(Uuid, Uuid)>,
+    Json(request): Json<UpdateEnvironmentDescriptionRequest>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    if !request.description.as_deref().is_none_or(valid_description) {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_control_input",
+            "environment description must be one line of 1 to 280 characters",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "environment updates require durable storage",
+        );
+    };
+    match sqlx::query("UPDATE control.environments SET description = $3 WHERE project_id = $1 AND environment_id = $2 RETURNING name, cluster")
+        .bind(project_id)
+        .bind(environment_id)
+        .bind(&request.description)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(Some(row)) => (
+            StatusCode::OK,
+            Json(EnvironmentResponse {
+                environment_id: environment_id.to_string(),
+                project_id: project_id.to_string(),
+                name: row.get("name"),
+                cluster: row.get("cluster"),
+                description: request.description,
+            }),
+        )
+            .into_response(),
+        Ok(None) => error(
+            StatusCode::NOT_FOUND,
+            "environment_not_found",
+            "environment was not found in this project",
+        ),
+        Err(_) => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "environment update failed",
+        ),
+    }
+}
+
+/// Returns the project's designated baseline and candidate environments.
+#[utoipa::path(get, path = "/v1/control/projects/{project_id}/comparison-cohorts", params(("project_id" = String, Path)), responses((status = 200, body = ComparisonCohortsResponse), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, description = "No roles are designated", body = ApiError), (status = 503, body = ApiError)))]
+pub async fn get_comparison_cohorts(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "comparison cohorts require durable storage",
+        );
+    };
+    match sqlx::query("SELECT baseline_environment_id, candidate_environment_id, updated_at FROM control.comparison_cohorts WHERE project_id = $1")
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(Some(row)) => (StatusCode::OK, Json(comparison_cohorts_response(project_id, &row))).into_response(),
+        Ok(None) => error(
+            StatusCode::NOT_FOUND,
+            "comparison_cohorts_not_configured",
+            "no baseline and candidate environments are designated",
+        ),
+        Err(_) => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "comparison cohort query failed",
+        ),
+    }
+}
+
+/// Designates the project's baseline and candidate environments for Comparison.
+#[utoipa::path(put, path = "/v1/control/projects/{project_id}/comparison-cohorts", params(("project_id" = String, Path)), request_body = ComparisonCohortsRequest, responses((status = 200, body = ComparisonCohortsResponse), (status = 400, body = ApiError), (status = 401, body = ApiError), (status = 403, body = ApiError), (status = 404, description = "An environment is not in this project", body = ApiError), (status = 503, body = ApiError)))]
+pub async fn put_comparison_cohorts(
+    State(state): State<std::sync::Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(project_id): Path<Uuid>,
+    Json(request): Json<ComparisonCohortsRequest>,
+) -> axum::response::Response {
+    if !project_admin(principal, project_id) {
+        return error(
+            StatusCode::FORBIDDEN,
+            "project_access_denied",
+            "project administrator access is required",
+        );
+    }
+    let (Ok(baseline), Ok(candidate)) = (
+        Uuid::parse_str(&request.baseline_environment_id),
+        Uuid::parse_str(&request.candidate_environment_id),
+    ) else {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "invalid_environment_id",
+            "baseline_environment_id and candidate_environment_id must be UUIDs",
+        );
+    };
+    if baseline == candidate {
+        return error(
+            StatusCode::BAD_REQUEST,
+            "identical_cohort_roles",
+            "baseline and candidate must be different environments",
+        );
+    }
+    let Some(pool) = state.pool.as_ref() else {
+        return error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "comparison cohorts require durable storage",
+        );
+    };
+    match sqlx::query("SELECT COUNT(*)::bigint AS found FROM control.environments WHERE project_id = $1 AND environment_id IN ($2, $3)")
+        .bind(project_id)
+        .bind(baseline)
+        .bind(candidate)
+        .fetch_one(pool)
+        .await
+    {
+        Ok(row) if row.get::<i64, _>("found") == 2 => {}
+        Ok(_) => {
+            return error(
+                StatusCode::NOT_FOUND,
+                "environment_not_found",
+                "both environments must belong to this project",
+            );
+        }
+        Err(_) => {
+            return error(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "storage_unavailable",
+                "comparison cohort update failed",
+            );
+        }
+    }
+    match sqlx::query("INSERT INTO control.comparison_cohorts (project_id, baseline_environment_id, candidate_environment_id) VALUES ($1, $2, $3) ON CONFLICT (project_id) DO UPDATE SET baseline_environment_id = EXCLUDED.baseline_environment_id, candidate_environment_id = EXCLUDED.candidate_environment_id, updated_at = now() RETURNING baseline_environment_id, candidate_environment_id, updated_at")
+        .bind(project_id)
+        .bind(baseline)
+        .bind(candidate)
+        .fetch_one(pool)
+        .await
+    {
+        Ok(row) => (StatusCode::OK, Json(comparison_cohorts_response(project_id, &row))).into_response(),
+        Err(_) => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "storage_unavailable",
+            "comparison cohort update failed",
+        ),
+    }
+}
+
+fn comparison_cohorts_response(
+    project_id: Uuid,
+    row: &sqlx::postgres::PgRow,
+) -> ComparisonCohortsResponse {
+    ComparisonCohortsResponse {
+        project_id: project_id.to_string(),
+        baseline_environment_id: row.get::<Uuid, _>("baseline_environment_id").to_string(),
+        candidate_environment_id: row.get::<Uuid, _>("candidate_environment_id").to_string(),
+        updated_at: row
+            .get::<OffsetDateTime, _>("updated_at")
+            .format(&Rfc3339)
+            .unwrap_or_default(),
     }
 }
 

@@ -546,6 +546,74 @@ h2 {
 .comparison-grid .state-card {
   margin-top: 1rem;
 }
+.cohort-card h3 {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+.comparison-notice {
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 1.5rem;
+}
+.metric-comparison {
+  margin-top: 1.5rem;
+  border: 1px solid #2d3c54;
+  border-radius: 0.8rem;
+  background: var(--surface);
+}
+.metric-comparison-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #2d3c54;
+  border-left: 3px solid transparent;
+}
+.metric-comparison-row:last-child {
+  border-bottom: 0;
+}
+.metric-comparison-head {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-comparison-row strong,
+.metric-comparison-row small {
+  display: block;
+}
+.metric-comparison-row small {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+.metric-definition {
+  color: #6f7e96;
+  line-height: 1.4;
+}
+.metric-change b {
+  font-size: 1.05rem;
+}
+.outcome-improved {
+  border-left-color: var(--accent);
+}
+.outcome-improved .metric-change {
+  color: var(--accent);
+}
+.outcome-regressed {
+  border-left-color: #ff8a7a;
+}
+.outcome-regressed .metric-change {
+  color: #ffb4a8;
+}
+.outcome-unchanged .metric-change,
+.outcome-changed .metric-change,
+.outcome-no_evidence .metric-change {
+  color: var(--muted);
+}
+.comparison-footnote {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
 .comparison-number {
   margin: 0.75rem 0 0.3rem;
   color: var(--accent);
@@ -916,6 +984,17 @@ h2 {
   .trace-row,
   .payment-row {
     grid-template-columns: 1fr auto;
+  }
+  .metric-comparison-head {
+    display: none;
+  }
+  .metric-comparison-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .metric-comparison-row [data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--muted);
   }
   .trace-row time,
   .payment-row time {
