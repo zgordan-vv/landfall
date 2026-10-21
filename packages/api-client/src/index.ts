@@ -31,18 +31,6 @@ export interface DataQualitySummary {
   average_score: number | null;
   definition_version: string;
 }
-export interface CohortComparison {
-  baseline_rate: number | null;
-  candidate_rate: number | null;
-  absolute_change: number | null;
-  relative_change: number | null;
-  baseline_sample_size: number;
-  candidate_sample_size: number;
-  baseline_missing_data_rate: number;
-  candidate_missing_data_rate: number;
-  small_sample_warning: boolean;
-  metric_definition: string;
-}
 export interface DetailedSystemStatus {
   status: "ok" | "degraded";
   database_ready: boolean;
@@ -64,13 +52,66 @@ export interface SystemHealthSummary {
   dead_letter_jobs: number;
   events_last_24h: number;
 }
-export interface ComparisonSummary {
+/** What a comparison cohort is: its environment and the operator's note on what differs. */
+export interface CohortEnvironment {
+  environment_id: string;
+  name: string;
+  cluster: string;
+  description: string | null;
+}
+export interface CohortSummary {
+  environment: CohortEnvironment;
+  /** Traces whose first event falls inside the window. */
+  traces: number;
+  /** Traces with at least one submission attempt. */
+  submitted_traces: number;
+  sufficient_sample: boolean;
+}
+export interface MetricValue {
+  /** `null` when the cohort has no evidence for this metric. */
+  value: number | null;
+  /** Count of traces meeting the condition, for rate metrics only. */
+  numerator: number | null;
+  /** Denominator of a rate, or the number of traces behind a median. */
+  sample_size: number;
+}
+export interface MetricComparison {
+  key: string;
+  label: string;
+  unit: "ratio" | "milliseconds" | "lamports";
+  better_when: "higher" | "lower" | "neutral";
+  definition: string;
+  baseline: MetricValue;
+  candidate: MetricValue;
+  /** Candidate minus baseline; `null` when either side has no evidence. */
+  delta: number | null;
+  outcome: "improved" | "regressed" | "unchanged" | "changed" | "no_evidence";
+  sufficient_sample: boolean;
+}
+export interface ComparisonReport {
+  status: "ready" | "not_configured";
+  role_source: "query" | "project_setting" | null;
+  window: { hours: number; start: string; end: string };
+  minimum_sample: number;
+  definitions_version: string;
+  baseline: CohortSummary | null;
+  candidate: CohortSummary | null;
+  sufficient_sample: boolean;
+  metrics: MetricComparison[];
+  environments: CohortEnvironment[];
+}
+export interface ComparisonOptions {
+  /** Explicit roles; pass both or neither. Without them the project's designated cohorts apply. */
+  baselineEnvironmentId?: string;
+  candidateEnvironmentId?: string;
+  /** Window length ending now, 1 to 2160 hours (server default 168). */
+  windowHours?: number;
+}
+export interface ComparisonCohorts {
+  project_id: string;
   baseline_environment_id: string;
   candidate_environment_id: string;
-  baseline_traces: number;
-  candidate_traces: number;
-  baseline_landed: number;
-  candidate_landed: number;
+  updated_at: string;
 }
 export interface TraceDiagnostic {
   diagnostic_id: string;
@@ -221,6 +262,7 @@ export interface EnvironmentResponse {
   project_id: string;
   name: string;
   cluster: string;
+  description: string | null;
 }
 export interface RouteResponse {
   route_id: string;
@@ -303,8 +345,16 @@ export class LandfallApiClient {
   async getSystemStatus(): Promise<SystemHealthSummary> {
     return this.get("/v1/system/status");
   }
-  async getComparison(): Promise<ComparisonSummary> {
-    return this.get("/v1/comparison");
+  async getComparison(options: ComparisonOptions = {}): Promise<ComparisonReport> {
+    const query = [
+      ["baseline_environment_id", options.baselineEnvironmentId],
+      ["candidate_environment_id", options.candidateEnvironmentId],
+      ["window_hours", options.windowHours?.toString()],
+    ]
+      .filter((pair): pair is [string, string] => pair[1] !== undefined)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join("&");
+    return this.get(`/v1/comparison${query ? `?${query}` : ""}`);
   }
   async getTraceDiagnostics(traceId: string): Promise<TraceDiagnostic[]> {
     return this.get(`/v1/traces/${encodeURIComponent(traceId)}/diagnostics`);
@@ -340,6 +390,39 @@ export class LandfallApiClient {
     return this.post(
       `/v1/control/projects/${encodeURIComponent(projectId)}/environments`,
       { name, cluster },
+      token,
+    );
+  }
+  async setEnvironmentDescription(
+    projectId: string,
+    environmentId: string,
+    token: string,
+    description: string | null,
+  ): Promise<EnvironmentResponse> {
+    return this.put(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/description`,
+      { description },
+      token,
+    );
+  }
+  async getComparisonCohorts(projectId: string, token: string): Promise<ComparisonCohorts> {
+    return this.getWithToken(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/comparison-cohorts`,
+      token,
+    );
+  }
+  async setComparisonCohorts(
+    projectId: string,
+    token: string,
+    baselineEnvironmentId: string,
+    candidateEnvironmentId: string,
+  ): Promise<ComparisonCohorts> {
+    return this.put(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/comparison-cohorts`,
+      {
+        baseline_environment_id: baselineEnvironmentId,
+        candidate_environment_id: candidateEnvironmentId,
+      },
       token,
     );
   }
@@ -447,8 +530,16 @@ export class LandfallApiClient {
   }
 
   private async post<T>(path: string, body: unknown, token: string): Promise<T> {
+    return this.send("POST", path, body, token);
+  }
+
+  private async put<T>(path: string, body: unknown, token: string): Promise<T> {
+    return this.send("PUT", path, body, token);
+  }
+
+  private async send<T>(method: string, path: string, body: unknown, token: string): Promise<T> {
     const response = await this.request(`${this.baseUrl}${path}`, {
-      method: "POST",
+      method,
       headers: {
         accept: "application/json",
         "content-type": "application/json",

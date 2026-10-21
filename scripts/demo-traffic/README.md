@@ -19,9 +19,12 @@ devnet or local-validator SOL.
 ## Scenarios
 
 Failures come from genuinely misconfigured transactions, not from invented
-outcomes. The `baseline` environment mixes all scenarios; the optional
-`candidate` environment runs a tuned mix, so the Comparison view has a real
-difference to show.
+outcomes. The `baseline` environment mixes all scenarios (about 65% of its
+traces run a failure scenario); the optional `candidate` environment runs a
+tuned mix (about 30%), so the Comparison view has a difference to show. That
+difference is **staged by this generator**, not caused by a real configuration
+change, and the environment descriptions must say so (see
+[Configure the comparison cohorts](#configure-the-comparison-cohorts)).
 
 | Scenario             | What actually happens                                                     | Expected diagnostic                                    |
 | -------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -103,6 +106,42 @@ curl -sS -X POST "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments/$EN
   --data '{"name":"devnet-public","endpoint":"https://api.devnet.solana.com"}'
 ```
 
+## Configure the comparison cohorts
+
+Comparison never guesses roles from recency: until a baseline and a candidate
+are designated, it reports "not configured". `scripts/seed-demo-control-plane.sh`
+sets roles and descriptions for the locally seeded environments. For any other
+deployment, including the public demo, use the control-plane API with the
+project's `project:admin` token after deploying a server that includes migration
+`0017_create_comparison_cohorts.sql`.
+
+The public demo at <https://landfall.codehummus.com/#demo> uses project
+`01a0a43c-1fd5-7271-a2ca-6d3d20145162` with `devnet` as the baseline
+(`01a0a43c-204a-7c22-8d31-38ae595a1e75`) and `devnet-candidate` as the candidate
+(`01a0a469-b2f9-7132-a03d-cd9f5b58b8e5`):
+
+```sh
+LANDFALL_URL=https://landfall.codehummus.com
+PROJECT_ID=01a0a43c-1fd5-7271-a2ca-6d3d20145162
+BASELINE_ENVIRONMENT_ID=01a0a43c-204a-7c22-8d31-38ae595a1e75
+CANDIDATE_ENVIRONMENT_ID=01a0a469-b2f9-7132-a03d-cd9f5b58b8e5
+
+curl -sS -X PUT "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments/$BASELINE_ENVIRONMENT_ID/description" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  --data '{"description":"Demo: baseline injects failure scenarios (about 65% of traces are deliberately misconfigured by the traffic generator)"}'
+curl -sS -X PUT "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments/$CANDIDATE_ENVIRONMENT_ID/description" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  --data '{"description":"Demo: candidate uses tuned settings (about 30% injected failure scenarios); the difference is staged by the traffic generator"}'
+curl -sS -X PUT "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/comparison-cohorts" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
+  --data '{"baseline_environment_id":"'"$BASELINE_ENVIRONMENT_ID"'","candidate_environment_id":"'"$CANDIDATE_ENVIRONMENT_ID"'"}'
+
+# Check what the public page will show.
+curl -sS "$LANDFALL_URL/demo/v1/comparison" | jq '{status, baseline: .baseline.environment, candidate: .candidate.environment, sufficient_sample}'
+```
+
+If you change `MIXES` in `generate.mjs`, update both descriptions to match.
+
 ## Run
 
 Fund the wallet. Devnet SOL is free from <https://faucet.solana.com> or
@@ -113,9 +152,8 @@ Fund the wallet. Devnet SOL is free from <https://faucet.solana.com> or
 solana-keygen new --no-bip39-passphrase -o ~/.config/solana/landfall-demo.json
 ```
 
-Replay the incident library once, before the live traffic: Comparison uses the
-two most recently updated environments, so the live environments must stay the
-most recent.
+Replay the incident library into its own environment. Comparison uses only the
+designated baseline and candidate, so the order does not matter.
 
 ```sh
 node scripts/demo-traffic/replay-incidents.mjs

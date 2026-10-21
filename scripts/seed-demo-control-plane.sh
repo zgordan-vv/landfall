@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Seeds only demo configuration: the project, its environments, and an x402
-# spend policy. Trace, diagnostic, and report data must come from real
+# Seeds only demo configuration: the project, its environments and their
+# comparison roles, and an x402 spend policy. Trace, diagnostic, and report data must come from real
 # ingestion (scripts/demo-traffic/), never from rows written directly into
 # read models. Earlier versions of this script inserted placeholder traces,
 # x402 audit rows, and a report; they are removed here by their fixed IDs.
@@ -28,15 +28,30 @@ BEGIN;
 INSERT INTO control.projects (project_id, name)
 VALUES (:'project_id'::uuid, 'local-demo')
 ON CONFLICT (project_id) DO UPDATE SET name = EXCLUDED.name;
-INSERT INTO control.environments (environment_id, project_id, name, cluster)
+-- Descriptions say plainly that the Comparison difference is staged by
+-- scripts/demo-traffic/generate.mjs, which sends a failure-heavy scenario mix to
+-- the baseline and a mostly healthy mix to the candidate.
+INSERT INTO control.environments (environment_id, project_id, name, cluster, description)
 VALUES
-    (:'environment_id'::uuid, :'project_id'::uuid, 'devnet-baseline', 'devnet'),
-    (:'candidate_environment_id'::uuid, :'project_id'::uuid, 'devnet-tuned', 'devnet'),
-    (:'scenario_environment_id'::uuid, :'project_id'::uuid, 'scenario-library', 'replayed-fixtures')
+    (:'environment_id'::uuid, :'project_id'::uuid, 'devnet-baseline', 'devnet',
+     'Demo: baseline injects failure scenarios (about 65% of traces are deliberately misconfigured by the traffic generator)'),
+    (:'candidate_environment_id'::uuid, :'project_id'::uuid, 'devnet-tuned', 'devnet',
+     'Demo: candidate uses tuned settings (about 30% injected failure scenarios); the difference is staged by the traffic generator'),
+    (:'scenario_environment_id'::uuid, :'project_id'::uuid, 'scenario-library', 'replayed-fixtures',
+     'Replayed golden incident fixtures, not live traffic')
 ON CONFLICT (environment_id) DO UPDATE SET
     project_id = EXCLUDED.project_id,
     name = EXCLUDED.name,
-    cluster = EXCLUDED.cluster;
+    cluster = EXCLUDED.cluster,
+    description = EXCLUDED.description;
+
+-- Comparison roles are explicit; they are never inferred from recency.
+INSERT INTO control.comparison_cohorts (project_id, baseline_environment_id, candidate_environment_id)
+VALUES (:'project_id'::uuid, :'environment_id'::uuid, :'candidate_environment_id'::uuid)
+ON CONFLICT (project_id) DO UPDATE SET
+    baseline_environment_id = EXCLUDED.baseline_environment_id,
+    candidate_environment_id = EXCLUDED.candidate_environment_id,
+    updated_at = now();
 
 INSERT INTO control.x402_spend_policies (
     policy_id, project_id, agent_id, network, asset,
@@ -97,6 +112,6 @@ AND NOT EXISTS (
 COMMIT;
 SQL
 printf 'Seeded project_id=%s\n' "$project_id"
-printf '  devnet-baseline   LANDFALL_ENVIRONMENT_ID=%s\n' "$environment_id"
-printf '  devnet-tuned      LANDFALL_CANDIDATE_ENVIRONMENT_ID=%s\n' "$candidate_environment_id"
+printf '  devnet-baseline   LANDFALL_ENVIRONMENT_ID=%s (comparison baseline)\n' "$environment_id"
+printf '  devnet-tuned      LANDFALL_CANDIDATE_ENVIRONMENT_ID=%s (comparison candidate)\n' "$candidate_environment_id"
 printf '  scenario-library  LANDFALL_SCENARIO_ENVIRONMENT_ID=%s\n' "$scenario_environment_id"

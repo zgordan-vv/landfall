@@ -38,6 +38,31 @@ curl -sS -X POST "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments" \
 
 List environments with `GET /v1/control/projects/$PROJECT_ID/environments`.
 
+An optional `description` (one line, at most 280 characters) says what an
+environment changes, for example `tuned: compute limit from simulation +
+headroom`. Pass it on creation or set it later; `null` clears it. It is shown on
+the Comparison page, including the public demo, so keep it free of secrets.
+
+```sh
+curl -sS -X PUT "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/environments/$ENVIRONMENT_ID/description" \
+  -H "Authorization: Bearer $LANDFALL_PROJECT_ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"description":"tuned: compute limit from simulation + headroom"}'
+```
+
+## Designate comparison cohorts
+
+Comparison never guesses which environment is the baseline. Designate both
+roles; `GET` the same path to read them back. See
+[cohort comparison](../api/api-cohort-comparison.md) for the metrics.
+
+```sh
+curl -sS -X PUT "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/comparison-cohorts" \
+  -H "Authorization: Bearer $LANDFALL_PROJECT_ADMIN_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{"baseline_environment_id":"'"$BASELINE_ENVIRONMENT_ID"'","candidate_environment_id":"'"$CANDIDATE_ENVIRONMENT_ID"'"}'
+```
+
 ## Register an RPC route
 
 Register the customer-controlled HTTPS Solana RPC URL under the environment.

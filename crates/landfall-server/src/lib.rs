@@ -197,14 +197,15 @@ pub struct SystemHealthSummary {
     pub events_last_24h: i64,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ComparisonSummary {
-    pub baseline_environment_id: String,
-    pub candidate_environment_id: String,
-    pub baseline_traces: i64,
-    pub candidate_traces: i64,
-    pub baseline_landed: i64,
-    pub candidate_landed: i64,
+/// Optional explicit roles and window for `GET /v1/comparison`.
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
+pub struct ComparisonQuery {
+    /// Baseline environment; must be passed together with `candidate_environment_id`.
+    pub baseline_environment_id: Option<String>,
+    /// Candidate environment; must be passed together with `baseline_environment_id`.
+    pub candidate_environment_id: Option<String>,
+    /// Window length ending now, 1 to 2160 hours (default 168).
+    pub window_hours: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -244,7 +245,11 @@ pub struct ApiError {
         crate::x402_payments::record_settlement,
         trace_list,
         trace_timeline,
-        demo_trace_timeline
+        demo_trace_timeline,
+        comparison,
+        control_plane::update_environment_description,
+        control_plane::get_comparison_cohorts,
+        control_plane::put_comparison_cohorts
     ),
     components(schemas(
         IngestRequest,
@@ -258,7 +263,20 @@ pub struct ApiError {
         crate::trace_timeline::TimelineError,
         crate::metrics_summary::MetricSummary,
         crate::data_quality_summary::DataQualitySummary,
-        crate::cohort_comparison::CohortComparison,
+        crate::cohort_comparison::ComparisonReport,
+        crate::cohort_comparison::ComparisonStatus,
+        crate::cohort_comparison::ComparisonWindow,
+        crate::cohort_comparison::CohortSummary,
+        crate::cohort_comparison::CohortEnvironment,
+        crate::cohort_comparison::MetricComparison,
+        crate::cohort_comparison::MetricValue,
+        crate::cohort_comparison::MetricUnit,
+        crate::cohort_comparison::MetricOutcome,
+        crate::cohort_comparison::BetterWhen,
+        crate::cohort_comparison::RoleSource,
+        crate::control_plane::UpdateEnvironmentDescriptionRequest,
+        crate::control_plane::ComparisonCohortsRequest,
+        crate::control_plane::ComparisonCohortsResponse,
         crate::recommendation_disposition::DispositionRecord,
         crate::system_status::DetailedSystemStatus,
         crate::config_read_model::ProjectConfig,
@@ -415,6 +433,14 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/v1/control/projects/{project_id}/config",
             get(get_project_config),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/comparison-cohorts",
+            get(control_plane::get_comparison_cohorts).put(control_plane::put_comparison_cohorts),
+        )
+        .route(
+            "/v1/control/projects/{project_id}/environments/{environment_id}/description",
+            put(control_plane::update_environment_description),
         )
         .route(
             "/v1/control/projects/{project_id}/environments/{environment_id}/routes",
@@ -1240,50 +1266,257 @@ async fn trace_recommendations(
     }
 }
 
+/// Upper bound on traces read for one comparison; a larger window must be narrowed.
+const MAX_COMPARISON_TRACES: i64 = 100_000;
+
+#[utoipa::path(
+    get,
+    path = "/v1/comparison",
+    params(ComparisonQuery),
+    responses(
+        (status = 200, description = "Baseline-versus-candidate metrics, or a not-configured state when no roles are designated", body = crate::cohort_comparison::ComparisonReport),
+        (status = 400, description = "Malformed roles or window", body = ApiError),
+        (status = 401, description = "Missing or invalid token", body = ApiError),
+        (status = 404, description = "A role names an environment outside this project", body = ApiError),
+        (status = 422, description = "Too many traces in the window", body = ApiError),
+        (status = 503, description = "Storage unavailable", body = ApiError)
+    )
+)]
 async fn comparison(
     State(state): State<Arc<AppState>>,
     principal: Option<Extension<AuthenticatedToken>>,
-) -> impl IntoResponse {
-    let Some(pool) = state.pool.as_ref() else {
-        return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(ApiError {
-                code: "storage_unavailable",
-                message: "comparison requires durable storage",
-            }),
-        )
-            .into_response();
+    Query(query): Query<ComparisonQuery>,
+) -> axum::response::Response {
+    use crate::cohort_comparison::{ComparisonReport, ComparisonWindow, select_roles};
+    let failure = |status: StatusCode, code: &'static str, message: &'static str| {
+        (status, Json(ApiError { code, message })).into_response()
     };
-    let rows = sqlx::query("SELECT environment_id, COUNT(*)::bigint AS traces, COUNT(*) FILTER (WHERE landing_state IN ('processed', 'confirmed', 'finalized'))::bigint AS landed FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) GROUP BY environment_id ORDER BY MAX(updated_at) DESC, environment_id DESC LIMIT 2").bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
-    match rows {
-        Ok(rows) if rows.len() == 2 => (
-            StatusCode::OK,
-            Json(ComparisonSummary {
-                baseline_environment_id: rows[1].get::<Uuid, _>("environment_id").to_string(),
-                candidate_environment_id: rows[0].get::<Uuid, _>("environment_id").to_string(),
-                baseline_traces: rows[1].get("traces"),
-                candidate_traces: rows[0].get("traces"),
-                baseline_landed: rows[1].get("landed"),
-                candidate_landed: rows[0].get("landed"),
-            }),
-        )
-            .into_response(),
-        Ok(_) => (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            Json(ApiError {
-                code: "insufficient_cohorts",
-                message: "comparison requires traces in two environments",
-            }),
-        )
-            .into_response(),
-        Err(_) => (
+    let storage_unavailable = || {
+        failure(
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(ApiError {
-                code: "storage_unavailable",
-                message: "comparison query failed",
-            }),
+            "storage_unavailable",
+            "comparison query failed",
         )
-            .into_response(),
+    };
+    let Some(Extension(principal)) = principal else {
+        return failure(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "project context is required",
+        );
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return storage_unavailable();
+    };
+    let (query_baseline, query_candidate, hours) = match parse_comparison_query(&query) {
+        Ok(parsed) => parsed,
+        Err((code, message)) => return failure(StatusCode::BAD_REQUEST, code, message),
+    };
+    let end = time::OffsetDateTime::now_utc();
+    let start = end - time::Duration::hours(i64::from(hours));
+    let window = ComparisonWindow::new(hours, start, end);
+    let Ok((environments, setting)) = comparison_environments(pool, principal.project_id).await
+    else {
+        return storage_unavailable();
+    };
+    let listed = || {
+        environments
+            .iter()
+            .map(|(_, environment)| environment.clone())
+            .collect::<Vec<_>>()
+    };
+    let roles = match select_roles(query_baseline, query_candidate, setting) {
+        Ok(Some(roles)) => roles,
+        Ok(None) => {
+            return (
+                StatusCode::OK,
+                Json(ComparisonReport::not_configured(window, listed())),
+            )
+                .into_response();
+        }
+        Err(error) => {
+            let (code, message) = error.code_and_message();
+            return failure(StatusCode::BAD_REQUEST, code, message);
+        }
+    };
+    let find = |environment_id: Uuid| {
+        environments
+            .iter()
+            .find(|(id, _)| *id == environment_id)
+            .map(|(_, environment)| environment.clone())
+    };
+    let (Some(baseline_environment), Some(candidate_environment)) =
+        (find(roles.baseline), find(roles.candidate))
+    else {
+        return failure(
+            StatusCode::NOT_FOUND,
+            "environment_not_found",
+            "comparison environments must belong to this project",
+        );
+    };
+
+    let [baseline, candidate] =
+        match load_comparison_evidence(pool, principal.project_id, roles, start, end).await {
+            Ok(Some(cohorts)) => cohorts,
+            Ok(None) => {
+                return failure(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "comparison_window_too_large",
+                    "the window holds more than 100000 traces; choose a shorter window_hours",
+                );
+            }
+            Err(_) => return storage_unavailable(),
+        };
+    (
+        StatusCode::OK,
+        Json(ComparisonReport::ready(
+            roles,
+            window,
+            (
+                (baseline_environment, &baseline),
+                (candidate_environment, &candidate),
+            ),
+            listed(),
+        )),
+    )
+        .into_response()
+}
+
+/// API error code and message for a rejected request.
+type RejectedQuery = (&'static str, &'static str);
+
+/// Explicit roles (if any) and window length.
+fn parse_comparison_query(
+    query: &ComparisonQuery,
+) -> Result<(Option<Uuid>, Option<Uuid>, u32), RejectedQuery> {
+    use crate::cohort_comparison::{DEFAULT_WINDOW_HOURS, MAXIMUM_WINDOW_HOURS};
+    let parse_role = |value: Option<&String>| value.map(|value| Uuid::parse_str(value)).transpose();
+    let (Ok(baseline), Ok(candidate)) = (
+        parse_role(query.baseline_environment_id.as_ref()),
+        parse_role(query.candidate_environment_id.as_ref()),
+    ) else {
+        return Err((
+            "invalid_environment_id",
+            "baseline_environment_id and candidate_environment_id must be UUIDs",
+        ));
+    };
+    let hours = query.window_hours.unwrap_or(DEFAULT_WINDOW_HOURS);
+    if !(1..=MAXIMUM_WINDOW_HOURS).contains(&hours) {
+        return Err(("invalid_window", "window_hours must be between 1 and 2160"));
+    }
+    Ok((baseline, candidate, hours))
+}
+
+type EnvironmentList = Vec<(Uuid, crate::cohort_comparison::CohortEnvironment)>;
+
+/// Loads the project's environments and its designated comparison roles.
+async fn comparison_environments(
+    pool: &sqlx::PgPool,
+    project_id: Uuid,
+) -> Result<(EnvironmentList, Option<(Uuid, Uuid)>), sqlx::Error> {
+    let environments = sqlx::query("SELECT environment_id, name, cluster, description FROM control.environments WHERE project_id = $1 ORDER BY created_at, environment_id")
+        .bind(project_id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| {
+            let environment_id = row.get::<Uuid, _>("environment_id");
+            (
+                environment_id,
+                crate::cohort_comparison::CohortEnvironment {
+                    environment_id: environment_id.to_string(),
+                    name: row.get("name"),
+                    cluster: row.get("cluster"),
+                    description: row.get("description"),
+                },
+            )
+        })
+        .collect();
+    let setting = sqlx::query("SELECT baseline_environment_id, candidate_environment_id FROM control.comparison_cohorts WHERE project_id = $1")
+        .bind(project_id)
+        .fetch_optional(pool)
+        .await?
+        .map(|row| {
+            (
+                row.get::<Uuid, _>("baseline_environment_id"),
+                row.get::<Uuid, _>("candidate_environment_id"),
+            )
+        });
+    Ok((environments, setting))
+}
+
+/// Per-trace evidence for two environments. A trace belongs to the window by
+/// its first raw event; `updated_at` (set when the trace is projected, after
+/// its events arrive) only narrows the scan.
+const COMPARISON_EVIDENCE_QUERY: &str = "SELECT t.environment_id, t.landing_state, t.execution_state, e.submission_attempts, e.retries_scheduled, e.first_submission_at, e.first_confirmed_at, e.fee_lamports
+FROM reporting.traces t
+CROSS JOIN LATERAL (
+    SELECT MIN(r.occurred_at) AS first_event_at,
+        COUNT(*) FILTER (WHERE r.event_type = 'solana.submission.started')::bigint AS submission_attempts,
+        COUNT(*) FILTER (WHERE r.event_type = 'solana.submission.retry_scheduled')::bigint AS retries_scheduled,
+        MIN(r.occurred_at) FILTER (WHERE r.event_type = 'solana.submission.started') AS first_submission_at,
+        MIN(r.occurred_at) FILTER (WHERE r.event_type = 'solana.status.observed' AND r.payload #>> '{attributes,source_result}' = 'found' AND r.payload #>> '{attributes,commitment}' IN ('confirmed', 'finalized')) AS first_confirmed_at,
+        (array_agg(r.payload #>> '{attributes,fee_lamports}' ORDER BY r.occurred_at DESC) FILTER (WHERE r.event_type = 'solana.execution.enriched' AND r.payload #>> '{attributes,fee_lamports}' IS NOT NULL))[1] AS fee_lamports
+    FROM telemetry.raw_events r
+    WHERE r.trace_id = t.trace_id AND r.project_id = t.project_id AND r.environment_id = t.environment_id
+) e
+WHERE t.project_id = $1 AND t.environment_id IN ($2, $3) AND t.updated_at >= $4
+    AND e.first_event_at >= $4 AND e.first_event_at < $5
+LIMIT $6";
+
+type CohortEvidence = Vec<crate::cohort_comparison::TraceEvidence>;
+
+/// Baseline and candidate evidence, or `None` when the window holds too many traces.
+async fn load_comparison_evidence(
+    pool: &sqlx::PgPool,
+    project_id: Uuid,
+    roles: crate::cohort_comparison::CohortRoles,
+    start: time::OffsetDateTime,
+    end: time::OffsetDateTime,
+) -> Result<Option<[CohortEvidence; 2]>, sqlx::Error> {
+    let rows = sqlx::query(COMPARISON_EVIDENCE_QUERY)
+        .bind(project_id)
+        .bind(roles.baseline)
+        .bind(roles.candidate)
+        .bind(start)
+        .bind(end)
+        .bind(MAX_COMPARISON_TRACES + 1)
+        .fetch_all(pool)
+        .await?;
+    if i64::try_from(rows.len()).unwrap_or(i64::MAX) > MAX_COMPARISON_TRACES {
+        return Ok(None);
+    }
+    let (baseline, candidate): (Vec<_>, Vec<_>) = rows
+        .iter()
+        .partition(|row| row.get::<Uuid, _>("environment_id") == roles.baseline);
+    Ok(Some([
+        baseline.into_iter().map(comparison_evidence).collect(),
+        candidate.into_iter().map(comparison_evidence).collect(),
+    ]))
+}
+
+fn comparison_evidence(row: &sqlx::postgres::PgRow) -> crate::cohort_comparison::TraceEvidence {
+    let count = |column: &str| u64::try_from(row.get::<i64, _>(column)).unwrap_or(0);
+    let execution_state = row.get::<String, _>("execution_state");
+    let landing_state = row.get::<String, _>("landing_state");
+    crate::cohort_comparison::TraceEvidence {
+        submission_attempts: count("submission_attempts"),
+        retries_scheduled: count("retries_scheduled"),
+        landed: matches!(
+            landing_state.as_str(),
+            "processed" | "confirmed" | "finalized"
+        ),
+        expired: landing_state == "expired",
+        execution_success: match execution_state.as_str() {
+            "success" => Some(true),
+            "failure" => Some(false),
+            _ => None,
+        },
+        first_submission_at: row.get("first_submission_at"),
+        first_confirmed_at: row.get("first_confirmed_at"),
+        fee_lamports: row
+            .get::<Option<String>, _>("fee_lamports")
+            .and_then(|fee| fee.parse().ok()),
     }
 }
 
@@ -2142,5 +2375,11 @@ mod tests {
     }
 }
 
+/// Serializes tests that reset the shared `LANDFALL_TEST_DATABASE_URL` database.
+#[cfg(test)]
+static DATABASE_TEST_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+#[cfg(test)]
+mod comparison_tests;
 #[cfg(test)]
 mod evaluation_tests;
