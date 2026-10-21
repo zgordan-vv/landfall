@@ -20,9 +20,10 @@ impl RouteSecretCipher {
             Ok(path) => {
                 std::fs::read_to_string(path).map_err(|_| SecretConfigError::UnreadableKey)?
             }
+            // Compose passes unset optional variables as empty strings.
             Err(_) => match std::env::var("LANDFALL_ROUTE_SECRETS_KEY") {
-                Ok(value) => value,
-                Err(_) => return Ok(None),
+                Ok(value) if !value.trim().is_empty() => value,
+                _ => return Ok(None),
             },
         };
         let bytes = decode_hex_key(value.trim()).ok_or(SecretConfigError::InvalidKey)?;
