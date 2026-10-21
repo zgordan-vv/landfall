@@ -52,6 +52,7 @@ from the partial snapshots.
 | `LANDFALL_CANDIDATE_ENVIRONMENT_ID` | none                                  | Tuned environment for the Comparison view            |
 | `LANDFALL_SCENARIO_ENVIRONMENT_ID`  | required by `replay-incidents.mjs`    | Environment for replayed fixtures                    |
 | `LANDFALL_ROUTE_ID`                 | `0198ef00-…-000000000400`             | Registered route of `SOLANA_RPC_URL`                 |
+| `LANDFALL_CANDIDATE_ROUTE_ID`       | `LANDFALL_ROUTE_ID`                   | Registered route in the candidate environment        |
 | `LANDFALL_FLAKY_ROUTE_ID`           | `0198ef00-…-000000000401`             | Identifier for the unreachable route; not registered |
 | `SOLANA_RPC_URL`                    | `http://127.0.0.1:8899`               | Devnet or local validator RPC                        |
 | `DEMO_FLAKY_RPC_URL`                | `http://10.255.255.1:8899`            | Unroutable endpoint that produces real timeouts      |
@@ -92,7 +93,8 @@ curl -sS -X POST "$LANDFALL_URL/v1/control/projects/$PROJECT_ID/tokens" \
 
 On devnet, register the RPC route in each live environment so the server's
 observer worker independently confirms the transactions, and pass the returned
-`route_id` as `LANDFALL_ROUTE_ID`. Routes must use HTTPS, so a local validator
+`route_id` as `LANDFALL_ROUTE_ID` (and the candidate environment's as
+`LANDFALL_CANDIDATE_ROUTE_ID`). Routes must use HTTPS, so a local validator
 gets no server-side observation unless one is inserted manually.
 
 ```sh

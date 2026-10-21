@@ -77,6 +77,8 @@ const config = {
   walletPath: env.DEMO_WALLET ?? join(env.HOME ?? ".", ".config/solana/landfall-demo.json"),
   stateDir: env.DEMO_STATE_DIR ?? join(env.HOME ?? ".", ".landfall-demo-traffic"),
   primaryRouteId: env.LANDFALL_ROUTE_ID ?? "0198ef00-0000-7000-8000-000000000400",
+  // Registered routes belong to one environment, so the candidate may need its own.
+  candidateRouteId: env.LANDFALL_CANDIDATE_ROUTE_ID,
   flakyRouteId: env.LANDFALL_FLAKY_ROUTE_ID ?? "0198ef00-0000-7000-8000-000000000401",
 };
 
@@ -137,11 +139,26 @@ async function main() {
   await ensureRecipientFunded(rpc, payer, recipient);
 
   const environments = [
-    { id: config.baselineEnvironmentId, mix: MIXES.baseline },
+    { id: config.baselineEnvironmentId, routeId: config.primaryRouteId, mix: MIXES.baseline },
     ...(config.candidateEnvironmentId
-      ? [{ id: config.candidateEnvironmentId, mix: MIXES.candidate }]
+      ? [
+          {
+            id: config.candidateEnvironmentId,
+            routeId: config.candidateRouteId ?? config.primaryRouteId,
+            mix: MIXES.candidate,
+          },
+        ]
       : []),
   ];
+  const run = (name, environment) =>
+    runScenario(
+      name,
+      {
+        ...ctx,
+        routes: { ...ctx.routes, primary: { ...ctx.routes.primary, id: environment.routeId } },
+      },
+      environment.id,
+    );
   const pickEnvironment = () =>
     values.environment === "candidate" && environments[1]
       ? environments[1]
@@ -152,7 +169,7 @@ async function main() {
   if (values.once) {
     if (!SCENARIOS[values.once])
       throw new Error(`unknown scenario; choose one of ${Object.keys(SCENARIOS).join(", ")}`);
-    await runScenario(values.once, ctx, pickEnvironment().id);
+    await run(values.once, pickEnvironment());
     return;
   }
   if (values.all) {
@@ -160,7 +177,7 @@ async function main() {
     await Promise.allSettled(
       Object.keys(SCENARIOS).map((name, index) =>
         sleep(index * 1_500)
-          .then(() => runScenario(name, ctx, environments[0].id))
+          .then(() => run(name, environments[0]))
           .catch((error) => log(`${name} failed: ${error.message}`)),
       ),
     );
@@ -182,7 +199,7 @@ async function main() {
       const name = weightedPick(environment.mix);
       running += 1;
       started += 1;
-      runScenario(name, ctx, environment.id)
+      run(name, environment)
         .catch((error) => log(`${name} failed: ${error.message}`))
         .finally(() => (running -= 1));
     }
