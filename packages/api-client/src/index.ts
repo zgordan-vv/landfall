@@ -77,6 +77,8 @@ export interface TraceDiagnostic {
   rule_id: string;
   claim_key: string;
   certainty: "confirmed" | "probable" | "unknown";
+  /** Machine-readable gap behind an unknown finding, e.g. `missing_simulation_evidence`. */
+  unknown_reason: string | null;
 }
 export interface TraceRecommendation {
   recommendation_id: string;
@@ -268,8 +270,17 @@ export class LandfallApiClient {
       token,
     );
   }
-  async verifyRoute(projectId: string, environmentId: string, routeId: string, token: string): Promise<RouteVerificationResponse> {
-    return this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes/${encodeURIComponent(routeId)}/verify`, {}, token);
+  async verifyRoute(
+    projectId: string,
+    environmentId: string,
+    routeId: string,
+    token: string,
+  ): Promise<RouteVerificationResponse> {
+    return this.post(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/environments/${encodeURIComponent(environmentId)}/routes/${encodeURIComponent(routeId)}/verify`,
+      {},
+      token,
+    );
   }
   async createToken(
     projectId: string,
@@ -288,7 +299,11 @@ export class LandfallApiClient {
     return this.getWithToken(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens`, token);
   }
   async revokeToken(projectId: string, tokenId: string, token: string): Promise<void> {
-    await this.post(`/v1/control/projects/${encodeURIComponent(projectId)}/tokens/${encodeURIComponent(tokenId)}/revoke`, {}, token);
+    await this.post(
+      `/v1/control/projects/${encodeURIComponent(projectId)}/tokens/${encodeURIComponent(tokenId)}/revoke`,
+      {},
+      token,
+    );
   }
   async getX402PaymentAudit(
     projectId: string,

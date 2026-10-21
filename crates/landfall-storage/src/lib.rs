@@ -22,7 +22,11 @@ pub use x402_governance::{
 pub mod projections;
 pub use projections::{AttemptProjectionWrite, TraceProjectionWrite, replace_trace_projection};
 pub mod diagnostics;
-pub use diagnostics::{DiagnosticWrite, append_diagnostics};
+pub use diagnostics::{
+    CurrentDiagnostic, CurrentRecommendation, DiagnosticWrite, TraceEvaluationWrite,
+    append_diagnostics, current_trace_diagnostics, current_trace_recommendations,
+    record_trace_evaluation,
+};
 pub mod recommendations;
 pub use recommendations::{RecommendationWrite, append_recommendations};
 pub mod watermarks;

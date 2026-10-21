@@ -31,9 +31,10 @@ use axum::{
 };
 use landfall_protocol::check_event_compatibility;
 use landfall_storage::{
-    DiagnosticWrite, IngestEvent, RecommendationWrite, TraceProjectionWrite, append_diagnostics,
-    append_recommendations, enqueue_observation_if_eligible, ensure_raw_event_partition,
-    ingest_atomically, load_events_for_trace, replace_trace_projection,
+    DiagnosticWrite, IngestEvent, RecommendationWrite, TraceEvaluationWrite, TraceProjectionWrite,
+    current_trace_diagnostics, current_trace_recommendations, enqueue_observation_if_eligible,
+    ensure_raw_event_partition, ingest_atomically, load_events_for_trace, record_trace_evaluation,
+    replace_trace_projection,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -834,8 +835,34 @@ async fn trace_diagnostics(
         )
             .into_response();
     };
-    let rows = sqlx::query("SELECT d.diagnostic_id, d.rule_id, d.claim_key, d.certainty FROM reporting.diagnostics d JOIN reporting.traces t ON t.trace_id = d.trace_id WHERE d.trace_id = $1 AND ($2::uuid IS NULL OR t.project_id = $2) ORDER BY d.created_at DESC").bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await;
-    match rows { Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"diagnostic_id": row.get::<Uuid, _>("diagnostic_id").to_string(), "rule_id": row.get::<String, _>("rule_id"), "claim_key": row.get::<String, _>("claim_key"), "certainty": row.get::<String, _>("certainty")})).collect::<Vec<_>>())).into_response(), Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "diagnostics query failed" })).into_response() }
+    let project_scope = principal.as_ref().map(|Extension(value)| value.project_id);
+    match current_trace_diagnostics(pool, trace_uuid, project_scope).await {
+        Ok(rows) => (
+            StatusCode::OK,
+            Json(
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "diagnostic_id": row.diagnostic_id.to_string(),
+                            "rule_id": row.rule_id,
+                            "claim_key": row.claim_key,
+                            "certainty": row.certainty,
+                            "unknown_reason": row.unknown_reason,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "diagnostics query failed",
+            }),
+        )
+            .into_response(),
+    }
 }
 
 async fn trace_list(
@@ -1003,9 +1030,31 @@ async fn trace_recommendations(
         )
             .into_response();
     };
-    match sqlx::query("SELECT r.recommendation_id, r.recommendation_key, r.rule_set_version FROM reporting.recommendations r JOIN reporting.traces t ON t.trace_id = r.trace_id WHERE r.trace_id = $1 AND ($2::uuid IS NULL OR t.project_id = $2) ORDER BY r.created_at DESC").bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_all(pool).await {
-        Ok(rows) => (StatusCode::OK, Json(rows.into_iter().map(|row| serde_json::json!({"recommendation_id": row.get::<Uuid, _>("recommendation_id").to_string(), "recommendation_key": row.get::<String, _>("recommendation_key"), "rule_set_version": row.get::<String, _>("rule_set_version")})).collect::<Vec<_>>())).into_response(),
-        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(ApiError { code: "storage_unavailable", message: "recommendations query failed" })).into_response(),
+    let project_scope = principal.as_ref().map(|Extension(value)| value.project_id);
+    match current_trace_recommendations(pool, trace_uuid, project_scope).await {
+        Ok(rows) => (
+            StatusCode::OK,
+            Json(
+                rows.into_iter()
+                    .map(|row| {
+                        serde_json::json!({
+                            "recommendation_id": row.recommendation_id.to_string(),
+                            "recommendation_key": row.recommendation_key,
+                            "rule_set_version": row.rule_set_version,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+        )
+            .into_response(),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "recommendations query failed",
+            }),
+        )
+            .into_response(),
     }
 }
 
@@ -1196,11 +1245,13 @@ pub async fn refresh_trace_projection(
     environment_id: Uuid,
     trace_id: Uuid,
 ) -> Result<(), ()> {
+    let evaluated_at = time::OffsetDateTime::now_utc();
     let from = time::OffsetDateTime::UNIX_EPOCH;
-    let until = time::OffsetDateTime::now_utc() + time::Duration::days(1);
+    let until = evaluated_at + time::Duration::days(1);
     let rows = load_events_for_trace(pool, project_id, environment_id, trace_id, from, until)
         .await
         .map_err(|_| ())?;
+    let input_event_count = i64::try_from(rows.len()).map_err(|_| ())?;
     let ordered = order_loaded_events(rows).map_err(|_| ())?;
     let projection = landfall_core::reducer::reduce_trace(&ordered).map_err(|_| ())?;
     let trace = projection.trace();
@@ -1223,64 +1274,130 @@ pub async fn refresh_trace_projection(
     .await
     .map_err(|_| ())?;
 
-    let grouping = landfall_core::grouping::group_trace(&ordered).map_err(|_| ())?;
+    let (diagnostics, recommendations) =
+        evaluate_trace_findings(trace_id, &ordered, &projection, evaluated_at)?;
+    record_trace_evaluation(
+        pool,
+        &TraceEvaluationWrite {
+            evaluation_id: Uuid::now_v7(),
+            trace_id,
+            input_event_count,
+            evaluated_at,
+            diagnostics,
+            recommendations,
+        },
+    )
+    .await
+    .map_err(|_| ())
+}
+
+/// Runs every deterministic rule layer over one trace snapshot.
+///
+/// The output is the complete set of current findings for that snapshot; the
+/// storage layer records it as one evaluation so readers never mix snapshots.
+fn evaluate_trace_findings(
+    trace_id: Uuid,
+    ordered: &landfall_core::ordering::CanonicalOrder,
+    projection: &landfall_core::reducer::TraceProjection,
+    evaluated_at: time::OffsetDateTime,
+) -> Result<(Vec<DiagnosticWrite>, Vec<RecommendationWrite>), ()> {
+    let grouping = landfall_core::grouping::group_trace(ordered).map_err(|_| ())?;
     let mut findings =
-        landfall_core::diagnostics::evaluate_confirmed_diagnostics(&ordered, &projection);
+        landfall_core::diagnostics::evaluate_confirmed_diagnostics(ordered, projection);
     findings.extend(landfall_core::diagnostics::evaluate_probable_diagnostics(
-        &ordered,
-        &projection,
+        ordered,
+        projection,
         &grouping,
         landfall_core::diagnostics::ProbableDiagnosticConfig::default(),
     ));
     findings.extend(landfall_core::diagnostics::evaluate_unknown_diagnostics(
-        &ordered,
-        &projection,
-        &grouping,
+        ordered, projection, &grouping,
     ));
 
+    // Core finding ids are anchored on an evidence event, so distinct claims (for
+    // example several unknown reasons) can share one. Stored rows are append-only,
+    // so each distinct claim gets its own content-derived row id.
+    let mut stored_ids_by_finding: std::collections::HashMap<Uuid, Vec<Uuid>> =
+        std::collections::HashMap::new();
     let mut persisted_diagnostics = std::collections::HashSet::new();
-    let diagnostics = findings
-        .iter()
-        .filter(|finding| persisted_diagnostics.insert(finding.id().into_uuid()))
-        .map(|finding| DiagnosticWrite {
-            diagnostic_id: finding.id().into_uuid(),
+    let mut diagnostics = Vec::new();
+    for finding in &findings {
+        let write = DiagnosticWrite {
+            diagnostic_id: Uuid::nil(),
             trace_id,
             rule_id: finding.rule_id().as_str().into(),
             rule_set_version: finding.rule_set_version().into(),
             claim_key: state_label(finding.claim_key()),
             certainty: state_label(finding.certainty()),
-            created_at: time::OffsetDateTime::now_utc(),
+            unknown_reason: finding.unknown_reason().map(state_label),
+            created_at: evaluated_at,
             evidence_event_ids: finding
                 .evidence()
                 .iter()
                 .map(|event_id| event_id.into_uuid())
                 .collect(),
-        })
-        .collect::<Vec<_>>();
-    append_diagnostics(pool, &diagnostics)
-        .await
-        .map_err(|_| ())?;
+        };
+        let diagnostic_id = stored_diagnostic_id(finding.id().into_uuid(), &write);
+        if persisted_diagnostics.insert(diagnostic_id) {
+            stored_ids_by_finding
+                .entry(finding.id().into_uuid())
+                .or_default()
+                .push(diagnostic_id);
+            diagnostics.push(DiagnosticWrite {
+                diagnostic_id,
+                ..write
+            });
+        }
+    }
 
-    let recommendations =
-        landfall_core::recommendations::generate_recommendations(trace.id(), &findings)
-            .into_iter()
-            .map(|recommendation| RecommendationWrite {
-                recommendation_id: recommendation.id().into_uuid(),
-                trace_id,
-                recommendation_key: state_label(recommendation.key()),
-                rule_set_version: recommendation.rule_set_version().into(),
-                created_at: time::OffsetDateTime::now_utc(),
-                diagnostic_ids: vec![recommendation.diagnostic_id().into_uuid()],
-                evidence_event_ids: recommendation
-                    .evidence()
-                    .iter()
-                    .map(|event_id| event_id.into_uuid())
-                    .collect(),
-            })
-            .collect::<Vec<_>>();
-    append_recommendations(pool, &recommendations)
-        .await
-        .map_err(|_| ())
+    let mut persisted_recommendations = std::collections::HashSet::new();
+    let recommendations = landfall_core::recommendations::generate_recommendations(
+        projection.trace().id(),
+        &findings,
+    )
+    .into_iter()
+    .filter(|recommendation| persisted_recommendations.insert(recommendation.id().into_uuid()))
+    .map(|recommendation| RecommendationWrite {
+        recommendation_id: recommendation.id().into_uuid(),
+        trace_id,
+        recommendation_key: state_label(recommendation.key()),
+        rule_set_version: recommendation.rule_set_version().into(),
+        created_at: evaluated_at,
+        diagnostic_ids: stored_ids_by_finding
+            .get(&recommendation.diagnostic_id().into_uuid())
+            .cloned()
+            .unwrap_or_default(),
+        evidence_event_ids: recommendation
+            .evidence()
+            .iter()
+            .map(|event_id| event_id.into_uuid())
+            .collect(),
+    })
+    .collect::<Vec<_>>();
+    Ok((diagnostics, recommendations))
+}
+
+/// Deterministic row identity for one claim: the same claim over the same evidence
+/// always maps to the same row, while a different claim never overwrites it.
+fn stored_diagnostic_id(finding_id: Uuid, write: &DiagnosticWrite) -> Uuid {
+    let mut hasher = Sha256::new();
+    for part in [
+        "landfall-diagnostic-row-v1",
+        &write.trace_id.to_string(),
+        &finding_id.to_string(),
+        &write.rule_id,
+        &write.rule_set_version,
+        &write.claim_key,
+        &write.certainty,
+        write.unknown_reason.as_deref().unwrap_or(""),
+    ] {
+        hasher.update(part.as_bytes());
+        hasher.update([0]);
+    }
+    let digest = hasher.finalize();
+    let mut bytes = [0_u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    uuid::Builder::from_custom_bytes(bytes).into_uuid()
 }
 
 async fn request_context(mut request: Request<axum::body::Body>, next: Next) -> impl IntoResponse {
@@ -1839,3 +1956,6 @@ mod tests {
         assert_eq!(super::ingest_response(2, 1).status(), StatusCode::ACCEPTED);
     }
 }
+
+#[cfg(test)]
+mod evaluation_tests;
