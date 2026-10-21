@@ -77,6 +77,7 @@ pub mod storage_benchmark;
 pub mod system_status;
 pub mod trace_detail;
 pub mod trace_filters;
+pub mod trace_timeline;
 pub mod workload;
 pub mod x402_payments;
 use crate::accounts::{
@@ -92,6 +93,7 @@ use crate::control_plane::{
     verify_route,
 };
 use crate::reports::{create_report, download_report, list_reports};
+use crate::trace_timeline::TraceTimeline;
 use tower_http::{
     limit::RequestBodyLimitLayer,
     services::{ServeDir, ServeFile},
@@ -150,10 +152,27 @@ pub struct IngestAccepted {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TraceListItem {
     pub trace_id: String,
+    pub environment_id: String,
+    /// Display name of the trace's environment.
+    pub environment_name: String,
+    /// Application flow token from `solana.trace.created`, when reported.
+    pub flow: Option<String>,
     pub lifecycle_state: String,
     pub landing_state: String,
     pub execution_state: String,
+    pub application_state: String,
     pub updated_at: String,
+    /// Most certain diagnosis (confirmed before probable before unknown).
+    pub top_diagnosis: Option<TraceListDiagnosis>,
+    /// Number of distinct rules that produced a diagnosis for this trace.
+    pub diagnosis_count: i64,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct TraceListDiagnosis {
+    pub rule_id: String,
+    pub claim_key: String,
+    pub certainty: String,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -222,12 +241,21 @@ pub struct ApiError {
         reports::download_report,
         reports::list_reports,
         crate::x402_payments::authorize,
-        crate::x402_payments::record_settlement
+        crate::x402_payments::record_settlement,
+        trace_list,
+        trace_timeline,
+        demo_trace_timeline
     ),
     components(schemas(
         IngestRequest,
         IngestAccepted,
         ApiError,
+        TraceListItem,
+        TraceListDiagnosis,
+        crate::trace_timeline::TraceTimeline,
+        crate::trace_timeline::TraceTimelineEvent,
+        crate::trace_timeline::TimelineAttributes,
+        crate::trace_timeline::TimelineError,
         crate::metrics_summary::MetricSummary,
         crate::data_quality_summary::DataQualitySummary,
         crate::cohort_comparison::CohortComparison,
@@ -310,6 +338,7 @@ pub fn router(state: AppState) -> Router {
         .route("/v1/ingest", post(ingest))
         .route("/v1/traces/{trace_id}", get(trace_detail))
         .route("/v1/traces/{trace_id}/diagnostics", get(trace_diagnostics))
+        .route("/v1/traces/{trace_id}/timeline", get(trace_timeline))
         .route(
             "/v1/traces/{trace_id}/recommendations",
             get(trace_recommendations),
@@ -360,6 +389,10 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/demo/v1/traces/{trace_id}/diagnostics",
             get(trace_diagnostics),
+        )
+        .route(
+            "/demo/v1/traces/{trace_id}/timeline",
+            get(demo_trace_timeline),
         )
         .route(
             "/demo/v1/traces/{trace_id}/recommendations",
@@ -750,7 +783,7 @@ async fn trace_detail(
         )
             .into_response();
     };
-    let row = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, application_state, observation_state, updated_at FROM reporting.traces WHERE trace_id = $1 AND ($2::uuid IS NULL OR project_id = $2)")
+    let row = sqlx::query("SELECT t.trace_id, t.environment_id, e.name AS environment_name, t.lifecycle_state, t.landing_state, t.execution_state, t.application_state, t.observation_state, t.updated_at, (SELECT r.payload #>> '{attributes,flow}' FROM telemetry.raw_events r WHERE r.trace_id = t.trace_id AND r.event_type = 'solana.trace.created' ORDER BY r.occurred_at LIMIT 1) AS flow FROM reporting.traces t JOIN control.environments e ON e.environment_id = t.environment_id WHERE t.trace_id = $1 AND ($2::uuid IS NULL OR t.project_id = $2)")
         .bind(trace_uuid).bind(principal.as_ref().map(|Extension(value)| value.project_id)).fetch_optional(pool).await;
     match row {
         Ok(Some(row)) => {
@@ -776,6 +809,9 @@ async fn trace_detail(
             let has_event = |event_type: &str| event_types.iter().any(|value| value == event_type);
             (StatusCode::OK, Json(serde_json::json!({
             "trace_id": row.get::<Uuid, _>("trace_id").to_string(),
+            "environment_id": row.get::<Uuid, _>("environment_id").to_string(),
+            "environment_name": row.get::<String, _>("environment_name"),
+            "flow": row.get::<Option<String>, _>("flow").filter(|value| trace_timeline::is_token(value)),
             "lifecycle_state": row.get::<String, _>("lifecycle_state"),
             "landing_state": row.get::<String, _>("landing_state"),
             "execution_state": row.get::<String, _>("execution_state"),
@@ -848,6 +884,11 @@ async fn trace_diagnostics(
                             "claim_key": row.claim_key,
                             "certainty": row.certainty,
                             "unknown_reason": row.unknown_reason,
+                            "evidence_event_ids": row
+                                .evidence_event_ids
+                                .iter()
+                                .map(Uuid::to_string)
+                                .collect::<Vec<_>>(),
                         })
                     })
                     .collect::<Vec<_>>(),
@@ -865,6 +906,16 @@ async fn trace_diagnostics(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/traces",
+    params(("limit" = Option<u32>, Query, description = "Maximum rows, 1-100 (default 50)")),
+    responses(
+        (status = 200, description = "Most recently updated traces", body = [TraceListItem]),
+        (status = 401, description = "Missing or invalid token", body = ApiError),
+        (status = 503, description = "Storage unavailable", body = ApiError)
+    )
+)]
 async fn trace_list(
     State(state): State<Arc<AppState>>,
     principal: Option<Extension<AuthenticatedToken>>,
@@ -874,7 +925,7 @@ async fn trace_list(
         return (StatusCode::OK, Json(Vec::<TraceListItem>::new())).into_response();
     };
     let limit = query.limit.unwrap_or(50).clamp(1, 100) as i64;
-    let rows = sqlx::query("SELECT trace_id, lifecycle_state, landing_state, execution_state, updated_at FROM reporting.traces WHERE ($1::uuid IS NULL OR project_id = $1) ORDER BY updated_at DESC, trace_id DESC LIMIT $2")
+    let rows = sqlx::query("SELECT t.trace_id, t.environment_id, e.name AS environment_name, t.lifecycle_state, t.landing_state, t.execution_state, t.application_state, t.updated_at, (SELECT r.payload #>> '{attributes,flow}' FROM telemetry.raw_events r WHERE r.trace_id = t.trace_id AND r.event_type = 'solana.trace.created' ORDER BY r.occurred_at LIMIT 1) AS flow, d.rule_id AS top_rule_id, d.claim_key AS top_claim_key, d.certainty AS top_certainty, (SELECT COUNT(DISTINCT rule_id) FROM reporting.diagnostics c WHERE c.trace_id = t.trace_id)::bigint AS diagnosis_count FROM reporting.traces t JOIN control.environments e ON e.environment_id = t.environment_id LEFT JOIN LATERAL (SELECT rule_id, claim_key, certainty FROM reporting.diagnostics x WHERE x.trace_id = t.trace_id ORDER BY CASE x.certainty WHEN 'confirmed' THEN 0 WHEN 'probable' THEN 1 ELSE 2 END, x.rule_id LIMIT 1) d ON true WHERE ($1::uuid IS NULL OR t.project_id = $1) ORDER BY t.updated_at DESC, t.trace_id DESC LIMIT $2")
         .bind(principal.as_ref().map(|Extension(value)| value.project_id)).bind(limit).fetch_all(pool).await;
     match rows {
         Ok(rows) => (
@@ -883,13 +934,27 @@ async fn trace_list(
                 rows.into_iter()
                     .map(|row| TraceListItem {
                         trace_id: row.get::<Uuid, _>("trace_id").to_string(),
+                        environment_id: row.get::<Uuid, _>("environment_id").to_string(),
+                        environment_name: row.get("environment_name"),
+                        flow: row
+                            .get::<Option<String>, _>("flow")
+                            .filter(|value| trace_timeline::is_token(value)),
                         lifecycle_state: row.get("lifecycle_state"),
                         landing_state: row.get("landing_state"),
                         execution_state: row.get("execution_state"),
+                        application_state: row.get("application_state"),
                         updated_at: row
                             .get::<time::OffsetDateTime, _>("updated_at")
                             .format(&time::format_description::well_known::Rfc3339)
                             .unwrap_or_default(),
+                        top_diagnosis: row.get::<Option<String>, _>("top_rule_id").map(|rule_id| {
+                            TraceListDiagnosis {
+                                rule_id,
+                                claim_key: row.get("top_claim_key"),
+                                certainty: row.get("top_certainty"),
+                            }
+                        }),
+                        diagnosis_count: row.get("diagnosis_count"),
                     })
                     .collect::<Vec<_>>(),
             ),
@@ -1003,6 +1068,123 @@ async fn system_status(
         )
             .into_response(),
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/traces/{trace_id}/timeline",
+    params(("trace_id" = String, Path, description = "Trace UUID")),
+    responses(
+        (status = 200, description = "Allowlisted lifecycle events in canonical order", body = TraceTimeline),
+        (status = 400, description = "Malformed trace ID", body = ApiError),
+        (status = 401, description = "Missing or invalid token", body = ApiError),
+        (status = 404, description = "Trace not found in this project", body = ApiError),
+        (status = 503, description = "Storage unavailable", body = ApiError)
+    )
+)]
+async fn trace_timeline(
+    State(state): State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    Path(trace_id): Path<String>,
+) -> axum::response::Response {
+    let Ok(trace_uuid) = Uuid::parse_str(&trace_id) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_trace_id",
+                message: "trace_id must be a UUID",
+            }),
+        )
+            .into_response();
+    };
+    let storage_unavailable = || {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "storage_unavailable",
+                message: "trace timeline query failed",
+            }),
+        )
+            .into_response()
+    };
+    let Some(pool) = state.pool.as_ref() else {
+        return storage_unavailable();
+    };
+    let trace = sqlx::query("SELECT project_id, environment_id FROM reporting.traces WHERE trace_id = $1 AND ($2::uuid IS NULL OR project_id = $2)")
+        .bind(trace_uuid)
+        .bind(principal.as_ref().map(|Extension(value)| value.project_id))
+        .fetch_optional(pool)
+        .await;
+    let (project_id, environment_id) = match trace {
+        Ok(Some(row)) => (
+            row.get::<Uuid, _>("project_id"),
+            row.get::<Uuid, _>("environment_id"),
+        ),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(ApiError {
+                    code: "trace_not_found",
+                    message: "trace was not found",
+                }),
+            )
+                .into_response();
+        }
+        Err(_) => return storage_unavailable(),
+    };
+    let until = time::OffsetDateTime::now_utc() + time::Duration::days(1);
+    let Ok(rows) = load_events_for_trace(
+        pool,
+        project_id,
+        environment_id,
+        trace_uuid,
+        time::OffsetDateTime::UNIX_EPOCH,
+        until,
+    )
+    .await
+    else {
+        return storage_unavailable();
+    };
+    let Ok(routes) =
+        sqlx::query("SELECT route_id, name FROM control.routes WHERE environment_id = $1")
+            .bind(environment_id)
+            .fetch_all(pool)
+            .await
+    else {
+        return storage_unavailable();
+    };
+    let route_names = routes
+        .into_iter()
+        .map(|row| (row.get::<Uuid, _>("route_id"), row.get::<String, _>("name")))
+        .collect::<std::collections::HashMap<_, _>>();
+    (
+        StatusCode::OK,
+        Json(trace_timeline::build_timeline(
+            trace_uuid,
+            rows,
+            &route_names,
+        )),
+    )
+        .into_response()
+}
+
+#[utoipa::path(
+    get,
+    path = "/demo/v1/traces/{trace_id}/timeline",
+    params(("trace_id" = String, Path, description = "Trace UUID in the public demo project")),
+    responses(
+        (status = 200, description = "Allowlisted lifecycle events in canonical order", body = TraceTimeline),
+        (status = 400, description = "Malformed trace ID", body = ApiError),
+        (status = 404, description = "Trace not found or demo not configured", body = ApiError),
+        (status = 503, description = "Storage unavailable", body = ApiError)
+    )
+)]
+async fn demo_trace_timeline(
+    state: State<Arc<AppState>>,
+    principal: Option<Extension<AuthenticatedToken>>,
+    trace_id: Path<String>,
+) -> axum::response::Response {
+    trace_timeline(state, principal, trace_id).await
 }
 
 async fn trace_recommendations(
@@ -1798,6 +1980,9 @@ mod tests {
         assert!(document.contains("/v1/ingest"));
         assert!(document.contains("/v1/control/projects"));
         assert!(document.contains("IngestRequest"));
+        assert!(document.contains("/v1/traces/{trace_id}/timeline"));
+        assert!(document.contains("/demo/v1/traces/{trace_id}/timeline"));
+        assert!(document.contains("TimelineAttributes"));
         assert!(document.contains("202"));
     }
 

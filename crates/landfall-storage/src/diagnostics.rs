@@ -45,6 +45,8 @@ pub struct CurrentDiagnostic {
     pub claim_key: String,
     pub certainty: String,
     pub unknown_reason: Option<String>,
+    /// Raw events the rule evaluated, in event-ID order.
+    pub evidence_event_ids: Vec<Uuid>,
 }
 
 /// One recommendation produced by the newest evaluation of a trace.
@@ -96,7 +98,7 @@ pub async fn current_trace_diagnostics(
     trace_id: Uuid,
     project_id: Option<Uuid>,
 ) -> Result<Vec<CurrentDiagnostic>, sqlx::Error> {
-    let rows = sqlx::query(&format!("WITH latest AS ({LATEST_EVALUATION}) SELECT d.diagnostic_id, d.rule_id, d.claim_key, d.certainty, d.unknown_reason FROM latest JOIN reporting.diagnostic_evaluation_diagnostics m ON m.evaluation_id = latest.evaluation_id JOIN reporting.diagnostics d ON d.diagnostic_id = m.diagnostic_id ORDER BY d.created_at DESC, d.diagnostic_id"))
+    let rows = sqlx::query(&format!("WITH latest AS ({LATEST_EVALUATION}) SELECT d.diagnostic_id, d.rule_id, d.claim_key, d.certainty, d.unknown_reason, ARRAY(SELECT de.event_id FROM reporting.diagnostic_evidence de WHERE de.diagnostic_id = d.diagnostic_id ORDER BY de.event_id) AS evidence_event_ids FROM latest JOIN reporting.diagnostic_evaluation_diagnostics m ON m.evaluation_id = latest.evaluation_id JOIN reporting.diagnostics d ON d.diagnostic_id = m.diagnostic_id ORDER BY d.created_at DESC, d.diagnostic_id"))
         .bind(trace_id).bind(project_id).fetch_all(pool).await?;
     rows.into_iter()
         .map(|row| {
@@ -106,6 +108,7 @@ pub async fn current_trace_diagnostics(
                 claim_key: row.try_get("claim_key")?,
                 certainty: row.try_get("certainty")?,
                 unknown_reason: row.try_get("unknown_reason")?,
+                evidence_event_ids: row.try_get("evidence_event_ids")?,
             })
         })
         .collect()
