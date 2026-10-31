@@ -26,6 +26,13 @@ import {
   timelineFacts,
   TraceTimelineView,
 } from "./trace-story";
+import {
+  initAnalytics,
+  trackUserAuthenticated,
+  trackCoreAction,
+  trackFeatureToggled,
+  trackConversionGoal,
+} from "./analytics";
 import "./styles.css";
 
 type Route =
@@ -294,6 +301,7 @@ function AccountPortal({
               body: JSON.stringify(body),
             })
               .then((value) => {
+                trackUserAuthenticated("email", mode === "register");
                 onSession(value);
                 setSelectedWorkspace(value.workspace);
               })
@@ -540,7 +548,9 @@ function Dashboard() {
   React.useEffect(() => {
     const onHash = () => {
       if (window.location.hash === "#demo") setAccess({ mode: "demo" });
-      setRoute(routeFromLocation());
+      const nextRoute = routeFromLocation();
+      setRoute(nextRoute);
+      trackFeatureToggled("navigation_route", nextRoute);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -1235,6 +1245,7 @@ function Onboarding() {
             const result = await api.createProject(bootstrapToken, projectName, "dashboard-owner");
             setProjectId(result.project.project_id);
             setAdminToken(result.initial_token.token);
+            trackConversionGoal("create_project");
             setMessage(
               `Project ${result.project.name} created. Copy and store the administrator token before proceeding.`,
             );
@@ -1779,11 +1790,14 @@ function TraceDetail() {
           setApiTrace(value);
           setDiagnostics(findings);
           setRecommendations(advice);
+          trackCoreAction("inspect_trace", true, { trace_id: traceId });
         }
       })
       .catch((error: unknown) => {
-        if (active)
+        if (active) {
           setApiError(error instanceof Error ? error.message : "Trace API request failed");
+          trackCoreAction("inspect_trace", false, { trace_id: traceId });
+        }
       });
     api
       .getTraceTimeline(traceId)
@@ -2197,6 +2211,8 @@ const rootElement = document.querySelector<HTMLDivElement>("#root");
 if (rootElement === null) {
   throw new Error("Dashboard root element was not found");
 }
+
+initAnalytics();
 
 createRoot(rootElement).render(
   <StrictMode>

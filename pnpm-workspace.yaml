@@ -3,6 +3,9 @@ packages:
   - "packages/*"
   - "examples/*"
 
+allowBuilds:
+  core-js: set this to true or false
+
 autoInstallPeers: false
 disallowWorkspaceCycles: true
 engineStrict: true

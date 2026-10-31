@@ -5,6 +5,7 @@
 .vscode
 .env
 .env.*
+!apps/dashboard/.env
 *.log
 *.tmp
 node_modules
