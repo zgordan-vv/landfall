@@ -9,7 +9,7 @@ COPY tsconfig.json tsconfig.base.json ./
 COPY apps/dashboard/package.json apps/dashboard/package.json
 COPY packages/api-client/package.json packages/api-client/package.json
 COPY packages/protocol-ts/package.json packages/protocol-ts/package.json
-RUN pnpm install --frozen-lockfile --config.runtime-on-fail=ignore
+RUN pnpm install --frozen-lockfile --ignore-scripts --config.runtime-on-fail=ignore
 
 COPY apps/dashboard apps/dashboard
 COPY packages/api-client packages/api-client
